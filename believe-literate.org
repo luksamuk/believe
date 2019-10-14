@@ -6,6 +6,16 @@
 
 * Introduction
 
+The goal of this project is to provide a fully-functioning
+implementation of the Bel language, proposed by Paul Graham. The main
+goal is not to provide performance; instead, it is supposed to be a
+didatic approach to implementing a Lisp interpreter.
+
+The code here contained is also a study on how to build a Lisp
+interpreter from scratch in C. Given that Bel is so simple and is
+supposed to be a formalism before a commercial language, it seems like
+the perfect didatic resource to do so.
+
 This software is still a work-in-progress. Do not expect it to work
 fully yet.
 
@@ -557,13 +567,20 @@ bel_init(void)
 }
 #+end_src
 
-* Debug
+* Debug 
+
+Below we define some very simple debug functions, which will help us
+show data on screen.
+
+The first function is a specialization for printing pairs in
+general. This function should also handle the printing of lists
+gracefully.
 
 #+begin_src C
-void Bel_dbg_print(Bel*); // Forward declaration
+void bel_dbg_print(Bel*); // Forward declaration
 
 void
-Bel_dbg_print_pair(Bel *obj)
+bel_dbg_print_pair(Bel *obj)
 {
     if(bel_nilp(obj)) return;
     
@@ -574,7 +591,7 @@ Bel_dbg_print_pair(Bel *obj)
         Bel *car = bel_car(itr);
         Bel *cdr = bel_cdr(itr);
 
-        Bel_dbg_print(car);
+        bel_dbg_print(car);
         
         if(bel_nilp(cdr)) {
             break;
@@ -582,7 +599,7 @@ Bel_dbg_print_pair(Bel *obj)
             putchar(' ');
             putchar('.');
             putchar(' ');
-            Bel_dbg_print(cdr);
+            bel_dbg_print(cdr);
             break;
         }
         putchar(' ');
@@ -590,25 +607,21 @@ Bel_dbg_print_pair(Bel *obj)
     }
     putchar(')');
 }
+#+end_src
 
+The next function handles the printing of any data type. Notice that
+it does not automatically print a newline character.
+
+#+begin_src C
 void
-Bel_dbg_print(Bel *obj)
+bel_dbg_print(Bel *obj)
 {
     switch(obj->type) {
-    case BEL_SYMBOL:
-        printf("%s", g_sym_table.tbl[obj->sym]);
-        break;
-    case BEL_PAIR:
-        /* putchar('('); */
-        /* Bel_dbg_print(obj->pair->car); */
-        /* putchar(' '); putchar('.'); putchar(' '); */
-        /* Bel_dbg_print(obj->pair->cdr); */
-        /* putchar(')'); */
-        Bel_dbg_print_pair(obj);
-        break;
-    case BEL_CHAR:   printf("\\%c", obj->chr); break;
-    case BEL_STREAM: printf("<stream>");       break;
-    default:         printf("???");            break;
+    case BEL_SYMBOL: printf("%s", g_sym_table.tbl[obj->sym]); break;
+    case BEL_PAIR:   bel_dbg_print_pair(obj);                 break;
+    case BEL_CHAR:   printf("\\%c", obj->chr);                break;
+    case BEL_STREAM: printf("<stream>");                      break;
+    default:         printf("???");                           break; // wat
     };
 }
 #+end_src
@@ -623,7 +636,7 @@ void
 string_test()
 {
     Bel *bel  = bel_mkstring("Foobar");
-    Bel_dbg_print(bel);
+    bel_dbg_print(bel);
 
     printf(" => %s\n", bel_cstring(bel));
 }
@@ -645,7 +658,7 @@ notation_test()
                                 bel_mksymbol("bar")),
                      bel_mkpair(bel_mksymbol("baz"),
                                 bel_mksymbol("quux")));
-    Bel_dbg_print(bel);
+    bel_dbg_print(bel);
     putchar(10);
 }
 #+end_src
@@ -677,7 +690,7 @@ list_test()
                                     bel_mkpair(
                                         bel_mksymbol("dog"),
                                         bel_g_nil)))))))));
-    Bel_dbg_print(bel);
+    bel_dbg_print(bel);
     putchar(10);
 }
 #+end_src
@@ -709,7 +722,7 @@ closure_repr_test()
                                                  bel_mksymbol("x"),
                                                  bel_g_nil))),
                                      bel_g_nil)))));
-    Bel_dbg_print(bel);
+    bel_dbg_print(bel);
     putchar(10);
 }
 #+end_src
@@ -730,7 +743,7 @@ character_list_test()
     while(!bel_nilp(bel)) {
         Bel *car = bel_car(bel);
         printf("Char: %04d => ", bel_car(car)->chr);
-        Bel_dbg_print(bel_cdr(car));
+        bel_dbg_print(bel_cdr(car));
         putchar(10);
         bel = bel_cdr(bel);
     }
@@ -753,6 +766,9 @@ run_tests()
 
 * Entry point
 
+This is the program entry point. It is supposed to only print the
+ribbon, initialize Bel and perform some tests, for now.
+
 #+begin_src C
 int
 main(void)
@@ -773,15 +789,19 @@ main(void)
 
 * Running the program
 
-#+begin_src bash :tangle no :eval yes :cache yes :results output
+This script attempts to build and run the Bel interpreter.
+
+#+begin_src bash :tangle no :eval yes :cache yes :results output :exports both
 make
+printf "\n"
 ./believe
 #+end_src
 
-#+RESULTS[8b67cc29f52a70ae291c1b1d59d0335fa6e88255]:
+#+RESULTS[d7c8fc11d0ced3ffb5a6c0baf69befe2f22937a2]:
 #+begin_example
 clang -c -g --std=c11 -o believe.o believe.c
 clang -g --std=c11 -lgc -o believe believe.o
+
 Believe v0.1
 A Bel Lisp interpreter
 Copyright (c) 2019 Lucas Vieira
@@ -792,3 +812,5 @@ This software is distributed under the MIT license.
 (lit clo nil (x) (* x x))
 #+end_example
 
+
+ 
