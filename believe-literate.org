@@ -1,7 +1,8 @@
-#+TITLE:  Believe: A Bel interpreter built with C11
-#+AUTHOR: Lucas Vieira
-#+DATE:   2019
+#+TITLE:    Believe: A Bel interpreter built with C11
+#+AUTHOR:   Lucas Vieira
+#+DATE:     2019
 #+PROPERTY: header-args:C :eval no :main no :tangle believe.c
+#+STARTUP:  content
 
 * Introduction
 
@@ -56,12 +57,18 @@ SOFTWARE.
 CC     = clang
 CFLAGS = -g --std=c11
 CLIBS  = -lgc
+BIN    = believe
 
-believe: believe.o
+.PHONY: clean
+
+$(BIN): $(BIN).o
 	$(CC) $(CFLAGS) $(CLIBS) -o believe believe.o
 
-believe.o: believe.c
-	$(CC) -c $(CFLAGS) -o believe.o believe.c
+%.o: %.c
+	$(CC) -c $(CFLAGS) -o $@ $^
+
+clean:
+	rm -rf *.o $(BIN)
 #+end_src
 
 * Header includes
@@ -763,4 +770,25 @@ main(void)
     return 0;
 }
 #+end_src
+
+* Running the program
+
+#+begin_src bash :tangle no :eval yes :cache yes :results output
+make
+./believe
+#+end_src
+
+#+RESULTS[8b67cc29f52a70ae291c1b1d59d0335fa6e88255]:
+#+begin_example
+clang -c -g --std=c11 -o believe.o believe.c
+clang -g --std=c11 -lgc -o believe believe.o
+Believe v0.1
+A Bel Lisp interpreter
+Copyright (c) 2019 Lucas Vieira
+This software is distributed under the MIT license.
+(\F \o \o \b \a \r) => Foobar
+((foo . bar) baz . quux)
+(The quick brown fox jumps over the lazy dog)
+(lit clo nil (x) (* x x))
+#+end_example
 
