@@ -247,7 +247,8 @@ Bel_sym_table_init(void)
 {
     g_sym_table.n_syms = 4;
     g_sym_table.size   = 4;
-    g_sym_table.tbl    = GC_MALLOC(g_sym_table.size * sizeof(char*));
+    g_sym_table.tbl    =
+        GC_MALLOC(g_sym_table.size * sizeof(char*));
 
     g_sym_table.tbl[BEL_NIL]   = "nil";
     g_sym_table.tbl[BEL_T]     = "t";
@@ -790,6 +791,13 @@ main(void)
 * Running the program
 
 This script attempts to build and run the Bel interpreter.
+
+#+begin_src emacs-lisp :tangle no :eval yes :cache yes :exports none
+(org-babel-tangle)
+#+end_src
+
+#+RESULTS[52cc16488330ca0b07d272e5a6d438063c4db85d]:
+| believe.c | Makefile | LICENSE |
 
 #+begin_src bash :tangle no :eval yes :cache yes :results output :exports both
 make

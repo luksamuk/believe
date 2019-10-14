@@ -1,9 +1,7 @@
 *~
 *#*#
-*.c
 *.o
 *.tex
 _minted*
-Makefile
 *.pdf
 believe
