@@ -1,0 +1,766 @@
+#+TITLE:  Believe: A Bel interpreter built with C11
+#+AUTHOR: Lucas Vieira
+#+DATE:   2019
+#+PROPERTY: header-args:C :eval no :main no :tangle believe.c
+
+* Introduction
+
+This software is still a work-in-progress. Do not expect it to work
+fully yet.
+
+- [[http://paulgraham.com/bel.html][Paul Graham's Bel release website]]
+- [[https://sep.yimg.com/ty/cdn/paulgraham/bellanguage.txt?t=1570993483&][Language Guide]]
+- [[https://sep.yimg.com/ty/cdn/paulgraham/bel.bel?t=1570993483&][Language Source Code, written in Bel itself]]
+- [[https://sep.yimg.com/ty/cdn/paulgraham/belexamples.txt?t=1570993483&][Bel examples]]
+
+** Licenses
+*** Text license
+
+#+LATEX_ATTR: :width 0.2cm
+[[file:images/cc-by-sa.png]]
+
+This work is licensed under a [[http://creativecommons.org/licenses/by-sa/4.0/][Creative Commons Attribution-ShareAlike
+4.0 International License]]. See the link for more information.
+
+*** Software License
+
+This is a verbatim copy of the software's license file.
+
+#+begin_src text :tangle LICENSE
+MIT License
+
+Copyright (c) 2019 Lucas Vieira
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+#+end_src
+
+* Makefile
+
+#+begin_src makefile :tangle Makefile
+CC     = clang
+CFLAGS = -g --std=c11
+CLIBS  = -lgc
+
+believe: believe.o
+	$(CC) $(CFLAGS) $(CLIBS) -o believe believe.o
+
+believe.o: believe.c
+	$(CC) -c $(CFLAGS) -o believe.o believe.c
+#+end_src
+
+* Header includes
+
+We'll be using =stdio.h= for default console I/O, plus =stdint.h= for some
+standard integer types.
+
+#+begin_src C
+#include <stdio.h>
+#include <stdint.h>
+#include <string.h>
+#+end_src
+
+We also use Boehm GC for garbage collection, instead of programming
+our own. The =GC_DEBUG= flag helps on debugging.
+
+#+begin_src C
+#define GC_DEBUG
+#include <gc.h>
+#+end_src
+
+* Definitions
+
+#+begin_src C
+#define BELIEVE_VERSION   "v0.1"
+#define BELIEVE_COPYRIGHT "2019 Lucas Vieira"
+#define BELIEVE_LICENSE   "MIT"
+#+end_src
+
+* Fundamental data types
+
+We begin by specifying all data types, which Bel has four: symbols,
+pairs, characters and streams.
+
+#+begin_src C
+typedef enum
+{
+    BEL_SYMBOL,
+    BEL_PAIR,
+    BEL_CHAR,
+    BEL_STREAM
+} BEL_TYPE;
+#+end_src
+
+A pair can have two things, which can in return be one of the four
+data types themselves. Since this is sort of a recursive definition,
+we need to make a forward declaration of the general =Bel= type, which
+encloses all four data types.
+
+#+begin_src C
+typedef struct BEL Bel; // Forward declaration
+
+typedef struct
+{
+    Bel *car;
+    Bel *cdr;
+} Bel_pair;
+#+end_src
+
+A character is nothing but an integer in standard C. For now we'll
+support only ASCII, so there is no actual need to instantiate the
+proposed table of characters -- this might change in the future.
+
+We say that a character is nothing but a signed 8-bit integer. Should
+be enough for now.
+
+#+begin_src C
+typedef int8_t Bel_char;
+#+end_src
+
+A symbol is nothing but a specific index on the symbol table, so
+that's how we'll define it.
+
+#+begin_src C
+typedef uint64_t Bel_sym;
+#+end_src
+
+The stream type is somewhat implementation-dependent. In C, a standard
+way to refer to streams is to use a =FILE= pointer, since =stdout= and
+=stderr= themselves are of such type. So we just wrap these pointers in
+a stream type.
+
+#+begin_src C
+typedef enum BEL_STREAM_STATUS
+{
+    BEL_STREAM_OPEN,
+    BEL_STREAM_CLOSED
+} BEL_STREAM_STATUS;
+
+typedef struct
+{
+    BEL_STREAM_STATUS  status;
+    FILE              *raw_stream;
+} Bel_stream;
+#+end_src
+
+The remaining thing to do is join all the types into the =Bel= type,
+which will serve as our generic way of dealing with things.
+
+#+begin_src C
+// Aliased as 'Bel' before
+struct BEL
+{
+    BEL_TYPE type;
+    union {
+        Bel_sym     sym;
+        Bel_pair   *pair;
+        Bel_char    chr;
+        Bel_stream  stream;
+    };
+};
+#+end_src
+
+* Essentials
+
+** Basic definitions
+
+These definitions relate to essential symbols of the Bel global
+environment. They also encode the symbols' position on the global
+symbol table, to be defined later.
+
+#+begin_src C
+#define BEL_NIL   ((Bel_sym)0)
+#define BEL_T     ((Bel_sym)1)
+#define BEL_O     ((Bel_sym)2)
+#define BEL_APPLY ((Bel_sym)3)
+#+end_src
+
+The following symbols are axioms which are global to the program. One
+is expected to use them instead of creating new symbols, though it is
+not strictly necessary.
+
+#+begin_src C
+Bel *bel_g_nil;
+Bel *bel_g_t;
+Bel *bel_g_o;
+Bel *bel_g_apply;
+#+end_src
+
+** Symbol Table and Symbols
+
+The symbol table is an array that grows as necessary, doubling in
+size, but never shrinks on the program's lifetime. Each element of the
+table is a =const= C string.
+
+We begin by defining such structure and a global symbol table.
+
+#+begin_src C
+typedef struct {
+    const char **tbl;
+    uint64_t     n_syms;
+    uint64_t     size;
+} _Bel_sym_table;
+
+_Bel_sym_table g_sym_table;
+#+end_src
+
+To initialize the symbol table, we give it an initial size of four,
+just enough to enclose Bel's four fundamental symbols: =nil=, =t=, =o= and
+=apply=. Notice that the order of these symbols relate to their
+predefined macros, so any failure here is unexpected.
+
+#+begin_src C
+void
+Bel_sym_table_init(void)
+{
+    g_sym_table.n_syms = 4;
+    g_sym_table.size   = 4;
+    g_sym_table.tbl    = GC_MALLOC(g_sym_table.size * sizeof(char*));
+
+    g_sym_table.tbl[BEL_NIL]   = "nil";
+    g_sym_table.tbl[BEL_T]     = "t";
+    g_sym_table.tbl[BEL_O]     = "o";
+    g_sym_table.tbl[BEL_APPLY] = "apply";
+}
+#+end_src
+
+The lookup function =Bel_sym_table_find= does a linear search for the
+presented literal on the symbol table. However, if it doesn't find the
+symbol, it implicitly calls =Bel_sym_table_add=, which appends the
+symbol to the table.
+
+This is obviously not a very wise approach as it opens up for some
+exploits on interning symbols, but should be enough as long as these
+symbols are only really interned on =lit= or =quote= scopes.
+
+#+begin_src C
+Bel_sym Bel_sym_table_add(const char*); // Forward declaration
+
+Bel_sym
+Bel_sym_table_find(const char *sym_literal)
+{
+    uint64_t i;
+    size_t len = strlen(sym_literal);
+    for(i = 0; i < g_sym_table.n_syms; i++) {
+        if(!strncmp(sym_literal, g_sym_table.tbl[i], len)) {
+            return i;
+        }
+    }
+
+    return Bel_sym_table_add(sym_literal);
+}
+
+Bel_sym
+Bel_sym_table_add(const char *sym_literal)
+{
+    if(g_sym_table.n_syms == g_sym_table.size) {
+        uint64_t new_size = 2 * g_sym_table.size;
+        g_sym_table.tbl = GC_REALLOC(g_sym_table.tbl,
+                                     new_size * sizeof(char*));
+        g_sym_table.size = new_size;
+    }
+    g_sym_table.tbl[g_sym_table.n_syms++] = sym_literal;
+    return (g_sym_table.n_syms - 1);
+}
+#+end_src
+
+Last but not least, we create a proper tool to build a symbol. Just
+give it your desired symbol as a string literal and the runtime takes
+care of the rest.
+
+#+begin_src C
+Bel*
+bel_mksymbol(const char *str)
+{
+    Bel *ret  = GC_MALLOC(sizeof (*ret));
+    ret->type = BEL_SYMBOL;
+    ret->sym  = Bel_sym_table_find(str);
+    return ret;
+}
+#+end_src
+
+** Pairs
+
+Pairs are the kernel of every Lisp, so we need tools to manipulate
+them.
+
+We begin by specifying the function which builds pairs. Notice that
+the function itself takes two references to values, so pairs cannot
+exist without their /car/ and /cdr/.
+
+#+begin_src C
+Bel*
+bel_mkpair(Bel *car, Bel *cdr)
+{
+    Bel *ret  = GC_MALLOC(sizeof (*ret));
+    ret->type = BEL_PAIR;
+    ret->pair = GC_MALLOC(sizeof (Bel_pair));
+    ret->pair->car = car;
+    ret->pair->cdr = cdr;
+    return ret;
+}
+#+end_src
+
+We also add a predicate which tests for nullability.
+
+#+begin_src C
+#define bel_nilp(x) ((x->type==BEL_SYMBOL)&&(x->sym==BEL_NIL))
+#+end_src
+
+Now we may easily extract information from pairs, using the /car/ and
+/cdr/ operations.
+
+#+begin_src C
+// TODO: Check for errors
+
+Bel*
+bel_car(Bel *p)
+{
+    if(bel_nilp(p))
+        return bel_g_nil;
+    return p->pair->car;
+}
+
+Bel*
+bel_cdr(Bel *p)
+{
+    if(bel_nilp(p))
+        return bel_g_nil;
+    return p->pair->cdr;
+}
+#+end_src
+
+Let's also build an utility to return the size of a list. This is a
+=O(n)= operation which takes a well-formed list and iterates over
+it.
+
+#+begin_src C
+uint64_t
+bel_length(Bel *list)
+{
+    // TODO: This makes no sense if the last element
+    // is not nil, AKA if we have simple pair anywhere
+    Bel *itr = list;
+    uint64_t len = 0;
+    while(!bel_nilp(itr)) {
+        len++;
+        itr = bel_cdr(itr);
+    }
+    return len;
+}
+#+end_src
+
+** Characters and Strings
+
+Let's begin by adding a small function to wrap a character in a Bel
+object.
+
+#+begin_src C
+Bel*
+bel_mkchar(Bel_char c)
+{
+    Bel *ret  = GC_MALLOC(sizeof *ret);
+    ret->type = BEL_CHAR;
+    ret->chr  = c;
+    return ret;
+}
+#+end_src
+
+Strings on the Bel environment are nothing more than a list of
+characters, therefore we need a way to convert C strings to proper Bel
+lists.
+
+#+begin_src C
+Bel*
+bel_mkstring(const char *str)
+{
+    const char *c = str;
+    size_t len = strlen(str);
+
+    if(len == 0)
+        return bel_g_nil;
+    
+    Bel **pairs = GC_MALLOC(len * sizeof (Bel));
+
+    // Create pairs where CAR is a character and CDR is nil
+    size_t i;
+    for(i = 0; i < len; i++) {
+        Bel *chr  = GC_MALLOC(sizeof *chr);
+        chr->type = BEL_CHAR;
+        chr->chr  = str[i];
+        pairs[i]  = bel_mkpair(chr, bel_g_nil);
+    }
+
+    // Link all pairs properly
+    for(i = 0; i < len - 1; i++) {
+        pairs[i]->pair->cdr = pairs[i + 1];
+    }
+
+    return pairs[0];
+}
+#+end_src
+
+We also add an utility to take back a Bel string and turn it into a
+garbage-collected C string.
+
+#+begin_src C
+char*
+bel_cstring(Bel *belstr)
+{
+    uint64_t len = bel_length(belstr);
+    if(len == 0) return NULL;
+    
+    char *str    = GC_MALLOC((len + 1) * sizeof (*str));
+
+    Bel *itr     = belstr;
+    size_t i     = 0;
+    while(!bel_nilp(itr)) {
+        str[i] = bel_car(itr)->chr;
+        itr    = bel_cdr(itr);
+        i++;
+    }
+    str[i] = '\0';
+    return str;
+}
+#+end_src
+
+** Streams
+
+#+TODO: Enclose stdout and stderr on Bel objects
+
+* Axioms
+
+To save memory, some of the following things will be globally defined.
+
+** Variables and constants
+
+Define global symbols which can be used across the program. These
+symbols should be used repeatedly, and that's why they were already
+declared. See the =bel_init= function to refer to their initialization.
+
+#+begin_src C
+void
+bel_init_ax_vars(void)
+{
+    bel_g_nil   = bel_mksymbol("nil");
+    bel_g_t     = bel_mksymbol("t");
+    bel_g_o     = bel_mksymbol("o");
+    bel_g_apply = bel_mksymbol("apply");
+}
+#+end_src
+
+** List of all characters
+
+We build a list of all characters so that the specification gets
+happy. This might seem unecessary in the future, though.
+
+#+begin_src C
+Bel *bel_g_chars;
+
+char*
+bel_conv_bits(uint8_t num)
+{
+    char *str = GC_MALLOC(9 * sizeof(*str));
+    
+    uint8_t i;
+    for(i = 0; i < 8; i++) {
+        int is_bit_set = num & (1 << i);
+        str[7 - i] = is_bit_set ? '1' : '0';
+    }
+    str[8] = '\0';
+    
+    return str;
+}
+
+void
+bel_init_ax_chars(void)
+{
+    // Create a vector of 255 pairs. These will
+    // compose a list of other pairs
+    Bel **list = GC_MALLOC(255 * sizeof(*list));
+
+    // Each element in this list has another pair
+    // in the car, and nil in the cdr.
+    size_t i;
+    for(i = 0; i < 255; i++) {        
+        // Build a pair. First element is the character
+        // itself, and the second element is a binary
+        // representation
+        Bel *pair = bel_mkpair(bel_mkchar((Bel_char)i),
+                               bel_mkstring(bel_conv_bits(i)));
+
+        // Build the actual pair which will be a list
+        // node
+        list[i] = bel_mkpair(pair, bel_g_nil);
+    }
+
+    // Assign each pair cdr to the pair on the front.
+    // Last pair should have a nil cdr still.
+    for(i = 0; i < 254; i++) {
+        list[i]->pair->cdr = list[i + 1];
+    }
+
+    // Return reference to first element only
+    bel_g_chars = list[0];
+}
+#+end_src
+
+** Environment
+
+#+begin_src C
+Bel*
+bel_env_push(Bel *env, Bel *var, Bel *val)
+{
+    Bel *new_pair = bel_mkpair(var, val);
+    return bel_mkpair(new_pair, env);
+}
+#+end_src
+
+* Initialization
+
+#+begin_src C
+Bel*
+bel_init(void)
+{
+    GC_INIT();
+    Bel_sym_table_init();
+    Bel *globe  = GC_MALLOC(sizeof (*globe));
+    globe->type = BEL_PAIR;
+
+    // Axioms
+    bel_init_ax_vars();
+    bel_init_ax_chars();
+    
+    return bel_g_nil;
+}
+#+end_src
+
+* Debug
+
+#+begin_src C
+void Bel_dbg_print(Bel*); // Forward declaration
+
+void
+Bel_dbg_print_pair(Bel *obj)
+{
+    if(bel_nilp(obj)) return;
+    
+    Bel *itr = obj;
+    
+    putchar('(');
+    while(!bel_nilp(itr)) {
+        Bel *car = bel_car(itr);
+        Bel *cdr = bel_cdr(itr);
+
+        Bel_dbg_print(car);
+        
+        if(bel_nilp(cdr)) {
+            break;
+        } else if(cdr->type != BEL_PAIR) {
+            putchar(' ');
+            putchar('.');
+            putchar(' ');
+            Bel_dbg_print(cdr);
+            break;
+        }
+        putchar(' ');
+        itr = cdr;
+    }
+    putchar(')');
+}
+
+void
+Bel_dbg_print(Bel *obj)
+{
+    switch(obj->type) {
+    case BEL_SYMBOL:
+        printf("%s", g_sym_table.tbl[obj->sym]);
+        break;
+    case BEL_PAIR:
+        /* putchar('('); */
+        /* Bel_dbg_print(obj->pair->car); */
+        /* putchar(' '); putchar('.'); putchar(' '); */
+        /* Bel_dbg_print(obj->pair->cdr); */
+        /* putchar(')'); */
+        Bel_dbg_print_pair(obj);
+        break;
+    case BEL_CHAR:   printf("\\%c", obj->chr); break;
+    case BEL_STREAM: printf("<stream>");       break;
+    default:         printf("???");            break;
+    };
+}
+#+end_src
+
+** Tests
+
+A string test which shows the conversion between C strings and Bel
+strings, and vice-versa.
+
+#+begin_src C
+void
+string_test()
+{
+    Bel *bel  = bel_mkstring("Foobar");
+    Bel_dbg_print(bel);
+
+    printf(" => %s\n", bel_cstring(bel));
+}
+#+end_src
+
+The following notation tests the printing capabilities of the list
+printing algorithm. Should be able to handle printing lists and
+dot-notation when necessary.
+
+The data input reads as =((foo . bar) . (baz . quux))=, but the expected
+output is =((foo . bar) baz . quux)=.
+
+#+begin_src C
+void
+notation_test()
+{
+    Bel*
+    bel = bel_mkpair(bel_mkpair(bel_mksymbol("foo"),
+                                bel_mksymbol("bar")),
+                     bel_mkpair(bel_mksymbol("baz"),
+                                bel_mksymbol("quux")));
+    Bel_dbg_print(bel);
+    putchar(10);
+}
+#+end_src
+
+This next test outputs the list =(The quick brown fox jumps over the
+lazy dog)=, which is a proper list of symbols.
+
+#+begin_src C
+void
+list_test()
+{
+    Bel*
+    bel = bel_mkpair(
+        bel_mksymbol("The"),
+        bel_mkpair(
+            bel_mksymbol("quick"),
+            bel_mkpair(
+                bel_mksymbol("brown"),
+                bel_mkpair(
+                    bel_mksymbol("fox"),
+                    bel_mkpair(
+                        bel_mksymbol("jumps"),
+                        bel_mkpair(
+                            bel_mksymbol("over"),
+                            bel_mkpair(
+                                bel_mksymbol("the"),
+                                bel_mkpair(
+                                    bel_mksymbol("lazy"),
+                                    bel_mkpair(
+                                        bel_mksymbol("dog"),
+                                        bel_g_nil)))))))));
+    Bel_dbg_print(bel);
+    putchar(10);
+}
+#+end_src
+
+This test is also a list of symbols, but with nested lists also. Plus,
+this is a proper list, representing the internal representation of a
+closure such as =(fn (x) (* x x))=. Expected output is =(lit clo nil (x)
+(* x x))=.
+
+#+begin_src C
+void
+closure_repr_test()
+{
+    Bel*
+    bel = bel_mkpair(bel_mksymbol("lit"),
+                     bel_mkpair(
+                         bel_mksymbol("clo"),
+                         bel_mkpair(
+                             bel_g_nil,
+                             bel_mkpair(
+                                 bel_mkpair(bel_mksymbol("x"),
+                                            bel_g_nil),
+                                 bel_mkpair(
+                                     bel_mkpair(
+                                         bel_mksymbol("*"),
+                                         bel_mkpair(
+                                             bel_mksymbol("x"),
+                                             bel_mkpair(
+                                                 bel_mksymbol("x"),
+                                                 bel_g_nil))),
+                                     bel_g_nil)))));
+    Bel_dbg_print(bel);
+    putchar(10);
+}
+#+end_src
+
+This next test prints every character in the global =chars=, which is a
+list of pairs, each pair =(c . d)= containing a character =c=, and its
+string representation in binary =d=.
+
+#+begin_src C
+void
+character_list_test()
+{
+    // Character list
+    // Char: 0000 => (\0 \0 \0 \0 \0 \0 \0 \0)
+    // Char: 0001 => (\0 \0 \0 \0 \0 \0 \0 \1)
+    // etc
+    Bel *bel = bel_g_chars;
+    while(!bel_nilp(bel)) {
+        Bel *car = bel_car(bel);
+        printf("Char: %04d => ", bel_car(car)->chr);
+        Bel_dbg_print(bel_cdr(car));
+        putchar(10);
+        bel = bel_cdr(bel);
+    }
+}
+#+end_src
+
+Now we just need an entry point for the test running.
+
+#+begin_src C
+void
+run_tests()
+{
+    string_test();
+    notation_test();
+    list_test();
+    closure_repr_test();
+    //character_list_test();
+}
+#+end_src
+
+* Entry point
+
+#+begin_src C
+int
+main(void)
+{
+    printf("Believe %s\n", BELIEVE_VERSION);
+    printf("A Bel Lisp interpreter\n");
+    printf("Copyright (c) %s\n", BELIEVE_COPYRIGHT);
+    printf("This software is distributed under the %s license.\n",
+          BELIEVE_LICENSE);
+
+    bel_init();
+
+    run_tests();
+    
+    return 0;
+}
+#+end_src
+
