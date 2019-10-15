@@ -683,7 +683,7 @@ bel_init(void)
 }
 #+end_src
 
-* Debug 
+* Debug
 
 Below we define some very simple debug functions, which will help us
 show data on screen.
@@ -733,11 +733,17 @@ void
 bel_dbg_print(Bel *obj)
 {
     switch(obj->type) {
-    case BEL_SYMBOL: printf("%s", g_sym_table.tbl[obj->sym]); break;
-    case BEL_PAIR:   bel_dbg_print_pair(obj);                 break;
-    case BEL_CHAR:   printf("\\%c", obj->chr);                break;
-    case BEL_STREAM: printf("<stream>");                      break;
-    default:         printf("???");                           break; // wat
+    case BEL_SYMBOL:
+        printf("%s", g_sym_table.tbl[obj->sym]);
+        break;
+    case BEL_PAIR:   bel_dbg_print_pair(obj);    break;
+    case BEL_CHAR:
+        if(obj->chr == '\a')
+            printf("\\bel"); // There is no Bel without \bel
+        else printf("\\%c", obj->chr);
+        break;
+    case BEL_STREAM: printf("<stream>");         break;
+    default:         printf("???");              break; // wat
     };
 }
 #+end_src
@@ -751,7 +757,8 @@ strings, and vice-versa.
 void
 string_test()
 {
-    Bel *bel  = bel_mkstring("Foobar");
+    // There is no Bel without \bel
+    Bel *bel  = bel_mkstring("Hello, Bel\a");
     bel_dbg_print(bel);
 
     printf(" => %s\n", bel_cstring(bel));
@@ -914,7 +921,7 @@ This script attempts to build and run the Bel interpreter.
 #+RESULTS[52cc16488330ca0b07d272e5a6d438063c4db85d]:
 | believe.c | Makefile | LICENSE |
 
-#+begin_src bash :tangle no :eval yes :cache yes :results output :exports both
+#+begin_src bash :tangle no :eval yes :cache no :results output :exports both
 make
 printf "\n"
 ./believe
@@ -922,14 +929,14 @@ printf "\n"
 
 #+RESULTS[d7c8fc11d0ced3ffb5a6c0baf69befe2f22937a2]:
 #+begin_example
-clang -c -g --std=c11 -o believe.o believe.c
-clang -g --std=c11 -lgc -o believe believe.o
+clang -c --std=c11 -g -Wall -o believe.o believe.c
+clang --std=c11 -g -Wall -lgc -o believe believe.o
 
-Believe v0.1
+Believe 0.1
 A Bel Lisp interpreter
 Copyright (c) 2019 Lucas Vieira
 This software is distributed under the MIT license.
-(\F \o \o \b \a \r) => Foobar
+(\H \e \l \l \o \, \  \B \e \l \bel) => Hello, Bel
 ((foo . bar) baz . quux)
 (The quick brown fox jumps over the lazy dog)
 (lit clo nil (x) (* x x))

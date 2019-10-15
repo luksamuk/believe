@@ -402,18 +402,25 @@ void
 bel_dbg_print(Bel *obj)
 {
     switch(obj->type) {
-    case BEL_SYMBOL: printf("%s", g_sym_table.tbl[obj->sym]); break;
-    case BEL_PAIR:   bel_dbg_print_pair(obj);                 break;
-    case BEL_CHAR:   printf("\\%c", obj->chr);                break;
-    case BEL_STREAM: printf("<stream>");                      break;
-    default:         printf("???");                           break; // wat
+    case BEL_SYMBOL:
+        printf("%s", g_sym_table.tbl[obj->sym]);
+        break;
+    case BEL_PAIR:   bel_dbg_print_pair(obj);    break;
+    case BEL_CHAR:
+        if(obj->chr == '\a')
+            printf("\\bel"); // There is no Bel without \bel
+        else printf("\\%c", obj->chr);
+        break;
+    case BEL_STREAM: printf("<stream>");         break;
+    default:         printf("???");              break; // wat
     };
 }
 
 void
 string_test()
 {
-    Bel *bel  = bel_mkstring("Foobar");
+    // There is no Bel without \bel
+    Bel *bel  = bel_mkstring("Hello, Bel\a");
     bel_dbg_print(bel);
 
     printf(" => %s\n", bel_cstring(bel));
