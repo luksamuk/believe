@@ -557,6 +557,16 @@ bel_init_streams(void)
 }
 #+end_src
 
+** About stream manipulation
+
+Since streams are defined taking advantage of the C API for
+manipulating files, unfortunately these demand careful usage on Bel
+programs. When handling streams, it is absolutely necessary to close
+them. The Boehm GC does not have finalizers for C bindings, so
+unfortunately it is not possible for now to call a finalizer which
+automatically closes the stream when the stream object is garbage
+collected.
+
 * Axioms
 
 To save memory, some of the following things will be globally defined.
