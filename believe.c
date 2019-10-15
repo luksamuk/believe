@@ -5,7 +5,7 @@
 #define GC_DEBUG
 #include <gc.h>
 
-#define BELIEVE_VERSION   "v0.1"
+#define BELIEVE_VERSION   "0.1"
 #define BELIEVE_COPYRIGHT "2019 Lucas Vieira"
 #define BELIEVE_LICENSE   "MIT"
 
@@ -35,9 +35,16 @@ typedef enum BEL_STREAM_STATUS
     BEL_STREAM_CLOSED
 } BEL_STREAM_STATUS;
 
+typedef enum BEL_STREAM_TYPE
+{
+    BEL_STREAM_READ,
+    BEL_STREAM_WRITE
+} BEL_STREAM_TYPE;
+
 typedef struct
 {
     BEL_STREAM_STATUS  status;
+    BEL_STREAM_TYPE    type;
     FILE              *raw_stream;
 } Bel_stream;
 
@@ -62,6 +69,12 @@ Bel *bel_g_nil;
 Bel *bel_g_t;
 Bel *bel_g_o;
 Bel *bel_g_apply;
+
+Bel *bel_g_chars;
+Bel *bel_g_ins_sys;
+Bel *bel_g_outs_sys;
+Bel *bel_g_ins;
+Bel *bel_g_outs;
 
 typedef struct {
     const char **tbl;
@@ -180,7 +193,6 @@ bel_mkchar(Bel_char c)
 Bel*
 bel_mkstring(const char *str)
 {
-    const char *c = str;
     size_t len = strlen(str);
 
     if(len == 0)
@@ -224,6 +236,58 @@ bel_cstring(Bel *belstr)
     return str;
 }
 
+Bel*
+bel_mkstream(const char* name, BEL_STREAM_TYPE type)
+{
+    Bel *ret           = GC_MALLOC(sizeof *ret);
+    ret->type          = BEL_STREAM;
+
+    if(!strncmp(name, "ins", 3)) {
+        ret->stream.raw_stream = stdin;
+    } else if(!strncmp(name, "outs", 4)) {
+        ret->stream.raw_stream = stdout;
+    } else {
+        ret->stream.raw_stream =
+            fopen(name,
+                  type == BEL_STREAM_READ ? "r" : "w");
+    }
+
+    ret->stream.type   = type;
+    ret->stream.status = BEL_STREAM_OPEN;
+    return ret;
+}
+
+Bel*
+bel_stream_close(Bel *obj)
+{
+    // TODO: Check for errors
+    if(obj->type != BEL_STREAM
+        || obj->stream.status == BEL_STREAM_CLOSED) {
+        // TODO: Returning nil here, but should
+        // signal an error
+        return bel_g_nil;
+    }
+
+    if(!fclose(obj->stream.raw_stream)) {
+        obj->stream.raw_stream = NULL;
+        obj->stream.status     = BEL_STREAM_CLOSED;
+        return bel_g_t;
+    }
+
+    // TODO: Should signal error on stream closing
+    // failure as well
+    return bel_g_nil;
+}
+
+void
+bel_init_streams(void)
+{
+    bel_g_ins      = bel_g_nil;
+    bel_g_outs     = bel_g_nil;
+    bel_g_ins_sys  = bel_mkstream("ins",  BEL_STREAM_READ);
+    bel_g_outs_sys = bel_mkstream("outs", BEL_STREAM_WRITE);
+}
+
 void
 bel_init_ax_vars(void)
 {
@@ -232,8 +296,6 @@ bel_init_ax_vars(void)
     bel_g_o     = bel_mksymbol("o");
     bel_g_apply = bel_mksymbol("apply");
 }
-
-Bel *bel_g_chars;
 
 char*
 bel_conv_bits(uint8_t num)
@@ -300,6 +362,7 @@ bel_init(void)
     // Axioms
     bel_init_ax_vars();
     bel_init_ax_chars();
+    bel_init_streams();
     
     return bel_g_nil;
 }

@@ -61,11 +61,20 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 #+end_src
 
+* COMMENT Informal TO-DO list for things being built
+
+This section is not supposed to be exported in a PDF file.
+
+- Environment functions
+- Global environment object =globe=
+- Lexical environment object =scope=, shadowable, not unique
+- =err= function, basic error handling and propagation
+
 * Makefile
 
 #+begin_src makefile :tangle Makefile
 CC     = clang
-CFLAGS = -g --std=c11
+CFLAGS = --std=c11 -g -Wall
 CLIBS  = -lgc
 BIN    = believe
 
@@ -103,7 +112,7 @@ our own. The =GC_DEBUG= flag helps on debugging.
 * Definitions
 
 #+begin_src C
-#define BELIEVE_VERSION   "v0.1"
+#define BELIEVE_VERSION   "0.1"
 #define BELIEVE_COPYRIGHT "2019 Lucas Vieira"
 #define BELIEVE_LICENSE   "MIT"
 #+end_src
@@ -168,9 +177,16 @@ typedef enum BEL_STREAM_STATUS
     BEL_STREAM_CLOSED
 } BEL_STREAM_STATUS;
 
+typedef enum BEL_STREAM_TYPE
+{
+    BEL_STREAM_READ,
+    BEL_STREAM_WRITE
+} BEL_STREAM_TYPE;
+
 typedef struct
 {
     BEL_STREAM_STATUS  status;
+    BEL_STREAM_TYPE    type;
     FILE              *raw_stream;
 } Bel_stream;
 #+end_src
@@ -216,6 +232,19 @@ Bel *bel_g_nil;
 Bel *bel_g_t;
 Bel *bel_g_o;
 Bel *bel_g_apply;
+#+end_src
+
+These other variables are responsible for holding other axioms on the
+system. More on then will be specified later.
+
+#+TODO: Add `errs` as an error stream?
+
+#+begin_src C
+Bel *bel_g_chars;
+Bel *bel_g_ins_sys;
+Bel *bel_g_outs_sys;
+Bel *bel_g_ins;
+Bel *bel_g_outs;
 #+end_src
 
 ** Symbol Table and Symbols
@@ -407,7 +436,6 @@ lists.
 Bel*
 bel_mkstring(const char *str)
 {
-    const char *c = str;
     size_t len = strlen(str);
 
     if(len == 0)
@@ -459,7 +487,75 @@ bel_cstring(Bel *belstr)
 
 ** Streams
 
-#+TODO: Enclose stdout and stderr on Bel objects
+#+TODO: Enclose stderr on Bel object
+We start by creating tools to manipulate streams. First, we create a
+raw stream from a file.
+
+#+begin_src C
+Bel*
+bel_mkstream(const char* name, BEL_STREAM_TYPE type)
+{
+    Bel *ret           = GC_MALLOC(sizeof *ret);
+    ret->type          = BEL_STREAM;
+
+    if(!strncmp(name, "ins", 3)) {
+        ret->stream.raw_stream = stdin;
+    } else if(!strncmp(name, "outs", 4)) {
+        ret->stream.raw_stream = stdout;
+    } else {
+        ret->stream.raw_stream =
+            fopen(name,
+                  type == BEL_STREAM_READ ? "r" : "w");
+    }
+
+    ret->stream.type   = type;
+    ret->stream.status = BEL_STREAM_OPEN;
+    return ret;
+}
+#+end_src
+
+We'll also need a tool to close a certain stream. Here we're being a
+little more careful, since streams are managed more directly, by using
+the C API.
+
+#+begin_src C
+Bel*
+bel_stream_close(Bel *obj)
+{
+    // TODO: Check for errors
+    if(obj->type != BEL_STREAM
+        || obj->stream.status == BEL_STREAM_CLOSED) {
+        // TODO: Returning nil here, but should
+        // signal an error
+        return bel_g_nil;
+    }
+
+    if(!fclose(obj->stream.raw_stream)) {
+        obj->stream.raw_stream = NULL;
+        obj->stream.status     = BEL_STREAM_CLOSED;
+        return bel_g_t;
+    }
+
+    // TODO: Should signal error on stream closing
+    // failure as well
+    return bel_g_nil;
+}
+#+end_src
+
+The default input and output streams are enclosed in Bel objects here,
+however they relate to =stdin= and =stdout= respectively. To the system,
+by default they have =nil= value.
+
+#+begin_src C
+void
+bel_init_streams(void)
+{
+    bel_g_ins      = bel_g_nil;
+    bel_g_outs     = bel_g_nil;
+    bel_g_ins_sys  = bel_mkstream("ins",  BEL_STREAM_READ);
+    bel_g_outs_sys = bel_mkstream("outs", BEL_STREAM_WRITE);
+}
+#+end_src
 
 * Axioms
 
@@ -484,12 +580,10 @@ bel_init_ax_vars(void)
 
 ** List of all characters
 
-We build a list of all characters so that the specification gets
-happy. This might seem unecessary in the future, though.
+First, we build an auxiliary function which converts an 8-bit number
+into a string, where each character represents a bit.
 
 #+begin_src C
-Bel *bel_g_chars;
-
 char*
 bel_conv_bits(uint8_t num)
 {
@@ -504,7 +598,17 @@ bel_conv_bits(uint8_t num)
     
     return str;
 }
+#+end_src
 
+We build a list of all characters so that the specification gets
+happy. It will be stored in the previously defined =bel_g_chars= global
+variable. This might seem unecessary in the future, though.
+
+The list is supposed to be built out of pairs. Each pair is comprised
+of a character as its /car/, and a Bel string representing the bits as
+its /cdr/.
+
+#+begin_src C
 void
 bel_init_ax_chars(void)
 {
@@ -563,6 +667,7 @@ bel_init(void)
     // Axioms
     bel_init_ax_vars();
     bel_init_ax_chars();
+    bel_init_streams();
     
     return bel_g_nil;
 }

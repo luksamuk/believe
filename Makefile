@@ -1,5 +1,5 @@
 CC     = clang
-CFLAGS = -g --std=c11
+CFLAGS = --std=c11 -g -Wall
 CLIBS  = -lgc
 BIN    = believe
 
