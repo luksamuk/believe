@@ -5,8 +5,8 @@ BIN    = believe
 
 .PHONY: clean
 
-$(BIN): $(BIN).o
-	$(CC) $(CFLAGS) $(CLIBS) -o believe believe.o
+$(BIN): *.o
+	$(CC) $(CFLAGS) $(CLIBS) -o $@ $^
 
 %.o: %.c
 	$(CC) -c $(CFLAGS) -o $@ $^

@@ -363,7 +363,8 @@ bel_init(void)
     bel_init_ax_vars();
     bel_init_ax_chars();
     bel_init_streams();
-    
+
+    // TODO: Return an environment
     return bel_g_nil;
 }
 

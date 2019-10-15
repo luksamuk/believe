@@ -4,6 +4,47 @@
 #+PROPERTY: header-args:C :eval no :main no :tangle believe.c
 #+STARTUP:  content
 
+:LATEX_PROPERTIES:
+#+LATEX_CLASS: article
+#+LATEX_CLASS_OPTIONS: [a4paper,twoside]
+#+LATEX_HEADER: \usepackage[brazil]{babel}
+#+LATEX_HEADER: \usepackage{times}
+#+LATEX_HEADER: \usepackage[utf8]{inputenc}
+#+LATEX_HEADER: \usepackage[T1]{fontenc}
+#+LATEX_HEADER: \usepackage{color}
+#+LATEX_HEADER: \usepackage{microtype}
+#+LATEX_HEADER: \usepackage{titlesec}
+#+LATEX_HEADER: \usepackage[brazilian, hyperpageref]{backref}
+#+LATEX_HEADER: \usepackage{hyperref}
+#+LATEX_HEADER: \usepackage[alf,abnt-emphasize=bf,abnt-doi=link]{abntex2cite}
+#+LATEX_HEADER: \usepackage{indentfirst}
+#+LATEX_HEADER: \usepackage{listings}
+#+LATEX_HEADER: \usepackage{graphicx}
+#+LATEX_HEADER: \usepackage{amssymb}
+#+LATEX_HEADER: \usepackage{amsmath}
+#+LATEX_HEADER: \usepackage{geometry}
+#+LATEX_HEADER: \usepackage{tikz}
+
+# Remove colorization of links
+#+LATEX_HEADER: \definecolor{blue}{RGB}{41,5,195}
+#+LATEX_HEADER: \makeatletter
+#+LATEX_HEADER: \hypersetup{
+# #+LATEX_HEADER:     pdftitle={%t},
+# #+LATEX_HEADER:     pdfauthor={%a},
+# #+LATEX_HEADER:     pdfkeywords={%k},
+# #+LATEX_HEADER:     pdfsubject={%d},
+# #+LATEX_HEADER:     pdfcreator={%c},
+#+LATEX_HEADER:     colorlinks=true,
+#+LATEX_HEADER:     linkcolor=black,
+#+LATEX_HEADER:     citecolor=black,
+#+LATEX_HEADER:     filecolor=black,
+#+LATEX_HEADER:     urlcolor=blue,
+#+LATEX_HEADER:     bookmarksdepth=4
+#+LATEX_HEADER: }
+#+LATEX_HEADER: \makeatother
+#+BIND: org-latex-hyperref-template ""
+:END:
+
 * Introduction
 
 The goal of this project is to provide a fully-functioning
@@ -16,13 +57,33 @@ interpreter from scratch in C. Given that Bel is so simple and is
 supposed to be a formalism before a commercial language, it seems like
 the perfect didatic resource to do so.
 
-This software is still a work-in-progress. Do not expect it to work
-fully yet.
+Here are some useful links with language resources:
 
 - [[http://paulgraham.com/bel.html][Paul Graham's Bel release website]]
 - [[https://sep.yimg.com/ty/cdn/paulgraham/bellanguage.txt?t=1570993483&][Language Guide]]
 - [[https://sep.yimg.com/ty/cdn/paulgraham/bel.bel?t=1570993483&][Language Source Code, written in Bel itself]]
 - [[https://sep.yimg.com/ty/cdn/paulgraham/belexamples.txt?t=1570993483&][Bel examples]]
+
+Note that *this software is still a work-in-progress. Do not expect it to work
+fully yet.*
+
+** About literate programming
+
+#+TODO: Lacks references! Use Org-ref for that!
+This interpreter is built using [[https://orgmode.org/][Org with Org-mode in Emacs]]. Its
+website specifies that Org is "a format for keeping notes, maintaining
+TODO lists, planning projects, and authoring documents with a fast and
+effective plain-text system".
+
+All the code here appears in the order it is written on the actual
+code files. By using [[http://www.literateprogramming.com/knuthweb.pdf][Donald Knuth's concept of literate programming]],
+the relevant code blocks are /tangled/ and written in their specified
+code files, and then the application can be compiled.
+
+By using this approach, I hope to maintain an application where the
+understanding of what is being written comes before the code itself,
+so that the reader is able to take and analyse parts of said code
+based on the prose that accompanies it.
 
 ** Licenses
 *** Text license
@@ -33,7 +94,7 @@ fully yet.
 This work is licensed under a [[http://creativecommons.org/licenses/by-sa/4.0/][Creative Commons Attribution-ShareAlike
 4.0 International License]]. See the link for more information.
 
-*** Software License
+*** Software license
 
 This is a verbatim copy of the software's license file.
 
@@ -70,7 +131,13 @@ This section is not supposed to be exported in a PDF file.
 - Lexical environment object =scope=, shadowable, not unique
 - =err= function, basic error handling and propagation
 
-* Makefile
+* Build scripts
+
+** Makefile
+
+This software was primarily developed on Void Linux x86\_64, using the
+Clang compiler. The following Makefile is the one used for building
+Believe.
 
 #+begin_src makefile :tangle Makefile
 CC     = clang
@@ -80,8 +147,8 @@ BIN    = believe
 
 .PHONY: clean
 
-$(BIN): $(BIN).o
-	$(CC) $(CFLAGS) $(CLIBS) -o believe believe.o
+$(BIN): *.o
+	$(CC) $(CFLAGS) $(CLIBS) -o $@ $^
 
 %.o: %.c
 	$(CC) -c $(CFLAGS) -o $@ $^
@@ -90,10 +157,14 @@ clean:
 	rm -rf *.o $(BIN)
 #+end_src
 
-* Header includes
+* Libraries and headers
+
+** Default headers
 
 We'll be using =stdio.h= for default console I/O, plus =stdint.h= for some
-standard integer types.
+standard integer types. =string.h= provides definitions to handle string
+manipulation on the C side, however Bel is supposed to have its own
+string representation, to be discussed later.
 
 #+begin_src C
 #include <stdio.h>
@@ -101,15 +172,24 @@ standard integer types.
 #include <string.h>
 #+end_src
 
+** Boehm Garbage Collector
+
 We also use Boehm GC for garbage collection, instead of programming
-our own. The =GC_DEBUG= flag helps on debugging.
+our own. The =GC_DEBUG= flag helps on debugging. See that we use =-lgc= on
+the Makefile to link the relevant library to the application.
 
 #+begin_src C
 #define GC_DEBUG
 #include <gc.h>
 #+end_src
 
-* Definitions
+Plus, [[https://www.hboehm.info/gc/04tutorial.pdf][one could check the Boehm GC tutorial slides]] by Hans-J. Boehm,
+for a quick overview of this library.
+
+** Software-related definitions
+
+These definitions relate to program metadata which is going to be
+displayed on its startup.
 
 #+begin_src C
 #define BELIEVE_VERSION   "0.1"
@@ -118,6 +198,12 @@ our own. The =GC_DEBUG= flag helps on debugging.
 #+end_src
 
 * Fundamental data types
+
+The first thing to do is specify how the data is going to be handled
+by the interpreter. Here, we define each of these kinds of data. Any
+procedure for data manipulation will be defined afterwards.
+
+** Enumerating Bel types
 
 We begin by specifying all data types, which Bel has four: symbols,
 pairs, characters and streams.
@@ -131,6 +217,8 @@ typedef enum
     BEL_STREAM
 } BEL_TYPE;
 #+end_src
+
+** Pair
 
 A pair can have two things, which can in return be one of the four
 data types themselves. Since this is sort of a recursive definition,
@@ -147,6 +235,8 @@ typedef struct
 } Bel_pair;
 #+end_src
 
+** Character
+
 A character is nothing but an integer in standard C. For now we'll
 support only ASCII, so there is no actual need to instantiate the
 proposed table of characters -- this might change in the future.
@@ -158,12 +248,16 @@ be enough for now.
 typedef int8_t Bel_char;
 #+end_src
 
+** Symbol
+
 A symbol is nothing but a specific index on the symbol table, so
 that's how we'll define it.
 
 #+begin_src C
 typedef uint64_t Bel_sym;
 #+end_src
+
+** Stream
 
 The stream type is somewhat implementation-dependent. In C, a standard
 way to refer to streams is to use a =FILE= pointer, since =stdout= and
@@ -191,6 +285,8 @@ typedef struct
 } Bel_stream;
 #+end_src
 
+** The =Bel= structure
+
 The remaining thing to do is join all the types into the =Bel= type,
 which will serve as our generic way of dealing with things.
 
@@ -208,7 +304,7 @@ struct BEL
 };
 #+end_src
 
-* Essentials
+* Essential structures and manipulation of data
 
 ** Basic definitions
 
@@ -654,6 +750,8 @@ bel_init_ax_chars(void)
 
 ** Environment
 
+#+TODO: Explain the environment
+
 #+begin_src C
 Bel*
 bel_env_push(Bel *env, Bel *var, Bel *val)
@@ -664,6 +762,10 @@ bel_env_push(Bel *env, Bel *var, Bel *val)
 #+end_src
 
 * Initialization
+
+This section describes the initialization function for the Bel
+interpreter. Once this function is called, the Bel system is ready to
+be used.
 
 #+begin_src C
 Bel*
@@ -678,7 +780,8 @@ bel_init(void)
     bel_init_ax_vars();
     bel_init_ax_chars();
     bel_init_streams();
-    
+
+    // TODO: Return an environment
     return bel_g_nil;
 }
 #+end_src
@@ -687,6 +790,8 @@ bel_init(void)
 
 Below we define some very simple debug functions, which will help us
 show data on screen.
+
+** Printing pairs
 
 The first function is a specialization for printing pairs in
 general. This function should also handle the printing of lists
@@ -725,6 +830,8 @@ bel_dbg_print_pair(Bel *obj)
 }
 #+end_src
 
+** Printing data types
+
 The next function handles the printing of any data type. Notice that
 it does not automatically print a newline character.
 
@@ -750,6 +857,8 @@ bel_dbg_print(Bel *obj)
 
 ** Tests
 
+*** String manipulation and printing
+
 A string test which shows the conversion between C strings and Bel
 strings, and vice-versa.
 
@@ -764,6 +873,8 @@ string_test()
     printf(" => %s\n", bel_cstring(bel));
 }
 #+end_src
+
+*** List/pair/dotted list notation
 
 The following notation tests the printing capabilities of the list
 printing algorithm. Should be able to handle printing lists and
@@ -785,6 +896,8 @@ notation_test()
     putchar(10);
 }
 #+end_src
+
+*** Proper list notation
 
 This next test outputs the list =(The quick brown fox jumps over the
 lazy dog)=, which is a proper list of symbols.
@@ -818,6 +931,8 @@ list_test()
 }
 #+end_src
 
+*** Closure representation
+
 This test is also a list of symbols, but with nested lists also. Plus,
 this is a proper list, representing the internal representation of a
 closure such as =(fn (x) (* x x))=. Expected output is =(lit clo nil (x)
@@ -850,6 +965,8 @@ closure_repr_test()
 }
 #+end_src
 
+*** Character list printing
+
 This next test prints every character in the global =chars=, which is a
 list of pairs, each pair =(c . d)= containing a character =c=, and its
 string representation in binary =d=.
@@ -872,6 +989,8 @@ character_list_test()
     }
 }
 #+end_src
+
+*** Test entry point
 
 Now we just need an entry point for the test running.
 
@@ -921,7 +1040,7 @@ This script attempts to build and run the Bel interpreter.
 #+RESULTS[52cc16488330ca0b07d272e5a6d438063c4db85d]:
 | believe.c | Makefile | LICENSE |
 
-#+begin_src bash :tangle no :eval yes :cache no :results output :exports both
+#+begin_src bash :tangle no :eval yes :cache yes :results output :exports both
 make
 printf "\n"
 ./believe
@@ -929,18 +1048,20 @@ printf "\n"
 
 #+RESULTS[d7c8fc11d0ced3ffb5a6c0baf69befe2f22937a2]:
 #+begin_example
-clang -c --std=c11 -g -Wall -o believe.o believe.c
-clang --std=c11 -g -Wall -lgc -o believe believe.o
+clang -c --std=c11 -g -Wall -o *.o believe.c
+clang --std=c11 -g -Wall -lgc -o believe *.o
 
 Believe 0.1
 A Bel Lisp interpreter
 Copyright (c) 2019 Lucas Vieira
 This software is distributed under the MIT license.
-(\H \e \l \l \o \, \  \B \e \l \bel) => Hello, Bel
+(\H \e \l \l \o \, \  \B \e \l \bel) => Hello, Bel
 ((foo . bar) baz . quux)
 (The quick brown fox jumps over the lazy dog)
 (lit clo nil (x) (* x x))
 #+end_example
+
+
 
 
  
