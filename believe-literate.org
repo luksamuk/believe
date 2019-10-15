@@ -712,30 +712,35 @@ We build a list of all characters so that the specification gets
 happy. It will be stored in the previously defined =bel_g_chars= global
 variable. This might seem unecessary in the future, though.
 
-The list is supposed to be built out of pairs. Each pair is comprised
-of a character as its /car/, and a Bel string representing the bits as
-its /cdr/.
+The list is supposed to be built out of pairs, therefore we start by
+creating 255 =Bel= instances, representing list nodes; every node is
+supposed to hold the pointer to a =Bel_pair=. These pairs will be linked
+to one another: the /cdr/ of the first =Bel_pair= (again, contained inside
+a =Bel= instance) points to the second =Bel=; the /cdr/ of the second
+=Bel_pair= (also contained on its =Bel= instance) points to the third =Bel=,
+and so on. The last /cdr/ of the last =Bel_pair=, also enclosed on a =Bel=
+instance, contains the symbol =nil=.
+
+Now, we discuss what should be held in the /car/ of each of these
+pairs. And that would be other pairs, which will hold the actual
+information we desire. Each of these secondary pairs is comprised of a
+character at its /car/, and a Bel string representing the bits of the
+character as its /cdr/.
 
 #+begin_src C
 void
 bel_init_ax_chars(void)
 {
-    // Create a vector of 255 pairs. These will
-    // compose a list of other pairs
+    // Create a vector of 255 list nodes
     Bel **list = GC_MALLOC(255 * sizeof(*list));
 
-    // Each element in this list has another pair
-    // in the car, and nil in the cdr.
     size_t i;
     for(i = 0; i < 255; i++) {        
-        // Build a pair. First element is the character
-        // itself, and the second element is a binary
-        // representation
+        // Build a pair which holds the character information
         Bel *pair = bel_mkpair(bel_mkchar((Bel_char)i),
                                bel_mkstring(bel_conv_bits(i)));
-
-        // Build the actual pair which will be a list
-        // node
+        // Assign the car of a node to the current pair,
+        // set its cdr temporarily to nil
         list[i] = bel_mkpair(pair, bel_g_nil);
     }
 
@@ -745,7 +750,7 @@ bel_init_ax_chars(void)
         list[i]->pair->cdr = list[i + 1];
     }
 
-    // Return reference to first element only
+    // Hold reference to first element only
     bel_g_chars = list[0];
 }
 #+end_src

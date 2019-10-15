@@ -315,22 +315,16 @@ bel_conv_bits(uint8_t num)
 void
 bel_init_ax_chars(void)
 {
-    // Create a vector of 255 pairs. These will
-    // compose a list of other pairs
+    // Create a vector of 255 list nodes
     Bel **list = GC_MALLOC(255 * sizeof(*list));
 
-    // Each element in this list has another pair
-    // in the car, and nil in the cdr.
     size_t i;
     for(i = 0; i < 255; i++) {        
-        // Build a pair. First element is the character
-        // itself, and the second element is a binary
-        // representation
+        // Build a pair which holds the character information
         Bel *pair = bel_mkpair(bel_mkchar((Bel_char)i),
                                bel_mkstring(bel_conv_bits(i)));
-
-        // Build the actual pair which will be a list
-        // node
+        // Assign the car of a node to the current pair,
+        // set its cdr temporarily to nil
         list[i] = bel_mkpair(pair, bel_g_nil);
     }
 
@@ -340,7 +334,7 @@ bel_init_ax_chars(void)
         list[i]->pair->cdr = list[i + 1];
     }
 
-    // Return reference to first element only
+    // Hold reference to first element only
     bel_g_chars = list[0];
 }
 
