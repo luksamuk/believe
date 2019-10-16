@@ -31,21 +31,17 @@ typedef uint64_t Bel_sym;
 
 typedef enum BEL_STREAM_STATUS
 {
-    BEL_STREAM_OPEN,
-    BEL_STREAM_CLOSED
-} BEL_STREAM_STATUS;
-
-typedef enum BEL_STREAM_TYPE
-{
+    BEL_STREAM_CLOSED,
     BEL_STREAM_READ,
     BEL_STREAM_WRITE
-} BEL_STREAM_TYPE;
+} BEL_STREAM_STATUS;
 
 typedef struct
 {
     BEL_STREAM_STATUS  status;
-    BEL_STREAM_TYPE    type;
     FILE              *raw_stream;
+    uint8_t            cache;
+    uint8_t            cache_used;
 } Bel_stream;
 
 // Aliased as 'Bel' before
@@ -194,6 +190,26 @@ bel_mkchar(Bel_char c)
 }
 
 Bel*
+bel_char_from_binary(Bel *list)
+{
+    size_t len = bel_length(list);
+    Bel_char mask = '\0';
+
+    // TODO: This does not check the type and contents
+    // of the list properly!
+    size_t i;
+    Bel *current = list;
+    for(i = 0; i < len; i++) {
+        Bel *bitchar = bel_car(current);
+        if(bitchar->chr == '1') {
+            mask |= (1 << (7 - i));
+        }
+        current = bel_cdr(current);
+    }
+    return bel_mkchar(mask);
+}
+
+Bel*
 bel_mkstring(const char *str)
 {
     size_t len = strlen(str);
@@ -240,10 +256,12 @@ bel_cstring(Bel *belstr)
 }
 
 Bel*
-bel_mkstream(const char* name, BEL_STREAM_TYPE type)
+bel_mkstream(const char* name, BEL_STREAM_STATUS status)
 {
     Bel *ret           = GC_MALLOC(sizeof *ret);
     ret->type          = BEL_STREAM;
+
+    // TODO: Do not allow creating a closed stream
 
     if(!strncmp(name, "ins", 3)) {
         ret->stream.raw_stream = stdin;
@@ -252,11 +270,79 @@ bel_mkstream(const char* name, BEL_STREAM_TYPE type)
     } else {
         ret->stream.raw_stream =
             fopen(name,
-                  type == BEL_STREAM_READ ? "r" : "w");
+                  status == BEL_STREAM_READ ? "rb" : "wb");
+        
+        if(!ret->stream.raw_stream) {
+            // TODO: Propagate a proper error
+            return bel_g_nil;
+        }
     }
 
-    ret->stream.type   = type;
-    ret->stream.status = BEL_STREAM_OPEN;
+    ret->stream.status     = status;
+    ret->stream.cache      = 0u;
+    ret->stream.cache_used = 0u;
+    return ret;
+}
+
+Bel*
+bel_stream_dump_cache(Bel_stream *stream)
+{
+    if(!fwrite(&stream->cache, 1, 1, stream->raw_stream)) {
+        return bel_g_nil;
+    }
+    stream->cache_used = 0u;
+    stream->cache      = 0u;
+    return bel_g_t;
+}
+
+Bel*
+bel_stream_write_bit(Bel_stream *stream, Bel_char bit)
+{
+    // Return nil iff bit is incorrect and stream is
+    // not at write status
+    if(stream->status != BEL_STREAM_WRITE
+       || (bit != '0' && bit != '1'))
+        return bel_g_nil;
+
+    if(stream->cache_used >= 8) {
+        return bel_stream_dump_cache(stream);
+    } else {
+        if(bit == '1') {
+            stream->cache |= (1 << (7 - stream->cache_used));
+        }
+        stream->cache_used++;
+    }
+    
+    return bel_g_t;
+}
+
+Bel*
+bel_stream_fill_cache(Bel_stream *stream)
+{
+    if(!fread(&stream->cache, 1, 1, stream->raw_stream)) {
+        return bel_g_nil;
+    }
+    stream->cache_used = 8;
+    return bel_g_t;
+}
+
+Bel*
+bel_stream_read_bit(Bel_stream *stream)
+{
+    // Return nil iff stream is not at read status
+    if(stream->status != BEL_STREAM_READ)
+        return bel_g_nil;
+    
+    Bel *ret;
+    if(stream->cache_used == 0) {
+        ret = bel_stream_fill_cache(stream);
+        if(bel_nilp(ret)) return ret;
+    }
+
+    uint8_t mask = (1 << (stream->cache_used - 1));
+    ret = bel_mkchar(((mask & stream->cache) == mask)
+                     ? ((Bel_char)'1') : ((Bel_char)'0'));
+    stream->cache_used--;
     return ret;
 }
 
@@ -271,6 +357,11 @@ bel_stream_close(Bel *obj)
         return bel_g_nil;
     }
 
+    // Dump cache before closing
+    if(obj->stream.status == BEL_STREAM_WRITE) {
+        bel_stream_dump_cache(&obj->stream);
+    }
+    
     if(!fclose(obj->stream.raw_stream)) {
         obj->stream.raw_stream = NULL;
         obj->stream.status     = BEL_STREAM_CLOSED;
@@ -539,6 +630,51 @@ character_list_test()
 }
 
 void
+read_file_test()
+{
+    // We are going to read ten bytes from Bel's
+    // own source code file.
+    Bel *file = bel_mkstream("believe.c", BEL_STREAM_READ);
+
+    // TODO: Fix this to error checking, since the failure
+    // return of bel_mkstream will change
+    if(bel_nilp(file)) {
+        printf("      Error opening file stream.\n");
+        return;
+    }
+    
+    int n_bytes = 10;
+    while(n_bytes > 0) {
+        // 1 byte = 8 bits, so we make a list of
+        // eight characters
+        Bel **char_nodes = GC_MALLOC(8 * sizeof(Bel*));
+
+        int i;
+        for(i = 0; i < 8; i++) {
+            Bel *read_char =
+                bel_stream_read_bit(&file->stream);
+            char_nodes[i] = bel_mkpair(read_char, bel_g_nil);
+        }
+
+        // Link nodes
+        for(i = 0; i < 7; i++) {
+            char_nodes[i]->pair->cdr = char_nodes[i + 1];
+        }
+
+        // Display on screen
+        bel_dbg_print(char_nodes[0]);
+        printf(" => ");
+        bel_dbg_print(
+            bel_char_from_binary(char_nodes[0]));
+        putchar(10);
+        
+        n_bytes--;
+    }
+
+    bel_stream_close(file);
+}
+
+void
 run_tests()
 {
     puts("-- Running debug tests");
@@ -552,6 +688,8 @@ run_tests()
     closure_repr_test();
     puts("  -- Character List & Lookup test");
     character_list_test();
+    puts("  -- Read five bytes from Believe's source");
+    read_file_test();
 }
 
 int

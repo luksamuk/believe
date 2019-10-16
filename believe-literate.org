@@ -1,4 +1,4 @@
-#+TITLE:    Believe: A Bel interpreter built with C11
+#+TITLE:    Believe: A Bel interpreter built with C11 [Beta]
 #+AUTHOR:   Lucas Vieira
 #+DATE:     2019
 #+PROPERTY: header-args:C :eval no :main no :tangle believe.c
@@ -129,7 +129,7 @@ SOFTWARE.
 This section is not supposed to be exported in a PDF file.
 
 - [x] Environment functions
-- [ ] Global environment object =globe=
+- [x] Global environment object =globe=
 - [ ] Lexical environment object =scope=, shadowable, not unique
 - [ ] =err= function, basic error handling and propagation
 - [ ] Checking predicates on standard functions to propagate errors
@@ -264,27 +264,42 @@ typedef uint64_t Bel_sym;
 
 The stream type is somewhat implementation-dependent. In C, a standard
 way to refer to streams is to use a =FILE= pointer, since =stdout= and
-=stderr= themselves are of such type. So we just wrap these pointers in
+=stdin= themselves are of such type. So we just wrap these pointers in
 a stream type.
+
+Plus, as per Bel's specification, a stream has three statuses: closed,
+open for reading, open for writing. Therefore, we use a single
+enumeration to represent these three states.
+
+Since Bel's specification writes to a stream bit by bit, we need to
+cache the currently filled byte inside the structure, from left to
+right, dumping each byte as it is filled. Upon closing, the stream
+shall write the cache at the end of the file, plus the incomplete
+remaining bits. A "new" (not written and not dumped) cache is a single
+byte, and is guaranteed to be filled with zero =(\0 \0 \0 \0 \0 \0 \0
+\0)=.
+
+When dealing with reading from a stream, since Bel also reads bit by
+bit only, we take the same advantage of the cache, however as the
+opposite approach: we read a single byte from stream and keep the
+cache full. As we read each bit, we convert it to a Bel character (=\0=
+or =\1=). Once all bits of the cache have been read, another byte is
+fetched, stored on cache, and so on.
 
 #+begin_src C
 typedef enum BEL_STREAM_STATUS
 {
-    BEL_STREAM_OPEN,
-    BEL_STREAM_CLOSED
-} BEL_STREAM_STATUS;
-
-typedef enum BEL_STREAM_TYPE
-{
+    BEL_STREAM_CLOSED,
     BEL_STREAM_READ,
     BEL_STREAM_WRITE
-} BEL_STREAM_TYPE;
+} BEL_STREAM_STATUS;
 
 typedef struct
 {
     BEL_STREAM_STATUS  status;
-    BEL_STREAM_TYPE    type;
     FILE              *raw_stream;
+    uint8_t            cache;
+    uint8_t            cache_used;
 } Bel_stream;
 #+end_src
 
@@ -535,6 +550,33 @@ bel_mkchar(Bel_char c)
 }
 #+end_src
 
+#+TODO: This needs to change if unicode support is enabled
+Characters have the size of one byte, so if we take a single list of 8
+=\1= and =\0= characters, we should be able to generate a bitmask of the
+corresponding character in question.
+
+#+begin_src C
+Bel*
+bel_char_from_binary(Bel *list)
+{
+    size_t len = bel_length(list);
+    Bel_char mask = '\0';
+
+    // TODO: This does not check the type and contents
+    // of the list properly!
+    size_t i;
+    Bel *current = list;
+    for(i = 0; i < len; i++) {
+        Bel *bitchar = bel_car(current);
+        if(bitchar->chr == '1') {
+            mask |= (1 << (7 - i));
+        }
+        current = bel_cdr(current);
+    }
+    return bel_mkchar(mask);
+}
+#+end_src
+
 Strings on the Bel environment are nothing more than a list of
 characters, therefore we need a way to convert C strings to proper Bel
 lists.
@@ -600,10 +642,12 @@ raw stream from a file.
 
 #+begin_src C
 Bel*
-bel_mkstream(const char* name, BEL_STREAM_TYPE type)
+bel_mkstream(const char* name, BEL_STREAM_STATUS status)
 {
     Bel *ret           = GC_MALLOC(sizeof *ret);
     ret->type          = BEL_STREAM;
+
+    // TODO: Do not allow creating a closed stream
 
     if(!strncmp(name, "ins", 3)) {
         ret->stream.raw_stream = stdin;
@@ -612,18 +656,113 @@ bel_mkstream(const char* name, BEL_STREAM_TYPE type)
     } else {
         ret->stream.raw_stream =
             fopen(name,
-                  type == BEL_STREAM_READ ? "r" : "w");
+                  status == BEL_STREAM_READ ? "rb" : "wb");
+        
+        if(!ret->stream.raw_stream) {
+            // TODO: Propagate a proper error
+            return bel_g_nil;
+        }
     }
 
-    ret->stream.type   = type;
-    ret->stream.status = BEL_STREAM_OPEN;
+    ret->stream.status     = status;
+    ret->stream.cache      = 0u;
+    ret->stream.cache_used = 0u;
     return ret;
 }
 #+end_src
 
+One important thing to have is a function which inputs a single bit in
+a file. We use the previously defined cache system for that; by
+filling the bits from left to right, we'll enable output as a single
+bit.
+
+First we define the function which dumps and resets the cache of a
+specific stream when the cache is full; this should come in handy when
+closing the stream as well. After that, we do the actual bit
+writing. And of course, writing a bit returns =t= or =nil= for success and
+failure; this will most likely not be external to the Bel environment
+itself, since a failure in writing must signal an error. But that is
+not the job for this primitive.
+
+#+begin_src C
+Bel*
+bel_stream_dump_cache(Bel_stream *stream)
+{
+    if(!fwrite(&stream->cache, 1, 1, stream->raw_stream)) {
+        return bel_g_nil;
+    }
+    stream->cache_used = 0u;
+    stream->cache      = 0u;
+    return bel_g_t;
+}
+
+Bel*
+bel_stream_write_bit(Bel_stream *stream, Bel_char bit)
+{
+    // Return nil iff bit is incorrect and stream is
+    // not at write status
+    if(stream->status != BEL_STREAM_WRITE
+       || (bit != '0' && bit != '1'))
+        return bel_g_nil;
+
+    if(stream->cache_used >= 8) {
+        return bel_stream_dump_cache(stream);
+    } else {
+        if(bit == '1') {
+            stream->cache |= (1 << (7 - stream->cache_used));
+        }
+        stream->cache_used++;
+    }
+    
+    return bel_g_t;
+}
+#+end_src
+
+We can take advantage of the same variables to read single bits from a
+file, as described before too. Keep the cache full, read single bits
+as Bel characters, fill the cache when the read bits are exhausted.
+
+#+TODO: What about EOF???? Store file size on open?
+
+#+begin_src C
+Bel*
+bel_stream_fill_cache(Bel_stream *stream)
+{
+    if(!fread(&stream->cache, 1, 1, stream->raw_stream)) {
+        return bel_g_nil;
+    }
+    stream->cache_used = 8;
+    return bel_g_t;
+}
+
+Bel*
+bel_stream_read_bit(Bel_stream *stream)
+{
+    // Return nil iff stream is not at read status
+    if(stream->status != BEL_STREAM_READ)
+        return bel_g_nil;
+    
+    Bel *ret;
+    if(stream->cache_used == 0) {
+        ret = bel_stream_fill_cache(stream);
+        if(bel_nilp(ret)) return ret;
+    }
+
+    uint8_t mask = (1 << (stream->cache_used - 1));
+    ret = bel_mkchar(((mask & stream->cache) == mask)
+                     ? ((Bel_char)'1') : ((Bel_char)'0'));
+    stream->cache_used--;
+    return ret;
+}
+#+end_src
+
+#+TODO: Byte input/output -- unecessary?
+#+TODO: Text input/output, specifically for ins/outs -- unecessary?
+
 We'll also need a tool to close a certain stream. Here we're being a
 little more careful, since streams are managed more directly, by using
-the C API.
+the C API. And of course, if we're dealing with output, dump the
+stream cache before closing the file.
 
 #+begin_src C
 Bel*
@@ -637,6 +776,11 @@ bel_stream_close(Bel *obj)
         return bel_g_nil;
     }
 
+    // Dump cache before closing
+    if(obj->stream.status == BEL_STREAM_WRITE) {
+        bel_stream_dump_cache(&obj->stream);
+    }
+    
     if(!fclose(obj->stream.raw_stream)) {
         obj->stream.raw_stream = NULL;
         obj->stream.status     = BEL_STREAM_CLOSED;
@@ -1076,6 +1220,55 @@ character_list_test()
 }
 #+end_src
 
+*** Read file bit by bit
+
+#+begin_src C
+void
+read_file_test()
+{
+    // We are going to read ten bytes from Bel's
+    // own source code file.
+    Bel *file = bel_mkstream("believe.c", BEL_STREAM_READ);
+
+    // TODO: Fix this to error checking, since the failure
+    // return of bel_mkstream will change
+    if(bel_nilp(file)) {
+        printf("      Error opening file stream.\n");
+        return;
+    }
+    
+    int n_bytes = 10;
+    while(n_bytes > 0) {
+        // 1 byte = 8 bits, so we make a list of
+        // eight characters
+        Bel **char_nodes = GC_MALLOC(8 * sizeof(Bel*));
+
+        int i;
+        for(i = 0; i < 8; i++) {
+            Bel *read_char =
+                bel_stream_read_bit(&file->stream);
+            char_nodes[i] = bel_mkpair(read_char, bel_g_nil);
+        }
+
+        // Link nodes
+        for(i = 0; i < 7; i++) {
+            char_nodes[i]->pair->cdr = char_nodes[i + 1];
+        }
+
+        // Display on screen
+        bel_dbg_print(char_nodes[0]);
+        printf(" => ");
+        bel_dbg_print(
+            bel_char_from_binary(char_nodes[0]));
+        putchar(10);
+        
+        n_bytes--;
+    }
+
+    bel_stream_close(file);
+}
+#+end_src
+
 *** Test entry point
 
 Now we just need an entry point for the test running.
@@ -1095,6 +1288,8 @@ run_tests()
     closure_repr_test();
     puts("  -- Character List & Lookup test");
     character_list_test();
+    puts("  -- Read five bytes from Believe's source");
+    read_file_test();
 }
 #+end_src
 
