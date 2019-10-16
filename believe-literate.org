@@ -124,15 +124,19 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 #+end_src
 
-* COMMENT Informal TO-DO list for things being built
+* COMMENT Informal TO-DO list
 
 This section is not supposed to be exported in a PDF file.
 
 - [x] Environment functions
 - [x] Global environment object =globe=
+- [x] Various necessary predicates
+  - [ ] =stringp= predicate
+- [x] Error object
+- [ ] Test for errors on core functions (WIP)
+- [ ] String printing
 - [ ] Lexical environment object =scope=, shadowable, not unique
 - [ ] =err= function, basic error handling and propagation
-- [ ] Checking predicates on standard functions to propagate errors
 
 * Build scripts
 
@@ -167,12 +171,14 @@ clean:
 We'll be using =stdio.h= for default console I/O, plus =stdint.h= for some
 standard integer types. =string.h= provides definitions to handle string
 manipulation on the C side, however Bel is supposed to have its own
-string representation, to be discussed later.
+string representation, to be discussed later. =errno.h= is used to fetch
+error strings from streams, for example.
 
 #+begin_src C
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
+#include <errno.h>
 #+end_src
 
 ** Boehm Garbage Collector
@@ -369,6 +375,127 @@ Bel *bel_g_globe;
 Bel *bel_g_scope;
 #+end_src
 
+*** Forward declarations
+
+We need to forward declare a few functions which will be useful for
+certain operations. For example, it is important that we make a
+forward declaration of =bel_mkerror=, since the primitives should depend
+on it; also, providing =bel_mkstring= ensures that the error format can
+be easily created, and so on.
+
+#+TODO: Is this even correct? Test whether bel_mkerror creates an infinite loop!
+
+#+begin_src C
+Bel *bel_mkerror(Bel *format, Bel *vars);   // Forward declaration
+Bel *bel_mkstring(const char*);             // Forward declaration
+Bel *bel_mksymbol(const char*);             // Forward declaration
+Bel *bel_car(Bel*);                         // Forward declaration
+Bel *bel_cdr(Bel*);                         // Forward declaration
+#+end_src
+
+*** Predicates
+
+It is important to have a few predicates which will help us check for
+errors. These predicates do not check for argument nullability
+(e.g. unmanaged pointers), so use it wisely and only on initialized
+data!
+
+=bel_symbolp= tests whether the element is a symbol.
+
+#+begin_src C
+#define bel_symbolp(x) (x->type==BEL_SYMBOL)
+#+end_src
+
+=bel_nilp= tests whether the element is the /symbol/ =nil=.
+
+#+begin_src C
+#define bel_nilp(x)                             \
+    (bel_symbolp(x) && (x->sym==BEL_NIL))
+#+end_src
+
+=bel_pairp= tests whether the element is a /pair/. That is, either it is a
+proper pair, or it is the symbol =nil=.
+
+Note that Bel does not explicitly specify that =nil= is a pair, but I am
+assuming it since one can "extract" the /car/ and the /cdr/ of =nil=.
+
+#+begin_src C
+#define bel_pairp(x)                            \
+    ((x->type==BEL_PAIR) || bel_nilp(x))
+#+end_src
+
+=bel_atomp= can be a little tricky to understand, altough the
+implementation is simple. Bel specifies that anything that is not a
+pair is called an atom. The problem, though, is to decide whether =nil=
+is an atom or not.
+
+Common Lisp takes =NIL= as being both a /cons/ and an /atom/ (since it is
+both a symbol and a representation for the empty list). I leveraged
+that and decided to say that, in Believe, an /atom/ is /anything that is
+not built out of a pair of at least two elements/. Note that there is
+no such thing like a "pair of one element", but I am considering =nil=
+as a pair of "zero" elements. So =nil= is the only symbol which is both
+an /atom/ and a /pair/.
+
+#+begin_src C
+#define bel_atomp(x)                             \
+    (bel_nilp(x) || !bel_pairp(x))
+#+end_src
+
+=bel_charp= tests whether the object is a character.
+
+#+begin_src C
+#define bel_charp(x)                            \
+    ((x->type==BEL_CHAR))
+#+end_src
+
+=bel_streamp= tests whether the object is a stream.
+
+#+begin_src C
+#define bel_streamp(x)                          \
+    ((x->type==BEL_STREAM))
+#+end_src
+
+=bel_idp= tests whether an object is identical to another.
+According to the Bel specification, identity is stricted than
+equality: there is only one of each symbol and character, but pairs
+and streams are never identical.
+
+This is the first predicate that is implemented as a proper C
+function, and it is used only internally; therefore, it outputs a C
+integer value for truth and falsity.
+
+#+begin_src C
+int
+bel_idp(Bel *x, Bel *y)
+{
+    if((!bel_symbolp(x) && !bel_charp(x))
+       || (!bel_symbolp(y) && !bel_charp(y)))
+        return 0;
+
+    if(bel_symbolp(x))
+        return (x->sym == y->sym);
+    return (x->chr == y->chr);
+}
+#+end_src
+
+=bel_errorp= tests whether a specific object is a list in the format
+=(lit err . rest)=.
+
+#+begin_src C
+int
+bel_errorp(Bel *x)
+{
+    if(!bel_pairp(x)) return 0;
+    if(!bel_idp(bel_car(x), bel_mksymbol("lit")))
+        return 0;
+    Bel *cdr = bel_cdr(x);
+    if(!bel_idp(bel_car(cdr), bel_mksymbol("err")))
+        return 0;
+    return 1;
+}
+#+end_src
+
 ** Symbol Table and Symbols
 
 The symbol table is an array that grows as necessary, doubling in
@@ -485,21 +612,19 @@ bel_mkpair(Bel *car, Bel *cdr)
 }
 #+end_src
 
-We also add a predicate which tests for nullability.
-
-#+begin_src C
-#define bel_nilp(x) ((x->type==BEL_SYMBOL)&&(x->sym==BEL_NIL))
-#+end_src
-
 Now we may easily extract information from pairs, using the /car/ and
 /cdr/ operations.
 
 #+begin_src C
-// TODO: Check for errors
-
 Bel*
 bel_car(Bel *p)
 {
+    if(!bel_pairp(p)) {
+        return bel_mkerror(
+            bel_mkstring("Cannot extract the car of ~a."),
+            bel_mkpair(p, bel_g_nil));
+    }
+    
     if(bel_nilp(p))
         return bel_g_nil;
     return p->pair->car;
@@ -508,6 +633,12 @@ bel_car(Bel *p)
 Bel*
 bel_cdr(Bel *p)
 {
+    if(!bel_pairp(p)) {
+        return bel_mkerror(
+            bel_mkstring("Cannot extract the cdr of ~a."),
+            bel_mkpair(p, bel_g_nil));
+    }
+    
     if(bel_nilp(p))
         return bel_g_nil;
     return p->pair->cdr;
@@ -517,6 +648,9 @@ bel_cdr(Bel *p)
 Let's also build an utility to return the size of a list. This is a
 =O(n)= operation which takes a well-formed list and iterates over
 it.
+
+#+TODO: Error-checking the length operation needs some sort of number type,
+#+TODO: since we need to wrap both the length and the error in a Bel structure.
 
 #+begin_src C
 uint64_t
@@ -559,15 +693,40 @@ corresponding character in question.
 Bel*
 bel_char_from_binary(Bel *list)
 {
-    size_t len = bel_length(list);
-    Bel_char mask = '\0';
+    if(!bel_pairp(list)) {
+        return bel_mkerror(
+            bel_mkstring("The binary representation of "
+                         "a character must be a string of "
+                         "characters \\0 and \\1."),
+            bel_g_nil);
+    }
 
-    // TODO: This does not check the type and contents
-    // of the list properly!
+    size_t len = bel_length(list);
+
+    if(len != 8) {
+        return bel_mkerror(
+            bel_mkstring("The binary representation of "
+                         "a character must have exactly "
+                         "eight characters \\0 or \\1."),
+            bel_g_nil);
+    }
+    
+    Bel_char mask = '\0';
     size_t i;
     Bel *current = list;
+    
     for(i = 0; i < len; i++) {
         Bel *bitchar = bel_car(current);
+
+        if(!bel_charp(bitchar)) {
+            return bel_mkerror(
+                bel_mkstring("The provided binary "
+                             "representation of a "
+                             "character does not contain "
+                             "only characters."),
+                bel_g_nil);
+        }
+        
         if(bitchar->chr == '1') {
             mask |= (1 << (7 - i));
         }
@@ -617,6 +776,14 @@ garbage-collected C string.
 char*
 bel_cstring(Bel *belstr)
 {
+    if(!bel_pairp(belstr)) {
+        puts("INTERNAL ERROR on bel_cstring: "
+             "argument is not a pair");
+        return NULL;
+    }
+    
+    // TODO: missing a decisive check for whether
+    // it really is a Bel string
     uint64_t len = bel_length(belstr);
     if(len == 0) return NULL;
     
@@ -624,6 +791,7 @@ bel_cstring(Bel *belstr)
 
     Bel *itr     = belstr;
     size_t i     = 0;
+    // TODO: may cause infinite loop...
     while(!bel_nilp(itr)) {
         str[i] = bel_car(itr)->chr;
         itr    = bel_cdr(itr);
@@ -647,7 +815,12 @@ bel_mkstream(const char* name, BEL_STREAM_STATUS status)
     Bel *ret           = GC_MALLOC(sizeof *ret);
     ret->type          = BEL_STREAM;
 
-    // TODO: Do not allow creating a closed stream
+    if(status == BEL_STREAM_CLOSED) {
+        return bel_mkerror(
+            bel_mkstring("Cannot create a stream with "
+                         "CLOSED status."),
+            bel_g_nil);
+    }
 
     if(!strncmp(name, "ins", 3)) {
         ret->stream.raw_stream = stdin;
@@ -659,8 +832,10 @@ bel_mkstream(const char* name, BEL_STREAM_STATUS status)
                   status == BEL_STREAM_READ ? "rb" : "wb");
         
         if(!ret->stream.raw_stream) {
-            // TODO: Propagate a proper error
-            return bel_g_nil;
+            return bel_mkerror(
+                bel_mkstring("Unable to open stream ~a."),
+                bel_mkpair(
+                    bel_mkstring(name), bel_g_nil));
         }
     }
 
@@ -699,11 +874,19 @@ bel_stream_dump_cache(Bel_stream *stream)
 Bel*
 bel_stream_write_bit(Bel_stream *stream, Bel_char bit)
 {
-    // Return nil iff bit is incorrect and stream is
-    // not at write status
-    if(stream->status != BEL_STREAM_WRITE
-       || (bit != '0' && bit != '1'))
-        return bel_g_nil;
+    if(bit != '0' || bit != '1') {
+        return bel_mkerror(
+            bel_mkstring("Written bit must be represented "
+                         "as a character 0 or 1"),
+            bel_g_nil);
+    }
+
+    if(stream->status != BEL_STREAM_WRITE) {
+        return bel_mkerror(
+            bel_mkstring("Write stream is not at WRITE "
+                         "state"),
+            bel_g_nil);
+    }
 
     if(stream->cache_used >= 8) {
         return bel_stream_dump_cache(stream);
@@ -714,7 +897,7 @@ bel_stream_write_bit(Bel_stream *stream, Bel_char bit)
         stream->cache_used++;
     }
     
-    return bel_g_t;
+    return bel_mkchar(bit);
 }
 #+end_src
 
@@ -722,13 +905,15 @@ We can take advantage of the same variables to read single bits from a
 file, as described before too. Keep the cache full, read single bits
 as Bel characters, fill the cache when the read bits are exhausted.
 
-#+TODO: What about EOF???? Store file size on open?
+#+TODO: "Being unable to read a bit" signals an error.
+#+TODO: "No bit is currently available" returns nil -- but when will it return?
 
 #+begin_src C
 Bel*
 bel_stream_fill_cache(Bel_stream *stream)
 {
     if(!fread(&stream->cache, 1, 1, stream->raw_stream)) {
+        // Return nil on EOF
         return bel_g_nil;
     }
     stream->cache_used = 8;
@@ -738,14 +923,19 @@ bel_stream_fill_cache(Bel_stream *stream)
 Bel*
 bel_stream_read_bit(Bel_stream *stream)
 {
-    // Return nil iff stream is not at read status
-    if(stream->status != BEL_STREAM_READ)
-        return bel_g_nil;
+    if(stream->status != BEL_STREAM_READ) {
+        return bel_mkerror(
+            bel_mkstring("Read stream is not at READ "
+                         "state"),
+            bel_g_nil);
+    }
     
     Bel *ret;
     if(stream->cache_used == 0) {
         ret = bel_stream_fill_cache(stream);
-        if(bel_nilp(ret)) return ret;
+        if(bel_nilp(ret)) {
+            return bel_mksymbol("eof");
+        }
     }
 
     uint8_t mask = (1 << (stream->cache_used - 1));
@@ -768,12 +958,17 @@ stream cache before closing the file.
 Bel*
 bel_stream_close(Bel *obj)
 {
-    // TODO: Check for errors
-    if(obj->type != BEL_STREAM
-        || obj->stream.status == BEL_STREAM_CLOSED) {
-        // TODO: Returning nil here, but should
-        // signal an error
-        return bel_g_nil;
+    if(obj->type != BEL_STREAM) {
+        return bel_mkerror(
+            bel_mkstring("Cannot close something that "
+                         "is not a stream."),
+            bel_g_nil);
+    }
+    
+    if(obj->stream.status == BEL_STREAM_CLOSED) {
+        return bel_mkerror(
+            bel_mkstring("Cannot close a closed stream."),
+            bel_g_nil);
     }
 
     // Dump cache before closing
@@ -787,9 +982,11 @@ bel_stream_close(Bel *obj)
         return bel_g_t;
     }
 
-    // TODO: Should signal error on stream closing
-    // failure as well
-    return bel_g_nil;
+    return bel_mkerror(
+        bel_mkstring("Error closing stream: ~a."),
+        bel_mkpair(
+            bel_mkstring(strerror(errno)),
+            bel_g_nil));
 }
 #+end_src
 
@@ -808,7 +1005,7 @@ bel_init_streams(void)
 }
 #+end_src
 
-** About stream manipulation
+*** Stream manipulation safety
 
 Since streams are defined taking advantage of the C API for
 manipulating files, unfortunately these demand careful usage on Bel
@@ -817,6 +1014,52 @@ them. The Boehm GC does not have finalizers for C bindings, so
 unfortunately it is not possible for now to call a finalizer which
 automatically closes the stream when the stream object is garbage
 collected.
+
+** Errors
+
+Bel does not have a formal specification on errors in primitives,
+other than saying that there might be an =err= function which throws an
+error in the system.
+
+I will therefore specify that, in Believe, an error is a literal (much
+like closures and primitives) which obeys the pattern...
+
+=(lit err format . args)=
+
+...where =lit= is the expected symbol for something that evaluates to
+itself, =err= is the symbol which specifies that the object is an error,
+=format= is a Bel string which contains a format for the given
+arguments, and =args= is a list of arguments which should be parsed
+within the format.
+
+For a first implementation, I intend to make the format specification
+follow loosely the conventions of the =format= macro in Common Lisp,
+having =~a= as the format for any object and =~%= as the format for a new
+line, for example.
+
+Here's how it could look like:
+
+#+begin_example
+> (err "Cannot use ~a on ~a.~%" '(1 2 3) square)
+Error: Cannot use (1 2 3) on (lit clo nil (x) (* x x)).
+
+#+end_example
+
+However, since this is a detail which can be implemented in Bel
+itself, we'll just go ahead and say that there is a string format and
+a list of arguments.
+
+#+begin_src C
+Bel*
+bel_mkerror(Bel *format, Bel *arglist)
+{
+    return bel_mkpair(
+        bel_mksymbol("lit"),
+        bel_mkpair(
+            bel_mksymbol("err"),
+            bel_mkpair(format, arglist)));
+}
+#+end_src
 
 * Axioms
 
@@ -1269,6 +1512,24 @@ read_file_test()
 }
 #+end_src
 
+*** Display errors
+
+#+begin_src C
+void
+show_errors_test()
+{
+    Bel *err;
+    
+    // Unexisting file
+    err = bel_mkstream("waddawaddawadda", BEL_STREAM_READ);
+    bel_dbg_print(err);
+    putchar(10);
+
+    printf("Is this an error? %c\n",
+           bel_errorp(err) ? 'y' : 'n');
+}
+#+end_src
+
 *** Test entry point
 
 Now we just need an entry point for the test running.
@@ -1290,6 +1551,8 @@ run_tests()
     character_list_test();
     puts("  -- Read five bytes from Believe's source");
     read_file_test();
+    puts("  -- Show a few errors on screen");
+    show_errors_test();
 }
 #+end_src
 
@@ -1362,11 +1625,19 @@ Char: 0006 => (\0 \0 \0 \0 \0 \1 \1 \0)
 Char: 0007 => (\0 \0 \0 \0 \0 \1 \1 \1)
 Char: 0008 => (\0 \0 \0 \0 \1 \0 \0 \0)
 Char: 0009 => (\0 \0 \0 \0 \1 \0 \0 \1)
+  -- Read five bytes from Believe's source
+(\0 \0 \1 \0 \0 \0 \1 \1) => \#
+(\0 \1 \1 \0 \1 \0 \0 \1) => \i
+(\0 \1 \1 \0 \1 \1 \1 \0) => \n
+(\0 \1 \1 \0 \0 \0 \1 \1) => \c
+(\0 \1 \1 \0 \1 \1 \0 \0) => \l
+(\0 \1 \1 \1 \0 \1 \0 \1) => \u
+(\0 \1 \1 \0 \0 \1 \0 \0) => \d
+(\0 \1 \1 \0 \0 \1 \0 \1) => \e
+(\0 \0 \1 \0 \0 \0 \0 \0) => \ 
+(\0 \0 \1 \1 \1 \1 \0 \0) => \<
+  -- Show a few errors on screen
+(lit err (\U \n \a \b \l \e \  \t \o \  \o \p \e \n \  \s \t \r \e \a \m \  \~ \a \.) (\w \a \d \d \a \w \a \d \d \a \w \a \d \d \a))
+Is this an error? y
 #+end_example
 
-
-
-
-
-
- 
