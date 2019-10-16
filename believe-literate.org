@@ -766,7 +766,12 @@ bel_init_ax_chars(void)
 
 ** Environment
 
-#+TODO: Explain the environment
+Any environment is nothing but a list of pairs, where each pair =(var
+. val)= represents the binding of a specific symbol =var= to the value
+=val=.
+
+We begin by creating a function which pushes, non-destructively, a new
+pair to any environment. The result is the new environment.
 
 #+begin_src C
 Bel*
@@ -777,7 +782,14 @@ bel_env_push(Bel *env, Bel *var, Bel *val)
 }
 #+end_src
 
-We begin by registering all our axioms in our environment. This way, a
+Notice that this non-destructive approach is important, since a
+lexical enviroment is supposed to extend the enviroment it is called
+on -- for example, the environment of a function called from top-level
+is a list where the first elements are lexical bindings, and
+(conceptually) the latter elements are bindings belonging to the
+global environment.
+
+Now we register all our axioms to our global environment. This way, a
 lookup operation on the global scope will yield proper values.
 
 First, we define a macro which uses =bel_env_push= to modify the =globe=
