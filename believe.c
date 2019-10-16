@@ -76,6 +76,9 @@ Bel *bel_g_outs_sys;
 Bel *bel_g_ins;
 Bel *bel_g_outs;
 
+Bel *bel_g_globe;
+Bel *bel_g_scope;
+
 typedef struct {
     const char **tbl;
     uint64_t     n_syms;
@@ -345,6 +348,36 @@ bel_env_push(Bel *env, Bel *var, Bel *val)
     return bel_mkpair(new_pair, env);
 }
 
+#define BEL_ENV_GLOBAL_PUSH(SYMSTR, VAL)           \
+    (bel_g_globe =                                 \
+     bel_env_push(bel_g_globe,                     \
+                  bel_mksymbol(SYMSTR), VAL))
+
+void
+bel_init_ax_env(void)
+{
+    BEL_ENV_GLOBAL_PUSH("chars", bel_g_chars);
+    BEL_ENV_GLOBAL_PUSH("ins",   bel_g_ins);
+    BEL_ENV_GLOBAL_PUSH("outs",  bel_g_outs);
+}
+
+Bel*
+bel_env_lookup(Bel *env, Bel *sym)
+{
+    // TODO: Test arguments
+    Bel *itr = env;
+    while(!bel_nilp(itr)) {
+        Bel *p = bel_car(itr);
+        if(bel_car(p)->type == BEL_SYMBOL
+           && bel_car(p)->sym == sym->sym) {
+            return bel_cdr(p);
+        }
+        
+        itr = bel_cdr(itr);
+    }
+    return bel_g_nil;
+}
+
 Bel*
 bel_init(void)
 {
@@ -357,6 +390,7 @@ bel_init(void)
     bel_init_ax_vars();
     bel_init_ax_chars();
     bel_init_streams();
+    bel_init_ax_env();
 
     // TODO: Return an environment
     return bel_g_nil;
@@ -492,24 +526,32 @@ character_list_test()
     // Char: 0000 => (\0 \0 \0 \0 \0 \0 \0 \0)
     // Char: 0001 => (\0 \0 \0 \0 \0 \0 \0 \1)
     // etc
-    Bel *bel = bel_g_chars;
-    while(!bel_nilp(bel)) {
+    Bel *bel = bel_env_lookup(bel_g_globe, bel_mksymbol("chars"));
+    int i = 0;
+    while(!bel_nilp(bel) && i < 10) {
         Bel *car = bel_car(bel);
         printf("Char: %04d => ", bel_car(car)->chr);
         bel_dbg_print(bel_cdr(car));
         putchar(10);
         bel = bel_cdr(bel);
+        i++;
     }
 }
 
 void
 run_tests()
 {
+    puts("-- Running debug tests");
+    puts("  -- String test");
     string_test();
+    puts("  -- Notation test");
     notation_test();
+    puts("  -- List test");
     list_test();
+    puts("  -- Closure representation test");
     closure_repr_test();
-    //character_list_test();
+    puts("  -- Character List & Lookup test");
+    character_list_test();
 }
 
 int

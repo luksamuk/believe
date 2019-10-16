@@ -128,10 +128,11 @@ SOFTWARE.
 
 This section is not supposed to be exported in a PDF file.
 
-- Environment functions
-- Global environment object =globe=
-- Lexical environment object =scope=, shadowable, not unique
-- =err= function, basic error handling and propagation
+- [x] Environment functions
+- [ ] Global environment object =globe=
+- [ ] Lexical environment object =scope=, shadowable, not unique
+- [ ] =err= function, basic error handling and propagation
+- [ ] Checking predicates on standard functions to propagate errors
 
 * Build scripts
 
@@ -343,6 +344,14 @@ Bel *bel_g_ins_sys;
 Bel *bel_g_outs_sys;
 Bel *bel_g_ins;
 Bel *bel_g_outs;
+#+end_src
+
+We may also define temporary variables for the global and lexical
+environments.
+
+#+begin_src C
+Bel *bel_g_globe;
+Bel *bel_g_scope;
 #+end_src
 
 ** Symbol Table and Symbols
@@ -768,6 +777,57 @@ bel_env_push(Bel *env, Bel *var, Bel *val)
 }
 #+end_src
 
+We begin by registering all our axioms in our environment. This way, a
+lookup operation on the global scope will yield proper values.
+
+First, we define a macro which uses =bel_env_push= to modify the =globe=
+environment variable. This macro just takes a =SYMSTR=, turns it into a
+symbol, and generates a new environment, which is then assigned to the
+global environment.
+
+#+begin_src C
+#define BEL_ENV_GLOBAL_PUSH(SYMSTR, VAL)           \
+    (bel_g_globe =                                 \
+     bel_env_push(bel_g_globe,                     \
+                  bel_mksymbol(SYMSTR), VAL))
+#+end_src
+
+Initializing the global environment involves pushing certain values to
+it.
+
+#+begin_src C
+void
+bel_init_ax_env(void)
+{
+    BEL_ENV_GLOBAL_PUSH("chars", bel_g_chars);
+    BEL_ENV_GLOBAL_PUSH("ins",   bel_g_ins);
+    BEL_ENV_GLOBAL_PUSH("outs",  bel_g_outs);
+}
+#+end_src
+
+Then, we create a lookup function. This function traverses an
+environment in linear time, so it is not fast, but it does its job. A
+lookup process either returns the associated value or returns =nil=.
+
+#+begin_src C
+Bel*
+bel_env_lookup(Bel *env, Bel *sym)
+{
+    // TODO: Test arguments
+    Bel *itr = env;
+    while(!bel_nilp(itr)) {
+        Bel *p = bel_car(itr);
+        if(bel_car(p)->type == BEL_SYMBOL
+           && bel_car(p)->sym == sym->sym) {
+            return bel_cdr(p);
+        }
+        
+        itr = bel_cdr(itr);
+    }
+    return bel_g_nil;
+}
+#+end_src
+
 * Initialization
 
 This section describes the initialization function for the Bel
@@ -787,6 +847,7 @@ bel_init(void)
     bel_init_ax_vars();
     bel_init_ax_chars();
     bel_init_streams();
+    bel_init_ax_env();
 
     // TODO: Return an environment
     return bel_g_nil;
@@ -972,11 +1033,15 @@ closure_repr_test()
 }
 #+end_src
 
-*** Character list printing
+*** Character list printing and environment lookup
 
-This next test prints every character in the global =chars=, which is a
-list of pairs, each pair =(c . d)= containing a character =c=, and its
-string representation in binary =d=.
+This next test prints the first ten characters in the global =chars=,
+which is a list of pairs, each pair =(c . d)= containing a character =c=,
+and its string representation in binary =d=.
+
+It is also interesting to notice that the =chars= global is obtained by
+a lookup operation on the environment, rather than using the global
+variable directly.
 
 #+begin_src C
 void
@@ -986,13 +1051,15 @@ character_list_test()
     // Char: 0000 => (\0 \0 \0 \0 \0 \0 \0 \0)
     // Char: 0001 => (\0 \0 \0 \0 \0 \0 \0 \1)
     // etc
-    Bel *bel = bel_g_chars;
-    while(!bel_nilp(bel)) {
+    Bel *bel = bel_env_lookup(bel_g_globe, bel_mksymbol("chars"));
+    int i = 0;
+    while(!bel_nilp(bel) && i < 10) {
         Bel *car = bel_car(bel);
         printf("Char: %04d => ", bel_car(car)->chr);
         bel_dbg_print(bel_cdr(car));
         putchar(10);
         bel = bel_cdr(bel);
+        i++;
     }
 }
 #+end_src
@@ -1005,11 +1072,17 @@ Now we just need an entry point for the test running.
 void
 run_tests()
 {
+    puts("-- Running debug tests");
+    puts("  -- String test");
     string_test();
+    puts("  -- Notation test");
     notation_test();
+    puts("  -- List test");
     list_test();
+    puts("  -- Closure representation test");
     closure_repr_test();
-    //character_list_test();
+    puts("  -- Character List & Lookup test");
+    character_list_test();
 }
 #+end_src
 
@@ -1062,11 +1135,29 @@ Believe 0.1
 A Bel Lisp interpreter
 Copyright (c) 2019 Lucas Vieira
 This software is distributed under the MIT license.
+-- Running debug tests
+  -- String test
 (\H \e \l \l \o \, \  \B \e \l \bel) => Hello, Bel
+  -- Notation test
 ((foo . bar) baz . quux)
+  -- List test
 (The quick brown fox jumps over the lazy dog)
+  -- Closure representation test
 (lit clo nil (x) (* x x))
+  -- Character List & Lookup test
+Char: 0000 => (\0 \0 \0 \0 \0 \0 \0 \0)
+Char: 0001 => (\0 \0 \0 \0 \0 \0 \0 \1)
+Char: 0002 => (\0 \0 \0 \0 \0 \0 \1 \0)
+Char: 0003 => (\0 \0 \0 \0 \0 \0 \1 \1)
+Char: 0004 => (\0 \0 \0 \0 \0 \1 \0 \0)
+Char: 0005 => (\0 \0 \0 \0 \0 \1 \0 \1)
+Char: 0006 => (\0 \0 \0 \0 \0 \1 \1 \0)
+Char: 0007 => (\0 \0 \0 \0 \0 \1 \1 \1)
+Char: 0008 => (\0 \0 \0 \0 \1 \0 \0 \0)
+Char: 0009 => (\0 \0 \0 \0 \1 \0 \0 \1)
 #+end_example
+
+
 
 
 
