@@ -211,8 +211,8 @@ export GC_PRINT_STATS=1
 
 #+RESULTS[ab52259b081e9364f93c43915fce96fd6151b11f]:
 #+begin_example
-clang --std=c11 -g -Wall -O2 -c -o believe.o believe.c
-clang --std=c11 -g -Wall -O2 -lgc -o believe believe.o
+clang --std=c11 -g -Wall -O2 -DBEL_DEBUG -c -o believe.o believe.c
+clang --std=c11 -g -Wall -O2 -DBEL_DEBUG -lgc -o believe believe.o
 
 Believe 0.1
 A Bel Lisp interpreter
@@ -227,7 +227,7 @@ This software is distributed under the MIT license.
   -- List test
 (The quick brown fox jumps over the lazy dog)
   -- Closure representation test
-(lit clo nil (x) (* x x))
+(lit clo nil (xar) (* xar xar))
   -- Character List & Lookup test
 Char: 097 (a) => "01100001"
 Char: 098 (b) => "01100010"
@@ -255,6 +255,11 @@ Char: 106 (j) => "01101010"
 Is this an error? y
 (lit err "Cannot extract the car of ~a." t)
 (lit err "Cannot extract the cdr of ~a." t)
+  -- Lookup a few primitives and print them
+(lit prim car)
+(lit prim cdr)
+(lit prim coin)
+(lit prim stat)
 #+end_example
 
 * Libraries and headers
@@ -470,6 +475,7 @@ Bel *bel_g_ins_sys;
 Bel *bel_g_outs_sys;
 Bel *bel_g_ins;
 Bel *bel_g_outs;
+Bel *bel_g_prim;
 #+end_src
 
 We may also define temporary variables for the global and lexical
@@ -714,7 +720,7 @@ predefined macros, so any failure here is unexpected.
 
 #+begin_src C
 void
-Bel_sym_table_init(void)
+bel_sym_table_init(void)
 {
     g_sym_table.n_syms = 4;
     g_sym_table.size   = 4;
@@ -728,9 +734,9 @@ Bel_sym_table_init(void)
 }
 #+end_src
 
-The lookup function =Bel_sym_table_find= does a linear search for the
+The lookup function =bel_sym_table_find= does a linear search for the
 presented literal on the symbol table. However, if it doesn't find the
-symbol, it implicitly calls =Bel_sym_table_add=, which appends the
+symbol, it implicitly calls =bel_sym_table_add=, which appends the
 symbol to the table.
 
 This is obviously not a very wise approach as it opens up for some
@@ -738,10 +744,10 @@ exploits on interning symbols, but should be enough as long as these
 symbols are only really interned on =lit= or =quote= scopes.
 
 #+begin_src C
-Bel_sym Bel_sym_table_add(const char*); // Forward declaration
+Bel_sym bel_sym_table_add(const char*); // Forward declaration
 
 Bel_sym
-Bel_sym_table_find(const char *sym_literal)
+bel_sym_table_find(const char *sym_literal)
 {
     uint64_t i;
     size_t len = strlen(sym_literal);
@@ -751,11 +757,11 @@ Bel_sym_table_find(const char *sym_literal)
         }
     }
 
-    return Bel_sym_table_add(sym_literal);
+    return bel_sym_table_add(sym_literal);
 }
 
 Bel_sym
-Bel_sym_table_add(const char *sym_literal)
+bel_sym_table_add(const char *sym_literal)
 {
     if(g_sym_table.n_syms == g_sym_table.size) {
         uint64_t new_size = 2 * g_sym_table.size;
@@ -778,7 +784,7 @@ bel_mksymbol(const char *str)
 {
     Bel *ret  = GC_MALLOC(sizeof (*ret));
     ret->type = BEL_SYMBOL;
-    ret->sym  = Bel_sym_table_find(str);
+    ret->sym  = bel_sym_table_find(str);
     return ret;
 }
 #+end_src
@@ -1297,8 +1303,13 @@ bel_init_ax_vars(void)
     bel_g_t     = bel_mksymbol("t");
     bel_g_o     = bel_mksymbol("o");
     bel_g_apply = bel_mksymbol("apply");
+
+    bel_g_prim  = bel_mksymbol("prim");
 }
 #+end_src
+
+=bel_g_prim= is not part of the axiom variables, but we'll define it
+here since we'll need this symbol for generating primitives later.
 
 ** List of all characters
 
@@ -1448,6 +1459,130 @@ bel_env_lookup(Bel *env, Bel *sym)
         itr = bel_cdr(itr);
     }
     return bel_g_nil;
+}
+#+end_src
+
+** Literals
+
+Although literals have already been seen on error implementation, but
+here we reuse the concept to generate literals that should exist on
+the global environment.
+
+A /literal/ is a list, where the first element is the symbol
+=lit=. Literals are described like persistent quotes, since evaluating a
+quoted form strips away the quoting. A /literal/ is what should be used
+to describe things that evaluate to themselves.
+
+Literals follow the form =(lit . rest)=, where =lit= is a symbol, and =rest=
+is a proper list of things that should be treated as a literal.
+
+Primitives and functions are internally described as /literals/.
+
+The first thing to do is create a tool for generating a literal; in
+general, what it does is create a pair, where the /car/ is the symbol
+=lit=, and the /cdr/ is anything that should be treated as a literal.
+
+#+begin_src C
+Bel*
+bel_mkliteral(Bel *rest)
+{
+    if(!bel_proper_list_p(rest)) {
+        return bel_mkerror(
+            bel_mkstring("The object ~a is not a "
+                         "proper list to be turned "
+                         "into a literal."),
+            bel_mkpair(rest, bel_g_nil));
+    }
+
+    return bel_mkpair(bel_mksymbol("lit"),
+                      rest);
+}
+#+end_src
+
+*** Primitives
+
+As stated above, primitives are represented as literals, since they
+evaluate to themselves. We start by defining a tool to create a
+certain primitive; it should be noted that, since primitives are
+internal to the Bel implementation, this function does not check for
+errors.
+
+A primitive has the form =(lit prim name)=, where =lit= and =prim= are
+constant symbols, and =name= is a symbol for the primitive name.
+
+#+begin_src C
+Bel*
+bel_mkprim(Bel *sym)
+{
+    return bel_mkliteral(
+        bel_mkpair(bel_g_prim,
+                   bel_mkpair(sym, bel_g_nil)));
+}
+#+end_src
+
+The next definition is a macro where, given an environment =env= and a
+C string literal =x=, it generates a primitive por =x= and pushes it to
+the enviroment =env=.
+
+#+begin_src C
+#define BEL_REGISTER_PRIM(env, x)               \
+    {                                           \
+    Bel *sym = bel_mksymbol(x);                 \
+    env = bel_env_push(env, sym,                \
+                       bel_mkprim(sym));        \
+    }
+#+end_src
+
+Then we create a function where, given an environment =env=, it
+registers all Bel primitives on it, creating a new environment which
+is returned. Notice that this new environment is in fact making use of
+the original one.
+
+#+begin_src C
+Bel*
+bel_gen_primitives(Bel *env)
+{
+    // Primitive functions
+    BEL_REGISTER_PRIM(env, "id");
+    BEL_REGISTER_PRIM(env, "join");
+    BEL_REGISTER_PRIM(env, "car");
+    BEL_REGISTER_PRIM(env, "cdr");
+    BEL_REGISTER_PRIM(env, "type");
+    BEL_REGISTER_PRIM(env, "xar");
+    BEL_REGISTER_PRIM(env, "xdr");
+    BEL_REGISTER_PRIM(env, "sym");
+    BEL_REGISTER_PRIM(env, "nom");
+    BEL_REGISTER_PRIM(env, "wrb");
+    BEL_REGISTER_PRIM(env, "rdb");
+    BEL_REGISTER_PRIM(env, "ops");
+    BEL_REGISTER_PRIM(env, "cls");
+    BEL_REGISTER_PRIM(env, "stat");
+    BEL_REGISTER_PRIM(env, "coin");
+    BEL_REGISTER_PRIM(env, "sys");
+
+    // Primitive operators
+    BEL_REGISTER_PRIM(env, "+");
+    BEL_REGISTER_PRIM(env, "-");
+    BEL_REGISTER_PRIM(env, "*");
+    BEL_REGISTER_PRIM(env, "/");
+    BEL_REGISTER_PRIM(env, "<");
+    BEL_REGISTER_PRIM(env, "<=");
+    BEL_REGISTER_PRIM(env, ">");
+    BEL_REGISTER_PRIM(env, ">=");
+    BEL_REGISTER_PRIM(env, "=");
+    
+    return env;
+}
+#+end_src
+
+The last step is to have a function which pushes these primitives
+automatically to the =globe= environment.
+
+#+begin_src C
+void
+bel_init_ax_primitives()
+{
+    bel_g_globe = bel_gen_primitives(bel_g_globe);
 }
 #+end_src
 
@@ -1705,6 +1840,16 @@ character_list_test()
 
 *** Read file bit by bit
 
+This test opens up the Believe C source code file as a read stream,
+using Bel's stream structure, then proceeds to read ten bytes from it
+(meaning that it will read 80 bits). Every eight bit will be stored in
+a Bel list and then converted to a proper Bel character, which will be
+displayed on screen along with its bits.
+
+It is interesting to notice that, since the bit-reading operation
+itself returns characters =\0= or =\1=, the bit list composing a character
+is always a Bel string.
+
 #+begin_src C
 void
 read_file_test()
@@ -1752,6 +1897,9 @@ read_file_test()
 
 *** Display errors
 
+We generate a few errors and grab them, then we print these errors on
+screen to show their literal structure.
+
 #+begin_src C
 void
 show_errors_test()
@@ -1782,6 +1930,31 @@ show_errors_test()
 }
 #+end_src
 
+*** Lookup primitives
+
+We look up a few registered primitives in the global environment, and
+print them in their literal form.
+
+#+begin_src C
+void
+lookup_primitives_test()
+{
+    Bel *bel;
+    bel = bel_env_lookup(bel_g_globe,
+                         bel_mksymbol("car"));
+    bel_dbg_print(bel); putchar(10);
+    bel = bel_env_lookup(bel_g_globe,
+                         bel_mksymbol("cdr"));
+    bel_dbg_print(bel); putchar(10);
+    bel = bel_env_lookup(bel_g_globe,
+                         bel_mksymbol("coin"));
+    bel_dbg_print(bel); putchar(10);
+    bel = bel_env_lookup(bel_g_globe,
+                         bel_mksymbol("stat"));
+    bel_dbg_print(bel); putchar(10);
+}
+#+end_src
+
 * Entry point
 ** Initialization
 
@@ -1793,15 +1966,14 @@ Bel*
 bel_init(void)
 {
     GC_INIT();
-    Bel_sym_table_init();
-    Bel *globe  = GC_MALLOC(sizeof (*globe));
-    globe->type = BEL_PAIR;
+    bel_sym_table_init();
 
     // Axioms
     bel_init_ax_vars();
     bel_init_ax_chars();
     bel_init_streams();
     bel_init_ax_env();
+    bel_init_ax_primitives();
 
     // TODO: Return an environment?
     return bel_g_nil;
@@ -1832,6 +2004,8 @@ run_tests()
     read_file_test();
     puts("  -- Show a few errors on screen");
     show_errors_test();
+    puts("  -- Lookup a few primitives and print them");
+    lookup_primitives_test();
 }
 #+end_src
 

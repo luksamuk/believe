@@ -72,6 +72,7 @@ Bel *bel_g_ins_sys;
 Bel *bel_g_outs_sys;
 Bel *bel_g_ins;
 Bel *bel_g_outs;
+Bel *bel_g_prim;
 
 Bel *bel_g_globe;
 Bel *bel_g_scope;
@@ -171,7 +172,7 @@ typedef struct {
 _Bel_sym_table g_sym_table;
 
 void
-Bel_sym_table_init(void)
+bel_sym_table_init(void)
 {
     g_sym_table.n_syms = 4;
     g_sym_table.size   = 4;
@@ -184,10 +185,10 @@ Bel_sym_table_init(void)
     g_sym_table.tbl[BEL_APPLY] = "apply";
 }
 
-Bel_sym Bel_sym_table_add(const char*); // Forward declaration
+Bel_sym bel_sym_table_add(const char*); // Forward declaration
 
 Bel_sym
-Bel_sym_table_find(const char *sym_literal)
+bel_sym_table_find(const char *sym_literal)
 {
     uint64_t i;
     size_t len = strlen(sym_literal);
@@ -197,11 +198,11 @@ Bel_sym_table_find(const char *sym_literal)
         }
     }
 
-    return Bel_sym_table_add(sym_literal);
+    return bel_sym_table_add(sym_literal);
 }
 
 Bel_sym
-Bel_sym_table_add(const char *sym_literal)
+bel_sym_table_add(const char *sym_literal)
 {
     if(g_sym_table.n_syms == g_sym_table.size) {
         uint64_t new_size = 2 * g_sym_table.size;
@@ -218,7 +219,7 @@ bel_mksymbol(const char *str)
 {
     Bel *ret  = GC_MALLOC(sizeof (*ret));
     ret->type = BEL_SYMBOL;
-    ret->sym  = Bel_sym_table_find(str);
+    ret->sym  = bel_sym_table_find(str);
     return ret;
 }
 
@@ -574,6 +575,8 @@ bel_init_ax_vars(void)
     bel_g_t     = bel_mksymbol("t");
     bel_g_o     = bel_mksymbol("o");
     bel_g_apply = bel_mksymbol("apply");
+
+    bel_g_prim  = bel_mksymbol("prim");
 }
 
 char*
@@ -658,6 +661,77 @@ bel_env_lookup(Bel *env, Bel *sym)
         itr = bel_cdr(itr);
     }
     return bel_g_nil;
+}
+
+Bel*
+bel_mkliteral(Bel *rest)
+{
+    if(!bel_proper_list_p(rest)) {
+        return bel_mkerror(
+            bel_mkstring("The object ~a is not a "
+                         "proper list to be turned "
+                         "into a literal."),
+            bel_mkpair(rest, bel_g_nil));
+    }
+
+    return bel_mkpair(bel_mksymbol("lit"),
+                      rest);
+}
+
+Bel*
+bel_mkprim(Bel *sym)
+{
+    return bel_mkliteral(
+        bel_mkpair(bel_g_prim,
+                   bel_mkpair(sym, bel_g_nil)));
+}
+
+#define BEL_REGISTER_PRIM(env, x)               \
+    {                                           \
+    Bel *sym = bel_mksymbol(x);                 \
+    env = bel_env_push(env, sym,                \
+                       bel_mkprim(sym));        \
+    }
+
+Bel*
+bel_gen_primitives(Bel *env)
+{
+    // Primitive functions
+    BEL_REGISTER_PRIM(env, "id");
+    BEL_REGISTER_PRIM(env, "join");
+    BEL_REGISTER_PRIM(env, "car");
+    BEL_REGISTER_PRIM(env, "cdr");
+    BEL_REGISTER_PRIM(env, "type");
+    BEL_REGISTER_PRIM(env, "xar");
+    BEL_REGISTER_PRIM(env, "xdr");
+    BEL_REGISTER_PRIM(env, "sym");
+    BEL_REGISTER_PRIM(env, "nom");
+    BEL_REGISTER_PRIM(env, "wrb");
+    BEL_REGISTER_PRIM(env, "rdb");
+    BEL_REGISTER_PRIM(env, "ops");
+    BEL_REGISTER_PRIM(env, "cls");
+    BEL_REGISTER_PRIM(env, "stat");
+    BEL_REGISTER_PRIM(env, "coin");
+    BEL_REGISTER_PRIM(env, "sys");
+
+    // Primitive operators
+    BEL_REGISTER_PRIM(env, "+");
+    BEL_REGISTER_PRIM(env, "-");
+    BEL_REGISTER_PRIM(env, "*");
+    BEL_REGISTER_PRIM(env, "/");
+    BEL_REGISTER_PRIM(env, "<");
+    BEL_REGISTER_PRIM(env, "<=");
+    BEL_REGISTER_PRIM(env, ">");
+    BEL_REGISTER_PRIM(env, ">=");
+    BEL_REGISTER_PRIM(env, "=");
+    
+    return env;
+}
+
+void
+bel_init_ax_primitives()
+{
+    bel_g_globe = bel_gen_primitives(bel_g_globe);
 }
 
 void bel_dbg_print(Bel*); // Forward declaration
@@ -911,19 +985,36 @@ show_errors_test()
     /* bel_dbg_print(err); putchar(10); */
 }
 
+void
+lookup_primitives_test()
+{
+    Bel *bel;
+    bel = bel_env_lookup(bel_g_globe,
+                         bel_mksymbol("car"));
+    bel_dbg_print(bel); putchar(10);
+    bel = bel_env_lookup(bel_g_globe,
+                         bel_mksymbol("cdr"));
+    bel_dbg_print(bel); putchar(10);
+    bel = bel_env_lookup(bel_g_globe,
+                         bel_mksymbol("coin"));
+    bel_dbg_print(bel); putchar(10);
+    bel = bel_env_lookup(bel_g_globe,
+                         bel_mksymbol("stat"));
+    bel_dbg_print(bel); putchar(10);
+}
+
 Bel*
 bel_init(void)
 {
     GC_INIT();
-    Bel_sym_table_init();
-    Bel *globe  = GC_MALLOC(sizeof (*globe));
-    globe->type = BEL_PAIR;
+    bel_sym_table_init();
 
     // Axioms
     bel_init_ax_vars();
     bel_init_ax_chars();
     bel_init_streams();
     bel_init_ax_env();
+    bel_init_ax_primitives();
 
     // TODO: Return an environment?
     return bel_g_nil;
@@ -947,6 +1038,8 @@ run_tests()
     read_file_test();
     puts("  -- Show a few errors on screen");
     show_errors_test();
+    puts("  -- Lookup a few primitives and print them");
+    lookup_primitives_test();
 }
 
 int
