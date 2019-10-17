@@ -1,15 +1,16 @@
 CC     = clang
-CFLAGS = --std=c11 -g -Wall
+CFLAGS = --std=c11 -g -Wall -O2 -DBEL_DEBUG
 CLIBS  = -lgc
 BIN    = believe
+OBJ    = believe.o
 
 .PHONY: clean
 
-$(BIN): *.o
+$(BIN): $(OBJ)
 	$(CC) $(CFLAGS) $(CLIBS) -o $@ $^
 
 %.o: %.c
-	$(CC) -c $(CFLAGS) -o $@ $^
+	$(CC) $(CFLAGS) -c -o $@ $^
 
 clean:
 	rm -rf *.o $(BIN)

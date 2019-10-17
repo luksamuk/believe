@@ -123,6 +123,45 @@ bel_errorp(Bel *x)
     return 1;
 }
 
+int
+bel_proper_list_p(Bel *x)
+{
+    if(!bel_pairp(x))
+        return 0;
+    
+    if(bel_nilp(x))
+        return 1;
+    
+    Bel *itr = x;
+    while(!bel_nilp(itr)) {
+        itr = bel_cdr(itr);
+        if(!bel_pairp(x))
+            return 0;
+    }
+
+    return 1;
+}
+
+int
+bel_stringp(Bel *x)
+{
+    if(!bel_proper_list_p(x)) {
+        return 0;
+    }
+
+    Bel *itr = x;
+    while(!bel_nilp(itr)) {
+        Bel *car = bel_car(itr);
+
+        if(!bel_charp(car))
+            return 0;
+
+        itr = bel_cdr(itr);
+    }
+
+    return 1;
+}
+
 typedef struct {
     const char **tbl;
     uint64_t     n_syms;
@@ -225,8 +264,6 @@ bel_cdr(Bel *p)
 uint64_t
 bel_length(Bel *list)
 {
-    // TODO: This makes no sense if the last element
-    // is not nil, AKA if we have simple pair anywhere
     Bel *itr = list;
     uint64_t len = 0;
     while(!bel_nilp(itr)) {
@@ -256,6 +293,14 @@ bel_char_from_binary(Bel *list)
             bel_g_nil);
     }
 
+    if(!bel_proper_list_p(list)) {
+        return bel_mkerror(
+            bel_mkstring("The object ~a is not a proper "
+                         "list, and therefore not a list "
+                         "of characters \\0 and \\1."),
+            bel_mkpair(list, bel_g_nil));
+    }
+
     size_t len = bel_length(list);
 
     if(len != 8) {
@@ -279,6 +324,14 @@ bel_char_from_binary(Bel *list)
                              "representation of a "
                              "character does not contain "
                              "only characters."),
+                bel_g_nil);
+        }
+
+        if(bitchar->chr != '0' && bitchar->chr != '1') {
+            return bel_mkerror(
+                bel_mkstring("The binary representation of "
+                             "a character must have exactly "
+                             "eight characters \\0 or \\1."),
                 bel_g_nil);
         }
         
@@ -326,8 +379,12 @@ bel_cstring(Bel *belstr)
         return NULL;
     }
     
-    // TODO: missing a decisive check for whether
-    // it really is a Bel string
+    if(!bel_stringp(belstr)) {
+        puts("INTERNAL ERROR on bel_cstring: "
+             "argument is not a string");
+        return NULL;
+    }
+    
     uint64_t len = bel_length(belstr);
     if(len == 0) return NULL;
     
@@ -335,7 +392,7 @@ bel_cstring(Bel *belstr)
 
     Bel *itr     = belstr;
     size_t i     = 0;
-    // TODO: may cause infinite loop...
+
     while(!bel_nilp(itr)) {
         str[i] = bel_car(itr)->chr;
         itr    = bel_cdr(itr);
@@ -583,7 +640,13 @@ bel_init_ax_env(void)
 Bel*
 bel_env_lookup(Bel *env, Bel *sym)
 {
-    // TODO: Test arguments
+    if(!bel_symbolp(sym)) {
+        return bel_mkerror(
+            bel_mkstring("Cannot perform lookup of ~a, "
+                         "which is not a symbol."),
+            bel_mkpair(sym, bel_g_nil));
+    }
+    
     Bel *itr = env;
     while(!bel_nilp(itr)) {
         Bel *p = bel_car(itr);
@@ -594,24 +657,6 @@ bel_env_lookup(Bel *env, Bel *sym)
         
         itr = bel_cdr(itr);
     }
-    return bel_g_nil;
-}
-
-Bel*
-bel_init(void)
-{
-    GC_INIT();
-    Bel_sym_table_init();
-    Bel *globe  = GC_MALLOC(sizeof (*globe));
-    globe->type = BEL_PAIR;
-
-    // Axioms
-    bel_init_ax_vars();
-    bel_init_ax_chars();
-    bel_init_streams();
-    bel_init_ax_env();
-
-    // TODO: Return an environment
     return bel_g_nil;
 }
 
@@ -647,13 +692,37 @@ bel_dbg_print_pair(Bel *obj)
 }
 
 void
+bel_dbg_print_string(Bel *obj)
+{
+    putchar('\"');
+    Bel *itr = obj;
+    while(!bel_nilp(itr)) {
+        Bel_char c = bel_car(itr)->chr;
+
+        switch(c) {
+        case '\a': printf("\\bel"); break;
+        default:   putchar(c);      break;
+        }
+
+        itr = bel_cdr(itr);
+    }
+    putchar('\"');
+}
+
+void
 bel_dbg_print(Bel *obj)
 {
     switch(obj->type) {
     case BEL_SYMBOL:
         printf("%s", g_sym_table.tbl[obj->sym]);
         break;
-    case BEL_PAIR:   bel_dbg_print_pair(obj);    break;
+    case BEL_PAIR:
+        if(!bel_stringp(obj)) {
+            bel_dbg_print_pair(obj);
+        } else {
+            bel_dbg_print_string(obj);
+        }
+        break;
     case BEL_CHAR:
         if(obj->chr == '\a')
             printf("\\bel"); // There is no Bel without \bel
@@ -667,11 +736,13 @@ bel_dbg_print(Bel *obj)
 void
 string_test()
 {
-    // There is no Bel without \bel
-    Bel *bel  = bel_mkstring("Hello, Bel\a");
+    Bel *bel  = bel_mkstring("Hello, Bel!");
     bel_dbg_print(bel);
-
     printf(" => %s\n", bel_cstring(bel));
+
+    bel = bel_mkstring("There is no Bel without \a");
+    bel_dbg_print(bel);
+    putchar(10);
 }
 
 void
@@ -742,14 +813,26 @@ void
 character_list_test()
 {
     // Character list
-    // Char: 0000 => (\0 \0 \0 \0 \0 \0 \0 \0)
-    // Char: 0001 => (\0 \0 \0 \0 \0 \0 \0 \1)
+    // Char: 000 (?) => "00000000"
+    // Char: 001 (?) => "00000001"
     // etc
+    const int first_char = 'a';
+    
     Bel *bel = bel_env_lookup(bel_g_globe, bel_mksymbol("chars"));
-    int i = 0;
-    while(!bel_nilp(bel) && i < 10) {
+    
+    int i;
+
+    // Get nth cdr
+    for(i = 0; i < first_char; i++) {
+        bel = bel_cdr(bel);
+    }
+
+    i = 'a';
+    while(!bel_nilp(bel) && i < first_char + 10) {
         Bel *car = bel_car(bel);
-        printf("Char: %04d => ", bel_car(car)->chr);
+        printf("Char: %03d (%c) => ",
+               bel_car(car)->chr,
+               ((Bel_char)i));
         bel_dbg_print(bel_cdr(car));
         putchar(10);
         bel = bel_cdr(bel);
@@ -764,10 +847,8 @@ read_file_test()
     // own source code file.
     Bel *file = bel_mkstream("believe.c", BEL_STREAM_READ);
 
-    // TODO: Fix this to error checking, since the failure
-    // return of bel_mkstream will change
-    if(bel_nilp(file)) {
-        printf("      Error opening file stream.\n");
+    if(bel_errorp(file)) {
+        bel_dbg_print(file);
         return;
     }
     
@@ -811,9 +892,41 @@ show_errors_test()
     err = bel_mkstream("waddawaddawadda", BEL_STREAM_READ);
     bel_dbg_print(err);
     putchar(10);
-
     printf("Is this an error? %c\n",
            bel_errorp(err) ? 'y' : 'n');
+
+    // Incorrect use of car and cdr
+    err = bel_car(bel_g_t);
+    bel_dbg_print(err); putchar(10);
+    err = bel_cdr(bel_g_t);
+    bel_dbg_print(err); putchar(10);
+
+    // Incorrect generation of Bel character from binary
+    /* Bel *str = bel_mkstring("110"); */
+    /* err = bel_char_from_binary(str); */
+    /* bel_dbg_print(err); putchar(10); */
+
+    /* str = bel_mkstring("110a1101"); */
+    /* err = bel_char_from_binary(str); */
+    /* bel_dbg_print(err); putchar(10); */
+}
+
+Bel*
+bel_init(void)
+{
+    GC_INIT();
+    Bel_sym_table_init();
+    Bel *globe  = GC_MALLOC(sizeof (*globe));
+    globe->type = BEL_PAIR;
+
+    // Axioms
+    bel_init_ax_vars();
+    bel_init_ax_chars();
+    bel_init_streams();
+    bel_init_ax_env();
+
+    // TODO: Return an environment?
+    return bel_g_nil;
 }
 
 void

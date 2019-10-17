@@ -86,7 +86,7 @@ so that the reader is able to take and analyse parts of said code
 based on the prose that accompanies it.
 
 ** Licenses
-*** Text license
+*** Prose license
 
 #+LATEX_ATTR: :width 0.2cm
 [[file:images/cc-by-sa.png]]
@@ -131,15 +131,16 @@ This section is not supposed to be exported in a PDF file.
 - [x] Environment functions
 - [x] Global environment object =globe=
 - [x] Various necessary predicates
-  - [ ] =stringp= predicate
+  - [x] =stringp= predicate
 - [x] Error object
-- [ ] Test for errors on core functions (WIP)
-- [ ] String printing
+- [x] String printing
+- [x] Test for errors on core functions
+- [ ] Add proper references with Org-ref and bibtex
 - [ ] Lexical environment object =scope=, shadowable, not unique
-- [ ] =err= function, basic error handling and propagation
+- [ ] =err= function, basic error handling and propagation (WIP)
+- [ ] Use =BEL_DEBUG= flag everywhere!
 
-* Build scripts
-
+* Tools and scripts
 ** Makefile
 
 This software was primarily developed on Void Linux x86\_64, using the
@@ -148,21 +149,113 @@ Believe.
 
 #+begin_src makefile :tangle Makefile
 CC     = clang
-CFLAGS = --std=c11 -g -Wall
+CFLAGS = --std=c11 -g -Wall -O2 -DBEL_DEBUG
 CLIBS  = -lgc
 BIN    = believe
+OBJ    = believe.o
 
 .PHONY: clean
 
-$(BIN): *.o
+$(BIN): $(OBJ)
 	$(CC) $(CFLAGS) $(CLIBS) -o $@ $^
 
 %.o: %.c
-	$(CC) -c $(CFLAGS) -o $@ $^
+	$(CC) $(CFLAGS) -c -o $@ $^
 
 clean:
 	rm -rf *.o $(BIN)
 #+end_src
+
+** Memory leak testing
+
+This script generates a log file with memory leak information using
+Valgrind. Valgrind's output is stored in =believe.log=.
+
+#+begin_src bash :results silent :tangle no
+valgrind --check_leaks=full --log-file="believe.log" -v ./believe
+#+end_src
+
+** Tangling
+
+The following snippet can be run from Emacs to enable tangling on save
+for this file only.
+
+Tangling is the process of taking each block of code and adding it to
+its specific file. Believe's code will be written in C source files;
+the Makefile will be written in its own file; and so on. Notice that
+some blocks (like this one) is not written anywhere, and is meant to
+be evaluated from inside Emacs.
+
+#+begin_src emacs-lisp :tangle no :exports none
+(let ((orig-lex-bind lexical-binding))
+  (setq lexical-binding t)
+  (add-hook 'after-save-hook 'org-babel-tangle)
+  (setq lexical-binding orig-lex-bind))
+#+end_src
+
+#+RESULTS:
+
+** Running the program
+
+This script attempts to build and run the Bel interpreter. It will
+also enable verbose output for the garbage collector.
+
+Under this script, we put a verbatim copy of the output.
+
+#+begin_src bash :tangle no :eval yes :cache yes :results output :exports both
+make
+printf "\n"
+export GC_PRINT_STATS=1
+./believe
+#+end_src
+
+#+RESULTS[ab52259b081e9364f93c43915fce96fd6151b11f]:
+#+begin_example
+clang --std=c11 -g -Wall -O2 -c -o believe.o believe.c
+clang --std=c11 -g -Wall -O2 -lgc -o believe believe.o
+
+Believe 0.1
+A Bel Lisp interpreter
+Copyright (c) 2019 Lucas Vieira
+This software is distributed under the MIT license.
+-- Running debug tests
+  -- String test
+"Hello, Bel!" => Hello, Bel!
+"There is no Bel without \bel"
+  -- Notation test
+((foo . bar) baz . quux)
+  -- List test
+(The quick brown fox jumps over the lazy dog)
+  -- Closure representation test
+(lit clo nil (x) (* x x))
+  -- Character List & Lookup test
+Char: 097 (a) => "01100001"
+Char: 098 (b) => "01100010"
+Char: 099 (c) => "01100011"
+Char: 100 (d) => "01100100"
+Char: 101 (e) => "01100101"
+Char: 102 (f) => "01100110"
+Char: 103 (g) => "01100111"
+Char: 104 (h) => "01101000"
+Char: 105 (i) => "01101001"
+Char: 106 (j) => "01101010"
+  -- Read five bytes from Believe's source
+"00100011" => \#
+"01101001" => \i
+"01101110" => \n
+"01100011" => \c
+"01101100" => \l
+"01110101" => \u
+"01100100" => \d
+"01100101" => \e
+"00100000" => \ 
+"00111100" => \<
+  -- Show a few errors on screen
+(lit err "Unable to open stream ~a." "waddawaddawadda")
+Is this an error? y
+(lit err "Cannot extract the car of ~a." t)
+(lit err "Cannot extract the cdr of ~a." t)
+#+end_example
 
 * Libraries and headers
 
@@ -181,19 +274,32 @@ error strings from streams, for example.
 #include <errno.h>
 #+end_src
 
-** Boehm Garbage Collector
+** Definitions
 
-We also use Boehm GC for garbage collection, instead of programming
-our own. The =GC_DEBUG= flag helps on debugging. See that we use =-lgc= on
-the Makefile to link the relevant library to the application.
+We'll use a flag for debug which influences the building
+process. Let's call this flag =BEL_DEBUG=.
+
+When building, if you pass this flag to Clang (see the Makefile), some
+debug outputs will be available.
+
+By default we'll leave it on, at least for now.
+
+** Boehm-Demers-Weiser Garbage Collector
+
+We also use Boehm-Demers-Weiser GC for garbage collection, instead of
+programming our own. The =GC_DEBUG= flag helps on debugging. See that we
+use =-lgc= on the Makefile to link the relevant library to the
+application.
 
 #+begin_src C
 #define GC_DEBUG
 #include <gc.h>
 #+end_src
 
-Plus, [[https://www.hboehm.info/gc/04tutorial.pdf][one could check the Boehm GC tutorial slides]] by Hans-J. Boehm,
-for a quick overview of this library.
+Plus, [[https://www.hboehm.info/gc/04tutorial.pdf][one could check the Boehm-Demers-Weiser GC tutorial slides]] by
+Hans-J. Boehm, for a quick overview of this library.
+
+#+TODO: Use GC_REGISTER_FINALIZER for streams... if convenient.
 
 ** Software-related definitions
 
@@ -329,7 +435,6 @@ struct BEL
 #+end_src
 
 * Essential structures and manipulation of data
-
 ** Basic definitions
 
 These definitions relate to essential symbols of the Bel global
@@ -400,11 +505,15 @@ errors. These predicates do not check for argument nullability
 (e.g. unmanaged pointers), so use it wisely and only on initialized
 data!
 
+**** =symbolp=
+
 =bel_symbolp= tests whether the element is a symbol.
 
 #+begin_src C
 #define bel_symbolp(x) (x->type==BEL_SYMBOL)
 #+end_src
+
+**** =nilp=
 
 =bel_nilp= tests whether the element is the /symbol/ =nil=.
 
@@ -412,6 +521,8 @@ data!
 #define bel_nilp(x)                             \
     (bel_symbolp(x) && (x->sym==BEL_NIL))
 #+end_src
+
+**** =pairp=
 
 =bel_pairp= tests whether the element is a /pair/. That is, either it is a
 proper pair, or it is the symbol =nil=.
@@ -423,6 +534,8 @@ assuming it since one can "extract" the /car/ and the /cdr/ of =nil=.
 #define bel_pairp(x)                            \
     ((x->type==BEL_PAIR) || bel_nilp(x))
 #+end_src
+
+**** =atomp=
 
 =bel_atomp= can be a little tricky to understand, altough the
 implementation is simple. Bel specifies that anything that is not a
@@ -442,6 +555,8 @@ an /atom/ and a /pair/.
     (bel_nilp(x) || !bel_pairp(x))
 #+end_src
 
+**** =charp=
+
 =bel_charp= tests whether the object is a character.
 
 #+begin_src C
@@ -449,12 +564,16 @@ an /atom/ and a /pair/.
     ((x->type==BEL_CHAR))
 #+end_src
 
+**** =streamp=
+
 =bel_streamp= tests whether the object is a stream.
 
 #+begin_src C
 #define bel_streamp(x)                          \
     ((x->type==BEL_STREAM))
 #+end_src
+
+**** =idp=
 
 =bel_idp= tests whether an object is identical to another.
 According to the Bel specification, identity is stricted than
@@ -479,6 +598,8 @@ bel_idp(Bel *x, Bel *y)
 }
 #+end_src
 
+**** =errorp=
+
 =bel_errorp= tests whether a specific object is a list in the format
 =(lit err . rest)=.
 
@@ -492,6 +613,78 @@ bel_errorp(Bel *x)
     Bel *cdr = bel_cdr(x);
     if(!bel_idp(bel_car(cdr), bel_mksymbol("err")))
         return 0;
+    return 1;
+}
+#+end_src
+
+**** =proper-list-p=
+
+A proper list is any list which ends in an appropriate =nil= symbol. So
+for example, =(1 2 3)= is a proper list, but =(1 2 3 . 4)= is not. Compare
+how these lists can be expressed by using dot notation:
+
+- =(1 . (2 . (3 . nil)))=
+- =(1 . (2 . (3 . 4)))=
+
+An empty list is considered a proper list as well.
+
+=bel_proper_list_p= checks whether a list is indeed a proper list. We do
+that by traversing the list, pair by pair. If the /cdr/ is =nil=, it is
+proper; if it is a pair, it proceeds the traversal. But if the /cdr/ is
+anything otherwise, then it is not a proper list.
+
+#+begin_src C
+int
+bel_proper_list_p(Bel *x)
+{
+    if(!bel_pairp(x))
+        return 0;
+    
+    if(bel_nilp(x))
+        return 1;
+    
+    Bel *itr = x;
+    while(!bel_nilp(itr)) {
+        itr = bel_cdr(itr);
+        if(!bel_pairp(x))
+            return 0;
+    }
+
+    return 1;
+}
+#+end_src
+
+**** =stringp=
+
+An object is a string if and only if:
+
+- it is a proper list;
+- it contains characters only.
+
+=bel_stringp= tests for this. However, this first implementation is a
+little naïve, since it performs a proper list check, which involves
+traversing an entire list, and then it traverses the list again,
+checking for characters in the /car/. This overhead can be reduced in
+the future.
+
+#+begin_src C
+int
+bel_stringp(Bel *x)
+{
+    if(!bel_proper_list_p(x)) {
+        return 0;
+    }
+
+    Bel *itr = x;
+    while(!bel_nilp(itr)) {
+        Bel *car = bel_car(itr);
+
+        if(!bel_charp(car))
+            return 0;
+
+        itr = bel_cdr(itr);
+    }
+
     return 1;
 }
 #+end_src
@@ -649,15 +842,15 @@ Let's also build an utility to return the size of a list. This is a
 =O(n)= operation which takes a well-formed list and iterates over
 it.
 
-#+TODO: Error-checking the length operation needs some sort of number type,
-#+TODO: since we need to wrap both the length and the error in a Bel structure.
+Note that *calculating the length of something that is not a /proper
+list/ makes no sense and will crash this operation*. So before calling
+=bel_length=, it is probably a good idea to check for a valid proper
+list using =bel_proper_list_p= or a similar procedure.
 
 #+begin_src C
 uint64_t
 bel_length(Bel *list)
 {
-    // TODO: This makes no sense if the last element
-    // is not nil, AKA if we have simple pair anywhere
     Bel *itr = list;
     uint64_t len = 0;
     while(!bel_nilp(itr)) {
@@ -701,6 +894,14 @@ bel_char_from_binary(Bel *list)
             bel_g_nil);
     }
 
+    if(!bel_proper_list_p(list)) {
+        return bel_mkerror(
+            bel_mkstring("The object ~a is not a proper "
+                         "list, and therefore not a list "
+                         "of characters \\0 and \\1."),
+            bel_mkpair(list, bel_g_nil));
+    }
+
     size_t len = bel_length(list);
 
     if(len != 8) {
@@ -724,6 +925,14 @@ bel_char_from_binary(Bel *list)
                              "representation of a "
                              "character does not contain "
                              "only characters."),
+                bel_g_nil);
+        }
+
+        if(bitchar->chr != '0' && bitchar->chr != '1') {
+            return bel_mkerror(
+                bel_mkstring("The binary representation of "
+                             "a character must have exactly "
+                             "eight characters \\0 or \\1."),
                 bel_g_nil);
         }
         
@@ -772,6 +981,11 @@ bel_mkstring(const char *str)
 We also add an utility to take back a Bel string and turn it into a
 garbage-collected C string.
 
+Note that the errors it can produce are instead dumped to the console
+and we return a null pointer; proper manipulation of this function is
+a responsibility of the programmer, since this is an internal
+function.
+
 #+begin_src C
 char*
 bel_cstring(Bel *belstr)
@@ -782,8 +996,12 @@ bel_cstring(Bel *belstr)
         return NULL;
     }
     
-    // TODO: missing a decisive check for whether
-    // it really is a Bel string
+    if(!bel_stringp(belstr)) {
+        puts("INTERNAL ERROR on bel_cstring: "
+             "argument is not a string");
+        return NULL;
+    }
+    
     uint64_t len = bel_length(belstr);
     if(len == 0) return NULL;
     
@@ -791,7 +1009,7 @@ bel_cstring(Bel *belstr)
 
     Bel *itr     = belstr;
     size_t i     = 0;
-    // TODO: may cause infinite loop...
+
     while(!bel_nilp(itr)) {
         str[i] = bel_car(itr)->chr;
         itr    = bel_cdr(itr);
@@ -906,7 +1124,7 @@ file, as described before too. Keep the cache full, read single bits
 as Bel characters, fill the cache when the read bits are exhausted.
 
 #+TODO: "Being unable to read a bit" signals an error.
-#+TODO: "No bit is currently available" returns nil -- but when will it return?
+#+TODO: "No bit is currently available" returns nil -- but how should I do it?
 
 #+begin_src C
 Bel*
@@ -1212,7 +1430,13 @@ lookup process either returns the associated value or returns =nil=.
 Bel*
 bel_env_lookup(Bel *env, Bel *sym)
 {
-    // TODO: Test arguments
+    if(!bel_symbolp(sym)) {
+        return bel_mkerror(
+            bel_mkstring("Cannot perform lookup of ~a, "
+                         "which is not a symbol."),
+            bel_mkpair(sym, bel_g_nil));
+    }
+    
     Bel *itr = env;
     while(!bel_nilp(itr)) {
         Bel *p = bel_car(itr);
@@ -1223,32 +1447,6 @@ bel_env_lookup(Bel *env, Bel *sym)
         
         itr = bel_cdr(itr);
     }
-    return bel_g_nil;
-}
-#+end_src
-
-* Initialization
-
-This section describes the initialization function for the Bel
-interpreter. Once this function is called, the Bel system is ready to
-be used.
-
-#+begin_src C
-Bel*
-bel_init(void)
-{
-    GC_INIT();
-    Bel_sym_table_init();
-    Bel *globe  = GC_MALLOC(sizeof (*globe));
-    globe->type = BEL_PAIR;
-
-    // Axioms
-    bel_init_ax_vars();
-    bel_init_ax_chars();
-    bel_init_streams();
-    bel_init_ax_env();
-
-    // TODO: Return an environment
     return bel_g_nil;
 }
 #+end_src
@@ -1297,6 +1495,28 @@ bel_dbg_print_pair(Bel *obj)
 }
 #+end_src
 
+** Printing strings
+
+#+begin_src C
+void
+bel_dbg_print_string(Bel *obj)
+{
+    putchar('\"');
+    Bel *itr = obj;
+    while(!bel_nilp(itr)) {
+        Bel_char c = bel_car(itr)->chr;
+
+        switch(c) {
+        case '\a': printf("\\bel"); break;
+        default:   putchar(c);      break;
+        }
+
+        itr = bel_cdr(itr);
+    }
+    putchar('\"');
+}
+#+end_src
+
 ** Printing data types
 
 The next function handles the printing of any data type. Notice that
@@ -1310,7 +1530,13 @@ bel_dbg_print(Bel *obj)
     case BEL_SYMBOL:
         printf("%s", g_sym_table.tbl[obj->sym]);
         break;
-    case BEL_PAIR:   bel_dbg_print_pair(obj);    break;
+    case BEL_PAIR:
+        if(!bel_stringp(obj)) {
+            bel_dbg_print_pair(obj);
+        } else {
+            bel_dbg_print_string(obj);
+        }
+        break;
     case BEL_CHAR:
         if(obj->chr == '\a')
             printf("\\bel"); // There is no Bel without \bel
@@ -1333,11 +1559,13 @@ strings, and vice-versa.
 void
 string_test()
 {
-    // There is no Bel without \bel
-    Bel *bel  = bel_mkstring("Hello, Bel\a");
+    Bel *bel  = bel_mkstring("Hello, Bel!");
     bel_dbg_print(bel);
-
     printf(" => %s\n", bel_cstring(bel));
+
+    bel = bel_mkstring("There is no Bel without \a");
+    bel_dbg_print(bel);
+    putchar(10);
 }
 #+end_src
 
@@ -1447,14 +1675,26 @@ void
 character_list_test()
 {
     // Character list
-    // Char: 0000 => (\0 \0 \0 \0 \0 \0 \0 \0)
-    // Char: 0001 => (\0 \0 \0 \0 \0 \0 \0 \1)
+    // Char: 000 (?) => "00000000"
+    // Char: 001 (?) => "00000001"
     // etc
+    const int first_char = 'a';
+    
     Bel *bel = bel_env_lookup(bel_g_globe, bel_mksymbol("chars"));
-    int i = 0;
-    while(!bel_nilp(bel) && i < 10) {
+    
+    int i;
+
+    // Get nth cdr
+    for(i = 0; i < first_char; i++) {
+        bel = bel_cdr(bel);
+    }
+
+    i = 'a';
+    while(!bel_nilp(bel) && i < first_char + 10) {
         Bel *car = bel_car(bel);
-        printf("Char: %04d => ", bel_car(car)->chr);
+        printf("Char: %03d (%c) => ",
+               bel_car(car)->chr,
+               ((Bel_char)i));
         bel_dbg_print(bel_cdr(car));
         putchar(10);
         bel = bel_cdr(bel);
@@ -1473,10 +1713,8 @@ read_file_test()
     // own source code file.
     Bel *file = bel_mkstream("believe.c", BEL_STREAM_READ);
 
-    // TODO: Fix this to error checking, since the failure
-    // return of bel_mkstream will change
-    if(bel_nilp(file)) {
-        printf("      Error opening file stream.\n");
+    if(bel_errorp(file)) {
+        bel_dbg_print(file);
         return;
     }
     
@@ -1524,15 +1762,56 @@ show_errors_test()
     err = bel_mkstream("waddawaddawadda", BEL_STREAM_READ);
     bel_dbg_print(err);
     putchar(10);
-
     printf("Is this an error? %c\n",
            bel_errorp(err) ? 'y' : 'n');
+
+    // Incorrect use of car and cdr
+    err = bel_car(bel_g_t);
+    bel_dbg_print(err); putchar(10);
+    err = bel_cdr(bel_g_t);
+    bel_dbg_print(err); putchar(10);
+
+    // Incorrect generation of Bel character from binary
+    /* Bel *str = bel_mkstring("110"); */
+    /* err = bel_char_from_binary(str); */
+    /* bel_dbg_print(err); putchar(10); */
+
+    /* str = bel_mkstring("110a1101"); */
+    /* err = bel_char_from_binary(str); */
+    /* bel_dbg_print(err); putchar(10); */
 }
 #+end_src
 
-*** Test entry point
+* Entry point
+** Initialization
 
-Now we just need an entry point for the test running.
+This is the initialization function for the Bel interpreter. Once this
+function is called, the Bel system is ready to be used.
+
+#+begin_src C
+Bel*
+bel_init(void)
+{
+    GC_INIT();
+    Bel_sym_table_init();
+    Bel *globe  = GC_MALLOC(sizeof (*globe));
+    globe->type = BEL_PAIR;
+
+    // Axioms
+    bel_init_ax_vars();
+    bel_init_ax_chars();
+    bel_init_streams();
+    bel_init_ax_env();
+
+    // TODO: Return an environment?
+    return bel_g_nil;
+}
+#+end_src
+
+** Tests
+
+This is the entry point for tests. All running tests are to be put
+here.
 
 #+begin_src C
 void
@@ -1556,7 +1835,7 @@ run_tests()
 }
 #+end_src
 
-* Entry point
+** =main= function
 
 This is the program entry point. It is supposed to only print the
 ribbon, initialize Bel and perform some tests, for now.
@@ -1578,66 +1857,4 @@ main(void)
     return 0;
 }
 #+end_src
-
-* Running the program
-
-This script attempts to build and run the Bel interpreter.
-
-#+begin_src emacs-lisp :tangle no :eval yes :cache yes :exports none
-(org-babel-tangle)
-#+end_src
-
-#+RESULTS[52cc16488330ca0b07d272e5a6d438063c4db85d]:
-| believe.c | Makefile | LICENSE |
-
-#+begin_src bash :tangle no :eval yes :cache yes :results output :exports both
-make
-printf "\n"
-./believe
-#+end_src
-
-#+RESULTS[d7c8fc11d0ced3ffb5a6c0baf69befe2f22937a2]:
-#+begin_example
-clang -c --std=c11 -g -Wall -o *.o believe.c
-clang --std=c11 -g -Wall -lgc -o believe *.o
-
-Believe 0.1
-A Bel Lisp interpreter
-Copyright (c) 2019 Lucas Vieira
-This software is distributed under the MIT license.
--- Running debug tests
-  -- String test
-(\H \e \l \l \o \, \  \B \e \l \bel) => Hello, Bel
-  -- Notation test
-((foo . bar) baz . quux)
-  -- List test
-(The quick brown fox jumps over the lazy dog)
-  -- Closure representation test
-(lit clo nil (x) (* x x))
-  -- Character List & Lookup test
-Char: 0000 => (\0 \0 \0 \0 \0 \0 \0 \0)
-Char: 0001 => (\0 \0 \0 \0 \0 \0 \0 \1)
-Char: 0002 => (\0 \0 \0 \0 \0 \0 \1 \0)
-Char: 0003 => (\0 \0 \0 \0 \0 \0 \1 \1)
-Char: 0004 => (\0 \0 \0 \0 \0 \1 \0 \0)
-Char: 0005 => (\0 \0 \0 \0 \0 \1 \0 \1)
-Char: 0006 => (\0 \0 \0 \0 \0 \1 \1 \0)
-Char: 0007 => (\0 \0 \0 \0 \0 \1 \1 \1)
-Char: 0008 => (\0 \0 \0 \0 \1 \0 \0 \0)
-Char: 0009 => (\0 \0 \0 \0 \1 \0 \0 \1)
-  -- Read five bytes from Believe's source
-(\0 \0 \1 \0 \0 \0 \1 \1) => \#
-(\0 \1 \1 \0 \1 \0 \0 \1) => \i
-(\0 \1 \1 \0 \1 \1 \1 \0) => \n
-(\0 \1 \1 \0 \0 \0 \1 \1) => \c
-(\0 \1 \1 \0 \1 \1 \0 \0) => \l
-(\0 \1 \1 \1 \0 \1 \0 \1) => \u
-(\0 \1 \1 \0 \0 \1 \0 \0) => \d
-(\0 \1 \1 \0 \0 \1 \0 \1) => \e
-(\0 \0 \1 \0 \0 \0 \0 \0) => \ 
-(\0 \0 \1 \1 \1 \1 \0 \0) => \<
-  -- Show a few errors on screen
-(lit err (\U \n \a \b \l \e \  \t \o \  \o \p \e \n \  \s \t \r \e \a \m \  \~ \a \.) (\w \a \d \d \a \w \a \d \d \a \w \a \d \d \a))
-Is this an error? y
-#+end_example
 
