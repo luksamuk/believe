@@ -1,6 +1,6 @@
 #+TITLE:    Believe: A Bel interpreter built with C11 [Beta]
 #+AUTHOR:   Lucas Vieira
-#+DATE:     2019
+# #+DATE:     2019
 #+PROPERTY: header-args:C :eval no :main no :tangle believe.c
 #+STARTUP:  content
 
@@ -24,6 +24,7 @@
 #+LATEX_HEADER: \usepackage{amsmath}
 #+LATEX_HEADER: \usepackage{geometry}
 #+LATEX_HEADER: \usepackage{tikz}
+#+LATEX_HEADER: \usepackage{draftwatermark}
 
 # Remove colorization of links
 #+LATEX_HEADER: \definecolor{blue}{RGB}{41,5,195}
