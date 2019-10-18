@@ -5,7 +5,24 @@
 #+STARTUP:  content
 
 :LATEX_PROPERTIES:
-#+LATEX_CLASS: article
+# Evaluate this block to use a book which starts with chapters instead
+# of parts.
+
+#+begin_src emacs-lisp :tangle no :eval yes :results silent :exports none
+(add-to-list 'org-latex-classes
+             '("book-noparts"
+               "\\documentclass{book}"
+               ("\\chapter{%s}" . "\\chapter*{%s}")
+               ("\\section{%s}" . "\\section*{%s}")
+               ("\\subsection{%s}" . "\\subsection*{%s}")
+               ("\\subsubsection{%s}" . "\\subsubsection*{%s}")
+               ("\\paragraph{%s}" . "\\paragraph*{%s}")
+               ("\\subparagraph{%s}" . "\\subparagraph*{%s}")))
+#+end_src
+
+# Preamble
+# #+LATEX_CLASS: article
+#+LATEX_CLASS: book-noparts
 #+LATEX_CLASS_OPTIONS: [a4paper,twoside]
 #+LATEX_HEADER: \usepackage[brazil]{babel}
 #+LATEX_HEADER: \usepackage{times}
