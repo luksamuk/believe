@@ -1160,6 +1160,7 @@ lexical_environment_test()
     Bel *lexenv = bel_g_nil;
     Bel *ret;
 
+    puts("    -- Registering local `foo`");
     lexenv = bel_env_push(lexenv,
                           bel_mksymbol("foo"),
                           bel_mksymbol("bar"));
@@ -1171,6 +1172,7 @@ lexical_environment_test()
     putchar(10); putchar(10);
 
     // Assignment
+    puts("    -- Assigning new value to `foo`");
     ret =
         bel_assign(lexenv,
                    bel_mksymbol("foo"),
@@ -1186,6 +1188,7 @@ lexical_environment_test()
     putchar(10); putchar(10);
 
     // Unbinding
+    puts("    -- Unbinding `foo`");
     ret = bel_unbind(&lexenv, bel_mksymbol("foo"));
     
     printf("Environment:       ");
@@ -1194,6 +1197,53 @@ lexical_environment_test()
     bel_dbg_print(ret);
     printf("\nLookup:            ");
     bel_dbg_print(bel_lookup(lexenv, bel_mksymbol("foo")));
+    putchar(10);
+}
+
+void
+global_assignment_test()
+{
+    Bel *lexenv = bel_g_nil;
+    Bel *ret;
+
+    // Global creation through assignment
+    puts("    -- Assigning `foo` without previous definition");
+    ret = bel_assign(bel_g_nil,
+                     bel_mksymbol("foo"),
+                     bel_mksymbol("bar"));
+
+    printf("Assignment result: ");
+    bel_dbg_print(ret);
+    printf("\nLookup:            ");
+    bel_dbg_print(bel_lookup(bel_g_nil, bel_mksymbol("foo")));
+    putchar(10); putchar(10);
+
+    // Local creation of variable bound to
+    // same symbol
+    puts("    -- Shadowing global `foo` with a local");
+    lexenv =
+        bel_env_push(lexenv,
+                     bel_mksymbol("foo"),
+                     bel_mksymbol("quux"));
+
+    printf("Environment:       ");
+    bel_dbg_print(lexenv);
+    printf("\nLookup:            ");
+    bel_dbg_print(bel_lookup(lexenv, bel_mksymbol("foo")));
+
+    // Three unbindings
+    printf("\n    -- Unbinding `foo` three times");
+    int i;
+    for(i = 0; i < 3; i++) {
+        ret = bel_unbind(&lexenv, bel_mksymbol("foo"));
+
+        printf("\n\nEnvironment:       ");
+        bel_dbg_print(lexenv);
+        printf("\nUnbinding result:  ");
+        bel_dbg_print(ret);
+        printf("\nLookup:            ");
+        bel_dbg_print(bel_lookup(lexenv, bel_mksymbol("foo")));
+    }
     putchar(10);
 }
 
@@ -1236,6 +1286,8 @@ run_tests()
     lookup_primitives_test();
     puts("  -- Lexical environment tests");
     lexical_environment_test();
+    puts("  -- Globals and assignment tests");
+    global_assignment_test();
 }
 
 int
