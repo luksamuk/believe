@@ -238,19 +238,17 @@ be evaluated from inside Emacs.
 This script attempts to build and run the Bel interpreter. It will
 also enable verbose output for the garbage collector.
 
-Under this script, we put a verbatim copy of the output.
-
-#+begin_src bash :tangle no :eval yes :cache yes :results output :exports both
+#+begin_src bash :tangle no :eval yes :cache yes :results output :exports code
 make
 printf "\n"
 export GC_PRINT_STATS=1
 ./believe
 #+end_src
 
-#+RESULTS[ab52259b081e9364f93c43915fce96fd6151b11f]:
+#+RESULTS[94b57beffeb8149ed822eb732ce8c9ac526fa891]:
 #+begin_example
-clang --std=c11 -g -Wall -O2 -DBEL_DEBUG -c -o believe.o believe.c
-clang --std=c11 -g -Wall -O2 -DBEL_DEBUG -lgc -o believe believe.o
+clang --std=c11 -g -O2 -Wall -DBEL_DEBUG -c -o believe.o believe.c
+clang --std=c11 -g -O2 -Wall -DBEL_DEBUG -lgc -o believe believe.o
 
 Believe 0.1
 A Bel Lisp interpreter
@@ -298,6 +296,44 @@ Is this an error? y
 (lit prim cdr)
 (lit prim coin)
 (lit prim stat)
+nil
+(lit err "The symbol ~a is unbound." wadawada)
+  -- Lexical environment tests
+    -- Registering local `foo`
+Environment:       ((foo . bar))
+Lookup:            bar
+
+    -- Assigning new value to `foo`
+Environment:       ((foo lit baz))
+Assignment result: foo
+Lookup:            (lit baz)
+
+    -- Unbinding `foo`
+Environment:       nil
+Unbinding result:  foo
+Lookup:            (lit err "The symbol ~a is unbound." foo)
+  -- Globals and assignment tests
+    -- Assigning `foo` without previous definition
+WARNING: Assignment failed, registering new global
+Assignment result: foo
+Lookup:            bar
+
+    -- Shadowing global `foo` with a local
+Environment:       ((foo . quux))
+Lookup:            quux
+    -- Unbinding `foo` three times
+
+Environment:       nil
+Unbinding result:  foo
+Lookup:            bar
+
+Environment:       nil
+Unbinding result:  foo
+Lookup:            (lit err "The symbol ~a is unbound." foo)
+
+Environment:       nil
+Unbinding result:  nil
+Lookup:            (lit err "The symbol ~a is unbound." foo)
 #+end_example
 
 * Libraries and headers
