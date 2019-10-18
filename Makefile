@@ -1,5 +1,5 @@
 CC     = clang
-CFLAGS = --std=c11 -g -Wall -O2 -DBEL_DEBUG
+CFLAGS = --std=c11 -g -O2 -Wall -DBEL_DEBUG
 CLIBS  = -lgc
 BIN    = believe
 OBJ    = believe.o

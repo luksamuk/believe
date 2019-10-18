@@ -74,8 +74,9 @@ Bel *bel_g_ins;
 Bel *bel_g_outs;
 Bel *bel_g_prim;
 
-Bel *bel_g_globe;
 Bel *bel_g_scope;
+Bel *bel_g_dynae;
+Bel *bel_g_globe;
 
 Bel *bel_mkerror(Bel *format, Bel *vars);   // Forward declaration
 Bel *bel_mkstring(const char*);             // Forward declaration
@@ -83,22 +84,22 @@ Bel *bel_mksymbol(const char*);             // Forward declaration
 Bel *bel_car(Bel*);                         // Forward declaration
 Bel *bel_cdr(Bel*);                         // Forward declaration
 
-#define bel_symbolp(x) (x->type==BEL_SYMBOL)
+#define bel_symbolp(x) ((x)->type==BEL_SYMBOL)
 
 #define bel_nilp(x)                             \
-    (bel_symbolp(x) && (x->sym==BEL_NIL))
+    (bel_symbolp(x) && ((x)->sym==BEL_NIL))
 
 #define bel_pairp(x)                            \
-    ((x->type==BEL_PAIR) || bel_nilp(x))
+    (((x)->type==BEL_PAIR) || bel_nilp(x))
 
 #define bel_atomp(x)                             \
     (bel_nilp(x) || !bel_pairp(x))
 
 #define bel_charp(x)                            \
-    ((x->type==BEL_CHAR))
+    (((x)->type==BEL_CHAR))
 
 #define bel_streamp(x)                          \
-    ((x->type==BEL_STREAM))
+    (((x)->type==BEL_STREAM))
 
 int
 bel_idp(Bel *x, Bel *y)
@@ -635,6 +636,10 @@ bel_env_push(Bel *env, Bel *var, Bel *val)
 void
 bel_init_ax_env(void)
 {
+    bel_g_globe = bel_g_nil;
+    bel_g_dynae = bel_g_nil;
+    bel_g_scope = bel_g_nil; // TODO: is this really necessary?
+    
     BEL_ENV_GLOBAL_PUSH("chars", bel_g_chars);
     BEL_ENV_GLOBAL_PUSH("ins",   bel_g_ins);
     BEL_ENV_GLOBAL_PUSH("outs",  bel_g_outs);
@@ -643,13 +648,17 @@ bel_init_ax_env(void)
 Bel*
 bel_env_lookup(Bel *env, Bel *sym)
 {
+    if(bel_nilp(env)) {
+        return bel_g_nil;
+    }
+    
     if(!bel_symbolp(sym)) {
         return bel_mkerror(
             bel_mkstring("Cannot perform lookup of ~a, "
                          "which is not a symbol."),
             bel_mkpair(sym, bel_g_nil));
     }
-    
+
     Bel *itr = env;
     while(!bel_nilp(itr)) {
         Bel *p = bel_car(itr);
@@ -660,6 +669,136 @@ bel_env_lookup(Bel *env, Bel *sym)
         
         itr = bel_cdr(itr);
     }
+    return bel_g_nil;
+}
+
+Bel*
+bel_lookup(Bel *lenv, Bel *sym)
+{
+    Bel *value;
+
+    // Lexical scope lookup
+    value = bel_env_lookup(lenv, sym);
+    if(!bel_nilp(value)) {
+        return value;
+    }
+
+    // Dynamic scope lookup
+    value = bel_env_lookup(bel_g_dynae, sym);
+    if(!bel_nilp(value)) {
+        return value;
+    }
+
+    // Global scope lookup
+    value = bel_env_lookup(bel_g_globe, sym);
+    if(bel_nilp(value)) {
+        return bel_mkerror(
+            bel_mkstring("The symbol ~a is unbound."),
+            bel_mkpair(sym, bel_g_nil));
+    }
+
+    return value;
+}
+
+Bel*
+bel_env_replace_val(Bel *env, Bel *sym, Bel *new_val)
+{
+    if(bel_nilp(env)) {
+        return bel_g_nil;
+    }
+    
+    Bel *itr = env;
+    while(!bel_nilp(itr)) {
+        Bel *p = bel_car(itr);
+        if(bel_idp(sym, bel_car(p))) {
+            p->pair->cdr = new_val;
+            return sym;
+        }
+        itr = bel_cdr(itr);
+    }
+    return bel_g_nil;
+}
+
+Bel*
+bel_env_unbind(Bel **env, Bel *sym)
+{
+    if(bel_nilp(*env)) {
+        return bel_g_nil;
+    }
+    
+    // If first element is a match, return
+    // cdr of environment
+    if(bel_idp(bel_car(bel_car(*env)), sym)) {
+        *env = bel_cdr(*env);
+        return bel_g_t;
+    }
+
+    // Iterate looking at the next element always.
+    // If next element is a match, set current cdr
+    // to cdr of next element
+    Bel *itr = *env;
+    while(!bel_nilp(bel_cdr(itr))) {
+        Bel *p = bel_car(bel_cdr(itr));
+        if(bel_idp(bel_car(p), sym)) {
+            itr->pair->cdr = p->pair->cdr;
+            return bel_g_t;
+        }
+        
+        itr = bel_cdr(itr);
+    }
+
+    // On no substitution, return nil
+    return bel_g_nil;
+}
+
+Bel*
+bel_assign(Bel *lenv, Bel *sym, Bel *new_val)
+{
+    Bel *ret;
+
+    // Lexical assignment
+    ret = bel_env_replace_val(lenv, sym, new_val);
+    if(!bel_nilp(ret)) return sym;
+
+    // Dynamic assignment
+    ret = bel_env_replace_val(bel_g_dynae, sym, new_val);
+    if(!bel_nilp(ret)) return sym;
+
+    // Global assignment
+    ret = bel_env_replace_val(bel_g_globe, sym, new_val);
+    if(!bel_nilp(ret)) return sym;
+
+    // When not assignment was made, we push a global value
+    // TODO: We might need a proper warning API
+    puts("WARNING: Assignment failed, registering new global");
+    bel_g_globe = bel_env_push(bel_g_globe, sym, new_val);
+    return sym;
+}
+
+Bel*
+bel_unbind(Bel **lenv, Bel *sym)
+{
+    Bel *ans;
+
+    // Lexical unbinding
+    ans = bel_env_unbind(lenv, sym);
+    if(!bel_nilp(ans)) {
+        return sym;
+    }
+
+    // Dynamic unbinding
+    ans = bel_env_unbind(&bel_g_dynae, sym);
+    if(!bel_nilp(ans)) {
+        return sym;
+    }
+
+    // Global unbinding
+    ans = bel_env_unbind(&bel_g_globe, sym);
+    if(!bel_nilp(ans)) {
+        return sym;
+    }
+
+    // On no unbinding, return nil
     return bel_g_nil;
 }
 
@@ -724,6 +863,9 @@ bel_gen_primitives(Bel *env)
     BEL_REGISTER_PRIM(env, ">");
     BEL_REGISTER_PRIM(env, ">=");
     BEL_REGISTER_PRIM(env, "=");
+
+    // Other primitives
+    BEL_REGISTER_PRIM(env, "err");
     
     return env;
 }
@@ -989,18 +1131,70 @@ void
 lookup_primitives_test()
 {
     Bel *bel;
-    bel = bel_env_lookup(bel_g_globe,
-                         bel_mksymbol("car"));
-    bel_dbg_print(bel); putchar(10);
-    bel = bel_env_lookup(bel_g_globe,
-                         bel_mksymbol("cdr"));
-    bel_dbg_print(bel); putchar(10);
-    bel = bel_env_lookup(bel_g_globe,
-                         bel_mksymbol("coin"));
-    bel_dbg_print(bel); putchar(10);
-    bel = bel_env_lookup(bel_g_globe,
-                         bel_mksymbol("stat"));
-    bel_dbg_print(bel); putchar(10);
+    bel = bel_lookup(bel_g_nil, bel_mksymbol("car"));
+    bel_dbg_print(bel);
+    putchar(10);
+
+    bel = bel_lookup(bel_g_nil, bel_mksymbol("cdr"));
+    bel_dbg_print(bel);
+    putchar(10);
+
+    bel = bel_lookup(bel_g_nil, bel_mksymbol("coin"));
+    bel_dbg_print(bel);
+    putchar(10);
+    
+    bel = bel_lookup(bel_g_nil, bel_mksymbol("stat"));
+    bel_dbg_print(bel);
+    putchar(10);
+
+    // Undefined primitive
+    bel_dbg_print(bel_g_nil); putchar(10);
+    bel = bel_lookup(bel_g_nil, bel_mksymbol("wadawada"));
+    bel_dbg_print(bel);
+    putchar(10);
+}
+
+void
+lexical_environment_test()
+{
+    Bel *lexenv = bel_g_nil;
+    Bel *ret;
+
+    lexenv = bel_env_push(lexenv,
+                          bel_mksymbol("foo"),
+                          bel_mksymbol("bar"));
+    
+    printf("Environment:       ");
+    bel_dbg_print(lexenv);
+    printf("\nLookup:            ");
+    bel_dbg_print(bel_lookup(lexenv, bel_mksymbol("foo")));
+    putchar(10); putchar(10);
+
+    // Assignment
+    ret =
+        bel_assign(lexenv,
+                   bel_mksymbol("foo"),
+                   bel_mkliteral(bel_mkpair(bel_mksymbol("baz"),
+                                            bel_g_nil)));
+
+    printf("Environment:       ");
+    bel_dbg_print(lexenv);
+    printf("\nAssignment result: ");
+    bel_dbg_print(ret);
+    printf("\nLookup:            ");
+    bel_dbg_print(bel_lookup(lexenv, bel_mksymbol("foo")));
+    putchar(10); putchar(10);
+
+    // Unbinding
+    ret = bel_unbind(&lexenv, bel_mksymbol("foo"));
+    
+    printf("Environment:       ");
+    bel_dbg_print(lexenv);
+    printf("\nUnbinding result:  ");
+    bel_dbg_print(ret);
+    printf("\nLookup:            ");
+    bel_dbg_print(bel_lookup(lexenv, bel_mksymbol("foo")));
+    putchar(10);
 }
 
 Bel*
@@ -1040,6 +1234,8 @@ run_tests()
     show_errors_test();
     puts("  -- Lookup a few primitives and print them");
     lookup_primitives_test();
+    puts("  -- Lexical environment tests");
+    lexical_environment_test();
 }
 
 int
