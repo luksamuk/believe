@@ -3,7 +3,10 @@
 #include <string.h>
 #include <errno.h>
 
+#ifdef BEL_DEBUG
 #define GC_DEBUG
+#endif
+
 #include <gc.h>
 
 #define BELIEVE_VERSION   "0.1"
@@ -1301,7 +1304,9 @@ main(void)
 
     bel_init();
 
+#ifdef BEL_DEBUG
     run_tests();
+#endif
     
     return 0;
 }

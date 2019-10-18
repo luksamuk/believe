@@ -137,7 +137,7 @@ This section is not supposed to be exported in a PDF file.
 - [x] String printing
 - [x] Test for errors on core functions
 - [x] Dynamic environment
-- [ ] Assignments/Unassignments
+- [x] Assignments/Unassignments
 - [ ] Add proper references with Org-ref and bibtex
 - [ ] Lexical environment object =scope=, shadowable, not unique
 - [ ] =err= primitive function, basic error handling and propagation
@@ -371,7 +371,10 @@ use =-lgc= on the Makefile to link the relevant library to the
 application.
 
 #+begin_src C
+#ifdef BEL_DEBUG
 #define GC_DEBUG
+#endif
+
 #include <gc.h>
 #+end_src
 
@@ -2478,7 +2481,9 @@ main(void)
 
     bel_init();
 
+#ifdef BEL_DEBUG
     run_tests();
+#endif
     
     return 0;
 }
