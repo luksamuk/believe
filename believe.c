@@ -1,4 +1,6 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
 #include <stdint.h>
 #include <string.h>
 #include <errno.h>
@@ -76,6 +78,7 @@ Bel *bel_g_outs_sys;
 Bel *bel_g_ins;
 Bel *bel_g_outs;
 Bel *bel_g_prim;
+Bel *bel_g_clo;
 
 Bel *bel_g_scope;
 Bel *bel_g_dynae;
@@ -167,6 +170,42 @@ bel_stringp(Bel *x)
     return 1;
 }
 
+int
+bel_literalp(Bel *x)
+{
+    if(!bel_proper_list_p(x))
+        return 0;
+
+    return bel_idp(bel_car(x),
+                   bel_mksymbol("lit"));
+}
+
+int
+bel_primitivep(Bel *x)
+{
+    return bel_literalp(x)
+        && bel_idp(bel_car(bel_cdr(x)),
+                   bel_mksymbol("prim"));
+}
+
+int
+bel_closurep(Bel *x)
+{
+    return bel_literalp(x)
+        && bel_idp(bel_car(bel_cdr(x)),
+                   bel_mksymbol("clo"));
+}
+
+int
+bel_quotep(Bel *x)
+{
+    if(!bel_proper_list_p(x))
+        return 0;
+
+    return bel_idp(bel_car(x),
+                   bel_mksymbol("quote"));
+}
+
 typedef struct {
     const char **tbl;
     uint64_t     n_syms;
@@ -195,9 +234,8 @@ Bel_sym
 bel_sym_table_find(const char *sym_literal)
 {
     uint64_t i;
-    size_t len = strlen(sym_literal);
     for(i = 0; i < g_sym_table.n_syms; i++) {
-        if(!strncmp(sym_literal, g_sym_table.tbl[i], len)) {
+        if(!strcmp(sym_literal, g_sym_table.tbl[i])) {
             return i;
         }
     }
@@ -216,6 +254,12 @@ bel_sym_table_add(const char *sym_literal)
     }
     g_sym_table.tbl[g_sym_table.n_syms++] = sym_literal;
     return (g_sym_table.n_syms - 1);
+}
+
+const char*
+bel_sym_find_name(Bel *sym)
+{
+    return g_sym_table.tbl[sym->sym];
 }
 
 Bel*
@@ -581,6 +625,7 @@ bel_init_ax_vars(void)
     bel_g_apply = bel_mksymbol("apply");
 
     bel_g_prim  = bel_mksymbol("prim");
+    bel_g_clo   = bel_mksymbol("clo");
 }
 
 char*
@@ -879,10 +924,18 @@ bel_init_ax_primitives()
     bel_g_globe = bel_gen_primitives(bel_g_globe);
 }
 
-void bel_dbg_print(Bel*); // Forward declaration
+Bel*
+bel_mkclosure(Bel *lenv, Bel *rest)
+{
+    return bel_mkliteral(
+        bel_mkpair(bel_g_clo,
+                   bel_mkpair(lenv, rest)));
+}
+
+void bel_print(Bel*); // Forward declaration
 
 void
-bel_dbg_print_pair(Bel *obj)
+bel_print_pair(Bel *obj)
 {
     if(bel_nilp(obj)) return;
     
@@ -893,7 +946,7 @@ bel_dbg_print_pair(Bel *obj)
         Bel *car = bel_car(itr);
         Bel *cdr = bel_cdr(itr);
 
-        bel_dbg_print(car);
+        bel_print(car);
         
         if(bel_nilp(cdr)) {
             break;
@@ -901,7 +954,7 @@ bel_dbg_print_pair(Bel *obj)
             putchar(' ');
             putchar('.');
             putchar(' ');
-            bel_dbg_print(cdr);
+            bel_print(cdr);
             break;
         }
         putchar(' ');
@@ -911,7 +964,7 @@ bel_dbg_print_pair(Bel *obj)
 }
 
 void
-bel_dbg_print_string(Bel *obj)
+bel_print_string(Bel *obj)
 {
     putchar('\"');
     Bel *itr = obj;
@@ -929,7 +982,23 @@ bel_dbg_print_string(Bel *obj)
 }
 
 void
-bel_dbg_print(Bel *obj)
+bel_print_stream(Bel *obj)
+{
+    printf("#<stream :status ");
+    if(obj->stream.status == BEL_STREAM_CLOSED) {
+        printf("closed>");
+    } else {
+        switch(obj->stream.status) {
+        case BEL_STREAM_READ:  printf("input ");  break;
+        case BEL_STREAM_WRITE: printf("output "); break;
+        default: printf("unknown ");              break;
+        }
+        printf("{0x%08lx}>", (uint64_t)obj->stream.raw_stream);
+    }
+}
+
+void
+bel_print(Bel *obj)
 {
     switch(obj->type) {
     case BEL_SYMBOL:
@@ -937,9 +1006,9 @@ bel_dbg_print(Bel *obj)
         break;
     case BEL_PAIR:
         if(!bel_stringp(obj)) {
-            bel_dbg_print_pair(obj);
+            bel_print_pair(obj);
         } else {
-            bel_dbg_print_string(obj);
+            bel_print_string(obj);
         }
         break;
     case BEL_CHAR:
@@ -947,20 +1016,605 @@ bel_dbg_print(Bel *obj)
             printf("\\bel"); // There is no Bel without \bel
         else printf("\\%c", obj->chr);
         break;
-    case BEL_STREAM: printf("<stream>");         break;
-    default:         printf("???");              break; // wat
+    case BEL_STREAM:
+        bel_print_stream(obj);
+        break;
+    default:
+        printf("#<\?\?\?>"); // wat
+        break;
     };
+}
+
+Bel *bel_eval(Bel *exp, Bel *lenv);
+Bel *bel_apply(Bel *proc, Bel *args);
+Bel *bel_evlist(Bel *elist, Bel *lenv);
+Bel *bel_apply_primop(Bel *sym, Bel *args);
+Bel *bel_bind(Bel *vars, Bel *vals, Bel *lenv);
+
+Bel*
+bel_eval(Bel *exp, Bel *lenv)
+{
+#ifdef BEL_DEBUG
+        printf("eval>  ");
+        bel_print(exp);
+        putchar(10);
+#endif
+
+    // number: eval to itself
+    // TODO
+    
+    // symbol: look it up
+    if(bel_symbolp(exp)) {
+        return bel_lookup(lenv, exp);
+    }
+
+    // quote, length two:  give back the second element
+    if(bel_quotep(exp)) {
+        uint64_t len = bel_length(exp);
+        if(len != 2) {
+            return bel_mkerror(
+                bel_mkstring("Malformed quote: can only "
+                             "quote one object."),
+                bel_g_nil);
+        }
+
+        return bel_car(bel_cdr(exp));
+    }
+    
+    // lit: eval to itself
+    else if(bel_literalp(exp)) {
+        return exp;
+    }
+    
+    // fn: closure
+    else if(bel_proper_list_p(exp)
+            && bel_idp(bel_car(exp),
+                      bel_mksymbol("fn"))) {
+        return bel_mkclosure(lenv, bel_cdr(exp));
+    }
+    
+    // if
+    
+    // apply
+    
+    // join
+    
+    // where (not straightforward)
+    
+    // dyn: dynamic binding
+    
+    // after
+    
+    // set: Global binding
+    
+    // TODO: ccc
+    
+    // TODO: thread
+
+    // else it is the case of an application
+    else {
+        if(!bel_proper_list_p(exp)) {
+            return bel_mkerror(
+                bel_mkstring("~a is not a proper list "
+                             "for the application of "
+                             "a function."),
+                bel_mkpair(exp, bel_g_nil));
+        }
+        return bel_apply(bel_eval(bel_car(exp), lenv),
+                         bel_evlist(bel_cdr(exp), lenv));
+    }
+}
+
+Bel*
+bel_apply(Bel *fun, Bel *args)
+{
+#ifdef BEL_DEBUG
+    printf("apply> ");
+    bel_print(fun);
+    printf(" at ");
+    bel_print(args);
+    putchar(10);
+#endif
+    
+    // Check for errors on fun
+    if(bel_errorp(fun)) {
+        return fun;
+    }
+    
+    // Primitive procedure
+    else if(bel_primitivep(fun)) {
+        return bel_apply_primop(
+            bel_car(bel_cdr(bel_cdr(fun))),
+            args);
+    }
+    
+    // Closure
+    else if(bel_closurep(fun)) {
+        Bel *lenv =
+            bel_car(
+                bel_cdr(bel_cdr(fun)));
+        Bel *lambda_list =
+            bel_car(
+                bel_cdr(bel_cdr(bel_cdr(fun))));
+        Bel *body =
+            bel_car(
+                bel_cdr(bel_cdr(bel_cdr(
+                                    bel_cdr(fun)))));
+        
+        // Generate a new environment with the
+        // arguments bound in it
+        Bel *new_env = bel_bind(lambda_list,
+                                args,
+                                lenv);
+
+        if(bel_errorp(new_env)) {
+            return new_env;
+        }
+
+        // Evaluate body on the new environment
+        return bel_eval(body, new_env);
+    }
+
+    // Error
+    else {
+        return bel_mkerror(
+            bel_mkstring("~a is not a procedure"),
+            bel_mkpair(fun, bel_g_nil));
+    }
+}
+
+Bel*
+bel_evlist(Bel *elist, Bel *lenv)
+{
+    if(bel_nilp(elist)) {
+        return bel_g_nil;
+    }
+
+    Bel *eval_result =
+        bel_eval(bel_car(elist), lenv);
+
+    if(bel_errorp(eval_result)) {
+        return eval_result;
+    }
+
+    Bel *ev_rest =
+        bel_evlist(bel_cdr(elist), lenv);
+
+    if(bel_errorp(ev_rest)) {
+        return ev_rest;
+    }
+
+    return bel_mkpair(eval_result, ev_rest);
+}
+
+// Primitive functions
+Bel *bel_prim_id(Bel *args);
+Bel *bel_prim_join(Bel *args);
+Bel *bel_prim_car(Bel *args);
+Bel *bel_prim_cdr(Bel *args);
+Bel *bel_prim_type(Bel *args);
+Bel *bel_prim_xar(Bel *args);
+Bel *bel_prim_xdr(Bel *args);
+Bel *bel_prim_sym(Bel *args);
+Bel *bel_prim_nom(Bel *args);
+Bel *bel_prim_wrb(Bel *args);
+Bel *bel_prim_rdb(Bel *args);
+Bel *bel_prim_ops(Bel *args);
+Bel *bel_prim_cls(Bel *args);
+Bel *bel_prim_stat(Bel *args);
+Bel *bel_prim_coin(Bel *args);
+//Bel *bel_prim_sys(Bel *args);
+
+// Primitive operators
+//Bel *bel_prim_add(Bel *args);
+//Bel *bel_prim_sub(Bel *args);
+//Bel *bel_prim_mul(Bel *args);
+//Bel *bel_prim_div(Bel *args);
+//Bel *bel_prim_less(Bel *args);
+//Bel *bel_prim_leq(Bel *args);
+//Bel *bel_prim_great(Bel *args);
+//Bel *bel_prim_geq(Bel *args);
+//Bel *bel_prim_eq(Bel *args);
+
+// Other primitives
+Bel *bel_prim_err(Bel *args);
+
+#define bel_is_prim(sym, lit)                     \
+    (bel_idp(sym, bel_mksymbol(lit)))
+
+#define bel_unimplemented(sym)                                  \
+    bel_mkerror(                                                \
+    bel_mkstring("~a is not implemented."),                     \
+    bel_mkpair(sym, bel_g_nil))
+
+Bel*
+bel_apply_primop(Bel *sym, Bel *args)
+{
+    // Primitive functions
+    if(bel_is_prim(sym, "id"))
+        return bel_prim_id(args);
+
+    else if(bel_is_prim(sym, "join"))
+        return bel_prim_join(args);
+
+    else if(bel_is_prim(sym, "car"))
+        return bel_prim_car(args);
+
+    else if(bel_is_prim(sym, "cdr"))
+        return bel_prim_cdr(args);
+
+    else if(bel_is_prim(sym, "type"))
+        return bel_prim_type(args);
+
+    else if(bel_is_prim(sym, "xar"))
+        return bel_prim_xar(args);
+
+    else if(bel_is_prim(sym, "xdr"))
+        return bel_prim_xdr(args);
+
+    else if(bel_is_prim(sym, "sym"))
+        return bel_prim_sym(args);
+
+    else if(bel_is_prim(sym, "nom"))
+        return bel_prim_nom(args);
+
+    else if(bel_is_prim(sym, "wrb"))
+        return bel_prim_wrb(args);
+
+    else if(bel_is_prim(sym, "rdb"))
+        return bel_prim_rdb(args);
+
+    else if(bel_is_prim(sym, "ops"))
+        return bel_prim_ops(args);
+
+    else if(bel_is_prim(sym, "cls"))
+        return bel_prim_cls(args);
+
+    else if(bel_is_prim(sym, "stat"))
+        return bel_prim_stat(args);
+
+    else if(bel_is_prim(sym, "coin"))
+        return bel_prim_coin(args);
+
+    else if(bel_is_prim(sym, "sys"))
+        return bel_unimplemented(sym);
+
+    // Primitive operators
+    else if(bel_is_prim(sym, "+"))
+        return bel_unimplemented(sym);
+
+    else if(bel_is_prim(sym, "-"))
+        return bel_unimplemented(sym);
+
+    else if(bel_is_prim(sym, "*"))
+        return bel_unimplemented(sym);
+
+    else if(bel_is_prim(sym, "/"))
+        return bel_unimplemented(sym);
+
+    else if(bel_is_prim(sym, "<"))
+        return bel_unimplemented(sym);
+
+    else if(bel_is_prim(sym, "<="))
+        return bel_unimplemented(sym);
+
+    else if(bel_is_prim(sym, ">"))
+        return bel_unimplemented(sym);
+
+    else if(bel_is_prim(sym, ">="))
+        return bel_unimplemented(sym);
+
+    else if(bel_is_prim(sym, "="))
+        return bel_unimplemented(sym);
+    
+    // Other primitives
+    else if(bel_is_prim(sym, "err"))
+        return bel_prim_err(args);
+
+    else {
+        return bel_mkerror(
+            bel_mkstring("Unknown primitive ~a."),
+            bel_mkpair(sym, bel_g_nil));
+    }
+}
+
+#define BEL_CHECK_ARITY(args, num)                      \
+    {                                                   \
+    uint64_t length = bel_length(args);                 \
+    if(length != num) {                                 \
+    return bel_mkerror(                                 \
+        bel_mkstring("Arity error"), bel_g_nil);        \
+    }                                                   \
+    }
+
+Bel*
+bel_prim_id(Bel *args)
+{
+    BEL_CHECK_ARITY(args, 2);
+    return (bel_idp(bel_car(args),
+                    bel_car(bel_cdr(args)))
+            ? bel_g_t : bel_g_nil);
+}
+
+Bel*
+bel_prim_join(Bel *args)
+{
+    BEL_CHECK_ARITY(args, 2);
+    return bel_mkpair(bel_car(args),
+                      bel_car(bel_cdr(args)));
+}
+
+Bel*
+bel_prim_car(Bel *args)
+{
+    BEL_CHECK_ARITY(args, 1);
+    return bel_car(bel_car(args));
+}
+
+Bel*
+bel_prim_cdr(Bel *args)
+{
+    BEL_CHECK_ARITY(args, 1);
+    return bel_cdr(bel_car(args));
+}
+
+Bel*
+bel_prim_type(Bel *args)
+{
+    BEL_CHECK_ARITY(args, 1);
+    switch(bel_car(args)->type) {
+    case BEL_SYMBOL: return bel_mksymbol("symbol");  break;
+    case BEL_PAIR:   return bel_mksymbol("pair");    break;
+    case BEL_CHAR:   return bel_mksymbol("char");    break;
+    case BEL_STREAM: return bel_mksymbol("stream");  break;
+    default:         return bel_mksymbol("unknown"); break;
+    };
+}
+
+Bel*
+bel_prim_xar(Bel *args)
+{
+    BEL_CHECK_ARITY(args, 2);
+    Bel *pair = bel_car(args);
+    Bel *val  = bel_car(bel_cdr(args));
+    if(!bel_pairp(pair)) {
+        return bel_mkerror(
+            bel_mkstring("~a is not a pair."),
+            bel_mkpair(pair, bel_g_nil));
+    }
+
+    pair->pair->car = val;
+    return val;
+}
+
+Bel*
+bel_prim_xdr(Bel *args)
+{
+    BEL_CHECK_ARITY(args, 2);
+    Bel *pair = bel_car(args);
+    Bel *val  = bel_car(bel_cdr(args));
+    if(!bel_pairp(pair)) {
+        return bel_mkerror(
+            bel_mkstring("~a is not a pair."),
+            bel_mkpair(pair, bel_g_nil));
+    }
+
+    pair->pair->cdr = val;
+    return val;
+}
+
+Bel*
+bel_prim_sym(Bel *args)
+{
+    BEL_CHECK_ARITY(args, 1);
+    Bel *str = bel_car(args);
+    if(!bel_stringp(str)) {
+        return bel_mkerror(
+            bel_mkstring("The object ~a must be a string."),
+            bel_mkpair(str, bel_g_nil));
+    }
+
+    char *cstr = bel_cstring(str);
+    if(!cstr || !strcmp(cstr, "")) {
+        return bel_mkerror(
+            bel_mkstring("The object ~a is not a proper string."),
+            bel_mkpair(str, bel_g_nil));
+    }
+
+    return bel_mksymbol(cstr);
+}
+
+Bel*
+bel_prim_nom(Bel *args)
+{
+    BEL_CHECK_ARITY(args, 1);
+    Bel *sym = bel_car(args);
+    if(!bel_symbolp(sym)) {
+        return bel_mkerror(
+            bel_mkstring("The object ~a is not a string."),
+            bel_mkpair(sym, bel_g_nil));
+    }
+
+    return bel_mkstring(
+        bel_sym_find_name(sym));
+}
+
+Bel*
+bel_prim_wrb(Bel *args)
+{
+    BEL_CHECK_ARITY(args, 2);
+    Bel *x = bel_car(args);
+    Bel *y = bel_car(bel_cdr(args));
+
+    if(!bel_charp(x)) {
+        return bel_mkerror(
+            bel_mkstring("The object ~a is not a character."),
+            bel_mkpair(x, bel_g_nil));
+    }
+
+    if(bel_nilp(y)) {
+        y = bel_lookup(bel_g_nil, bel_mksymbol("outs"));
+    } else {
+        if(!bel_streamp(y)) {
+            return bel_mkerror(
+                bel_mkstring("The object ~a must be a stream."),
+                bel_mkpair(y, bel_g_nil));
+        }
+    }
+
+    return bel_stream_write_bit(&y->stream, y->chr);
+}
+
+Bel*
+bel_prim_rdb(Bel *args)
+{
+    BEL_CHECK_ARITY(args, 1);
+    Bel *x = bel_car(args);
+
+    if(bel_nilp(x)) {
+        bel_lookup(bel_g_nil, bel_mksymbol("ins"));
+    } else {
+        if(!bel_streamp(x)) {
+            return bel_mkerror(
+                bel_mkstring("The object ~a must be a stream."),
+                bel_mkpair(x, bel_g_nil));
+        }
+    }
+
+    return bel_stream_read_bit(&x->stream);
+}
+
+Bel*
+bel_prim_ops(Bel *args)
+{
+    BEL_CHECK_ARITY(args, 2);
+    Bel *x = bel_car(args);
+    Bel *y = bel_car(bel_cdr(args));
+
+    if(!bel_stringp(x)) {
+        return bel_mkerror(
+            bel_mkstring("The object ~a is not a string."),
+            bel_mkpair(x, bel_g_nil));
+    }
+
+    if(!bel_symbolp(y)) {
+        return bel_mkerror(
+            bel_mkstring("The object ~a is not a symbol."),
+            bel_mkpair(y, bel_g_nil));
+    }
+
+    if(bel_idp(y, bel_mksymbol("in"))) {
+        return bel_mkstream(bel_cstring(x), BEL_STREAM_READ);
+    } else if(bel_idp(y, bel_mksymbol("out"))) {
+        return bel_mkstream(bel_cstring(x), BEL_STREAM_WRITE);
+    }
+
+    return bel_mkerror(
+        bel_mkstring("The object ~a is not one of the "
+                     "symbols `in` and `out`."),
+        bel_mkpair(y, bel_g_nil));
+}
+
+Bel*
+bel_prim_cls(Bel *args)
+{
+    BEL_CHECK_ARITY(args, 1);
+    Bel *stream = bel_car(args);
+
+    if(!bel_streamp(stream)) {
+        return bel_mkerror(
+            bel_mkstring("The object ~a is not a stream."),
+            bel_mkpair(stream, bel_g_nil));
+    }
+
+    if(stream->stream.status == BEL_STREAM_CLOSED) {
+        return bel_g_nil;
+    }
+
+    return bel_stream_close(stream);
+}
+
+Bel*
+bel_prim_stat(Bel *args)
+{
+    BEL_CHECK_ARITY(args, 1);
+    Bel *stream = bel_car(args);
+    if(!bel_streamp(stream)) {
+        return bel_mkerror(
+            bel_mkstring("The object ~a is not a stream."),
+            bel_mkpair(stream, bel_g_nil));
+    }
+
+    switch(stream->stream.status) {
+    case BEL_STREAM_CLOSED: return bel_mksymbol("closed");
+    case BEL_STREAM_READ:   return bel_mksymbol("in");
+    case BEL_STREAM_WRITE:  return bel_mksymbol("out");
+    default: // ...wat
+        return bel_mkerror(
+            bel_mkstring("The stream ~a has an unknown status."),
+            bel_mkpair(stream, bel_g_nil));
+    }
+}
+
+Bel*
+bel_prim_coin(Bel *args)
+{
+    BEL_CHECK_ARITY(args, 0);
+    return (rand() % 2) ? bel_g_t : bel_g_nil;
+}
+
+Bel*
+bel_prim_err(Bel *args)
+{
+    Bel *string = bel_car(args);
+    if(!bel_stringp(string)) {
+        return bel_mkerror(
+            bel_mkstring("First argument of `err` must "
+                         "be a string format."),
+            bel_g_nil);
+    }
+
+    // TODO: Maybe quote?
+    return bel_mkerror(string, bel_cdr(args));
+}
+
+Bel*
+bel_bind(Bel *vars, Bel *vals, Bel *lenv)
+{
+    int vars_ended = bel_nilp(vars);
+    int vals_ended = bel_nilp(vals);
+
+    if(vars_ended && !vals_ended) {
+        return bel_mkerror(
+            bel_mkstring("Too many variables in "
+                         "function application"),
+            bel_g_nil);
+    } else if(!vars_ended && vals_ended) {
+        return bel_mkerror(
+            bel_mkstring("Too few values in "
+                         "function application"),
+            bel_g_nil);
+    } else if(vars_ended && vals_ended) {
+        return lenv;
+    }
+
+    Bel *binding = bel_mkpair(bel_car(vars),
+                              bel_car(vals));
+
+    return bel_bind(bel_cdr(vars),
+                    bel_cdr(vals),
+                    bel_mkpair(binding, lenv));
 }
 
 void
 string_test()
 {
     Bel *bel  = bel_mkstring("Hello, Bel!");
-    bel_dbg_print(bel);
+    bel_print(bel);
     printf(" => %s\n", bel_cstring(bel));
 
     bel = bel_mkstring("There is no Bel without \a");
-    bel_dbg_print(bel);
+    bel_print(bel);
     putchar(10);
 }
 
@@ -972,7 +1626,7 @@ notation_test()
                                 bel_mksymbol("bar")),
                      bel_mkpair(bel_mksymbol("baz"),
                                 bel_mksymbol("quux")));
-    bel_dbg_print(bel);
+    bel_print(bel);
     putchar(10);
 }
 
@@ -999,7 +1653,7 @@ list_test()
                                     bel_mkpair(
                                         bel_mksymbol("dog"),
                                         bel_g_nil)))))))));
-    bel_dbg_print(bel);
+    bel_print(bel);
     putchar(10);
 }
 
@@ -1024,7 +1678,7 @@ closure_repr_test()
                                                  bel_mksymbol("x"),
                                                  bel_g_nil))),
                                      bel_g_nil)))));
-    bel_dbg_print(bel);
+    bel_print(bel);
     putchar(10);
 }
 
@@ -1052,7 +1706,7 @@ character_list_test()
         printf("Char: %03d (%c) => ",
                bel_car(car)->chr,
                ((Bel_char)i));
-        bel_dbg_print(bel_cdr(car));
+        bel_print(bel_cdr(car));
         putchar(10);
         bel = bel_cdr(bel);
         i++;
@@ -1067,9 +1721,13 @@ read_file_test()
     Bel *file = bel_mkstream("believe.c", BEL_STREAM_READ);
 
     if(bel_errorp(file)) {
-        bel_dbg_print(file);
+        bel_print(file);
         return;
     }
+
+    printf("Stream: ");
+    bel_print(file);
+    putchar(10);
     
     int n_bytes = 10;
     while(n_bytes > 0) {
@@ -1090,9 +1748,9 @@ read_file_test()
         }
 
         // Display on screen
-        bel_dbg_print(char_nodes[0]);
+        bel_print(char_nodes[0]);
         printf(" => ");
-        bel_dbg_print(
+        bel_print(
             bel_char_from_binary(char_nodes[0]));
         putchar(10);
         
@@ -1109,25 +1767,25 @@ show_errors_test()
     
     // Unexisting file
     err = bel_mkstream("waddawaddawadda", BEL_STREAM_READ);
-    bel_dbg_print(err);
+    bel_print(err);
     putchar(10);
     printf("Is this an error? %c\n",
            bel_errorp(err) ? 'y' : 'n');
 
     // Incorrect use of car and cdr
     err = bel_car(bel_g_t);
-    bel_dbg_print(err); putchar(10);
+    bel_print(err); putchar(10);
     err = bel_cdr(bel_g_t);
-    bel_dbg_print(err); putchar(10);
+    bel_print(err); putchar(10);
 
     // Incorrect generation of Bel character from binary
     /* Bel *str = bel_mkstring("110"); */
     /* err = bel_char_from_binary(str); */
-    /* bel_dbg_print(err); putchar(10); */
+    /* bel_print(err); putchar(10); */
 
     /* str = bel_mkstring("110a1101"); */
     /* err = bel_char_from_binary(str); */
-    /* bel_dbg_print(err); putchar(10); */
+    /* bel_print(err); putchar(10); */
 }
 
 void
@@ -1135,25 +1793,25 @@ lookup_primitives_test()
 {
     Bel *bel;
     bel = bel_lookup(bel_g_nil, bel_mksymbol("car"));
-    bel_dbg_print(bel);
+    bel_print(bel);
     putchar(10);
 
     bel = bel_lookup(bel_g_nil, bel_mksymbol("cdr"));
-    bel_dbg_print(bel);
+    bel_print(bel);
     putchar(10);
 
     bel = bel_lookup(bel_g_nil, bel_mksymbol("coin"));
-    bel_dbg_print(bel);
+    bel_print(bel);
     putchar(10);
     
     bel = bel_lookup(bel_g_nil, bel_mksymbol("stat"));
-    bel_dbg_print(bel);
+    bel_print(bel);
     putchar(10);
 
     // Undefined primitive
-    bel_dbg_print(bel_g_nil); putchar(10);
+    bel_print(bel_g_nil); putchar(10);
     bel = bel_lookup(bel_g_nil, bel_mksymbol("wadawada"));
-    bel_dbg_print(bel);
+    bel_print(bel);
     putchar(10);
 }
 
@@ -1169,9 +1827,9 @@ lexical_environment_test()
                           bel_mksymbol("bar"));
     
     printf("Environment:       ");
-    bel_dbg_print(lexenv);
+    bel_print(lexenv);
     printf("\nLookup:            ");
-    bel_dbg_print(bel_lookup(lexenv, bel_mksymbol("foo")));
+    bel_print(bel_lookup(lexenv, bel_mksymbol("foo")));
     putchar(10); putchar(10);
 
     // Assignment
@@ -1183,11 +1841,11 @@ lexical_environment_test()
                                             bel_g_nil)));
 
     printf("Environment:       ");
-    bel_dbg_print(lexenv);
+    bel_print(lexenv);
     printf("\nAssignment result: ");
-    bel_dbg_print(ret);
+    bel_print(ret);
     printf("\nLookup:            ");
-    bel_dbg_print(bel_lookup(lexenv, bel_mksymbol("foo")));
+    bel_print(bel_lookup(lexenv, bel_mksymbol("foo")));
     putchar(10); putchar(10);
 
     // Unbinding
@@ -1195,11 +1853,11 @@ lexical_environment_test()
     ret = bel_unbind(&lexenv, bel_mksymbol("foo"));
     
     printf("Environment:       ");
-    bel_dbg_print(lexenv);
+    bel_print(lexenv);
     printf("\nUnbinding result:  ");
-    bel_dbg_print(ret);
+    bel_print(ret);
     printf("\nLookup:            ");
-    bel_dbg_print(bel_lookup(lexenv, bel_mksymbol("foo")));
+    bel_print(bel_lookup(lexenv, bel_mksymbol("foo")));
     putchar(10);
 }
 
@@ -1216,9 +1874,9 @@ global_assignment_test()
                      bel_mksymbol("bar"));
 
     printf("Assignment result: ");
-    bel_dbg_print(ret);
+    bel_print(ret);
     printf("\nLookup:            ");
-    bel_dbg_print(bel_lookup(bel_g_nil, bel_mksymbol("foo")));
+    bel_print(bel_lookup(bel_g_nil, bel_mksymbol("foo")));
     putchar(10); putchar(10);
 
     // Local creation of variable bound to
@@ -1230,9 +1888,9 @@ global_assignment_test()
                      bel_mksymbol("quux"));
 
     printf("Environment:       ");
-    bel_dbg_print(lexenv);
+    bel_print(lexenv);
     printf("\nLookup:            ");
-    bel_dbg_print(bel_lookup(lexenv, bel_mksymbol("foo")));
+    bel_print(bel_lookup(lexenv, bel_mksymbol("foo")));
 
     // Three unbindings
     printf("\n    -- Unbinding `foo` three times");
@@ -1241,19 +1899,121 @@ global_assignment_test()
         ret = bel_unbind(&lexenv, bel_mksymbol("foo"));
 
         printf("\n\nEnvironment:       ");
-        bel_dbg_print(lexenv);
+        bel_print(lexenv);
         printf("\nUnbinding result:  ");
-        bel_dbg_print(ret);
+        bel_print(ret);
         printf("\nLookup:            ");
-        bel_dbg_print(bel_lookup(lexenv, bel_mksymbol("foo")));
+        bel_print(bel_lookup(lexenv, bel_mksymbol("foo")));
     }
     putchar(10);
+}
+
+void
+eval_test()
+{
+    Bel *form;
+    Bel *result;
+
+    // (quote foo)
+    form = bel_mkpair(
+        bel_mksymbol("quote"),
+        bel_mkpair(
+            bel_mksymbol("foo"),
+            bel_g_nil));
+    printf("Form:   ");
+    bel_print(form);
+    putchar(10);
+    
+    result = bel_eval(form, bel_g_nil);
+    
+    printf("Result: "); bel_print(result);
+    putchar(10); putchar(10);
+    
+    // (join (quote foo) (quote bar))
+    form =
+        bel_mkpair(
+            bel_mksymbol("join"),
+            bel_mkpair(
+                bel_mkpair(
+                    bel_mksymbol("quote"),
+                    bel_mkpair(
+                        bel_mksymbol("foo"),
+                        bel_g_nil)),
+                bel_mkpair(
+                    bel_mkpair(
+                        bel_mksymbol("quote"),
+                        bel_mkpair(
+                            bel_mksymbol("bar"),
+                            bel_g_nil)),
+                    bel_g_nil)));
+    printf("Form:   ");
+    bel_print(form);
+    putchar(10);
+    
+    result = bel_eval(form, bel_g_nil);
+    
+    printf("Result: "); bel_print(result);
+    putchar(10); putchar(10);
+
+
+    // (fn (x) (id x x))
+    form = bel_mkpair(
+        bel_mksymbol("fn"),
+        bel_mkpair(
+            bel_mkpair(
+                bel_mksymbol("x"),
+                bel_g_nil),
+            bel_mkpair(
+                bel_mkpair(
+                    bel_mksymbol("id"),
+                    bel_mkpair(
+                        bel_mksymbol("x"),
+                        bel_mkpair(
+                            bel_mksymbol("x"),
+                            bel_g_nil))),
+                bel_g_nil)));
+    printf("Form:   ");
+    bel_print(form);
+    putchar(10);
+    
+    result = bel_eval(form, bel_g_nil);
+    
+    printf("Result: "); bel_print(result);
+    putchar(10); putchar(10);
+
+    
+    // ((fn (x) (id x x)) (quote foo))
+    form =
+        bel_mkpair(
+            form, // Use closure from last example
+            bel_mkpair(
+                bel_mkpair(
+                    bel_mksymbol("quote"),
+                    bel_mkpair(
+                        bel_mksymbol("foo"),
+                        bel_g_nil)),
+                bel_g_nil));
+    printf("Form:   ");
+    bel_print(form);
+    putchar(10);
+    
+    result = bel_eval(form, bel_g_nil);
+    
+    printf("Result: "); bel_print(result);
+    putchar(10); putchar(10);
 }
 
 Bel*
 bel_init(void)
 {
+    // Initialize garbage collector
     GC_INIT();
+
+    // Initialize random number generation
+    // Warning: This is a VERY naive approach
+    srand(time(NULL));
+
+    // Initialize symbol table
     bel_sym_table_init();
 
     // Axioms
@@ -1291,6 +2051,8 @@ run_tests()
     lexical_environment_test();
     puts("  -- Globals and assignment tests");
     global_assignment_test();
+    puts("  -- Evaluator test");
+    eval_test();
 }
 
 int
