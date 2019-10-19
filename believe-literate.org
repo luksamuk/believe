@@ -61,6 +61,9 @@
 #+LATEX_HEADER: }
 #+LATEX_HEADER: \makeatother
 #+BIND: org-latex-hyperref-template ""
+
+# Make watermark softer
+#+LATEX_HEADER: \SetWatermarkLightness{0.85}
 :END:
 
 * Introduction
@@ -2214,17 +2217,42 @@ bel_print(Bel *obj)
 
 * Evaluator
 
+The evaluator is the most crucial part of the Bel system. We follow
+the pattern of the /metacircular evaluator/: by having two functions,
+=eval= and =apply=, we make them call themselves mutually, incrementing
+them with auxiliary functions and special forms to produce a working
+interpreter for a Lisp language.
+
 ** Forward declarations
 
+These declarations specify the most crucial functions of the
+interpreter. Forward declarations are important for the mutual calling
+part.
+
 #+begin_src C
-Bel *bel_eval(Bel *exp, Bel *lenv);
-Bel *bel_apply(Bel *proc, Bel *args);
-Bel *bel_evlist(Bel *elist, Bel *lenv);
-Bel *bel_apply_primop(Bel *sym, Bel *args);
-Bel *bel_bind(Bel *vars, Bel *vals, Bel *lenv);
+Bel *bel_eval(Bel *exp, Bel *lenv);             // Forward declaration
+Bel *bel_apply(Bel *proc, Bel *args);           // Forward declaration
+Bel *bel_evlist(Bel *elist, Bel *lenv);         // Forward declaration
+Bel *bel_apply_primop(Bel *sym, Bel *args);     // Forward declaration
+Bel *bel_bind(Bel *vars, Bel *vals, Bel *lenv); // Forward declaration
 #+end_src
 
 ** The =eval= function
+
+=bel_eval= is the /evaluation/ function. The objective is to take a
+particular expression, identify what it is (whether it is a special
+form or a simple function application), and dispatch it
+accordingly.
+
+When a simple application is performed, we take a list and consider
+that the first element is the symbol that the function is bound to. So
+we evaluate every element of the list, including the function, and
+then we /apply/ the closure (produced by evaluation of the function) to
+the rest of the evaluated elements, which will be passed as
+arguments.
+
+It is also important to notice that the closure captures the lexical
+environment where it is evaluated.
 
 #+begin_src C
 Bel*
@@ -2270,18 +2298,22 @@ bel_eval(Bel *exp, Bel *lenv)
     }
     
     // if
+    // TODO
     
     // apply
-    
-    // join
+    // TODO
     
     // where (not straightforward)
+    // TODO
     
     // dyn: dynamic binding
+    // TODO
     
     // after
+    // TODO
     
     // set: Global binding
+    // TODO
     
     // TODO: ccc
     
@@ -2303,6 +2335,14 @@ bel_eval(Bel *exp, Bel *lenv)
 #+end_src
 
 ** The =apply= function
+
+=bel_apply= is the /application/ function. It takes a certain /function/ and
+applies to the /list of evaluated arguments/. A function can be a
+primitive, but can also be a /literal closure/.
+
+To apply a /closure/, we bind all arguments to the closure's formal
+parameters, creating an extended lexical environment; then we proceed
+to evaluate the closure's body under that new lexical environment.
 
 #+begin_src C
 Bel*
@@ -2366,9 +2406,14 @@ bel_apply(Bel *fun, Bel *args)
 
 ** Auxiliary functions
 
+The following functions are also essential to the evaluator, but have
+a more secondary role, such as handling special forms, applying
+primitive operators, and other kinds of things.
+
 *** Evaluate a list of values
 
-=bel_evlist= should only be called for a proper list.
+=bel_evlist= evaluates a list of expressions under the given lexical
+environment. This function should only be called for a proper list.
 
 #+begin_src C
 Bel*
@@ -2404,8 +2449,13 @@ which checks arity and performs the job.
 
 **** Forward declarations
 
+These forward declarations are related to the actual implementation of
+primitive functions in the Bel environment. We forward-declare them so
+that we can define a function which redirects to each one of them, and
+after that we give their proper definitions.
+
 #+begin_src C
-// Primitive functions
+// Forward declarations of primitive functions
 Bel *bel_prim_id(Bel *args);
 Bel *bel_prim_join(Bel *args);
 Bel *bel_prim_car(Bel *args);
@@ -2423,7 +2473,7 @@ Bel *bel_prim_stat(Bel *args);
 Bel *bel_prim_coin(Bel *args);
 //Bel *bel_prim_sys(Bel *args);
 
-// Primitive operators
+// Forward declarations of primitive operators
 //Bel *bel_prim_add(Bel *args);
 //Bel *bel_prim_sub(Bel *args);
 //Bel *bel_prim_mul(Bel *args);
@@ -2434,16 +2484,30 @@ Bel *bel_prim_coin(Bel *args);
 //Bel *bel_prim_geq(Bel *args);
 //Bel *bel_prim_eq(Bel *args);
 
-// Other primitives
+//  Forward declarations of other primitives
 Bel *bel_prim_err(Bel *args);
 #+end_src
 
 **** =apply-primop=
 
+The =bel_apply_primop= function is the function which applies a
+primitive operation, identified as a symbol, to a list of evaluated
+values. It is important to know that this function does not usually do
+the job; instead, we just dispatch the arguments to a function which
+will perform as needed.
+
+The macro =bel_is_prim= compares whether =sym= is the symbol which
+represents the literal =lit=.
+
 #+begin_src C
 #define bel_is_prim(sym, lit)                     \
     (bel_idp(sym, bel_mksymbol(lit)))
 #+end_src
+
+The macro =bel_unimplemented= takes the symbol =sym= for a primitive
+function and generates an error, stating that the function has not
+been implemented. This is important while the interpreter is under
+development.
 
 #+begin_src C
 #define bel_unimplemented(sym)                                  \
@@ -2451,6 +2515,13 @@ Bel *bel_prim_err(Bel *args);
     bel_mkstring("~a is not implemented."),                     \
     bel_mkpair(sym, bel_g_nil))
 #+end_src
+
+=bel_apply_primop= is the crucial function for the operations described
+above. It enumerates the core functions and dispatches the arguments
+accordingly.
+
+Notice that an attempt to apply a primitive operation which does not
+exist results in error.
 
 #+begin_src C
 Bel*
@@ -2793,7 +2864,7 @@ bel_prim_rdb(Bel *args)
 }
 #+end_src
 
-***** =(ops x y)= =(cls x)= and =(stat x)=
+***** =(ops x y)=, =(cls x)= and =(stat x)=
 
 =ops=, =cls= and =stat= are functions related to the status of a stream.
 
@@ -2878,7 +2949,8 @@ bel_prim_stat(Bel *args)
     case BEL_STREAM_WRITE:  return bel_mksymbol("out");
     default: // ...wat
         return bel_mkerror(
-            bel_mkstring("The stream ~a has an unknown status."),
+            bel_mkstring("The stream ~a has an unknown "
+                         "status."),
             bel_mkpair(stream, bel_g_nil));
     }
 }
@@ -2909,7 +2981,7 @@ bel_prim_sys(Bel *args)
 }
 #+end_src
 
-**** Primitive operators
+**** COMMENT Primitive operators
 
 #+TODO: Implement them!
 
@@ -2921,6 +2993,10 @@ These primitives are not specified in the Bel language, but are useful.
 
 =err= creates an error using =x= as a format string, and appends the =rest=
 to the error as format arguments.
+
+There is no arity check in =err=, though we do verify whether the first
+argument is a string. Problems with the arguments should appear when
+printing the error.
 
 #+begin_src C
 Bel*

@@ -1025,11 +1025,11 @@ bel_print(Bel *obj)
     };
 }
 
-Bel *bel_eval(Bel *exp, Bel *lenv);
-Bel *bel_apply(Bel *proc, Bel *args);
-Bel *bel_evlist(Bel *elist, Bel *lenv);
-Bel *bel_apply_primop(Bel *sym, Bel *args);
-Bel *bel_bind(Bel *vars, Bel *vals, Bel *lenv);
+Bel *bel_eval(Bel *exp, Bel *lenv);             // Forward declaration
+Bel *bel_apply(Bel *proc, Bel *args);           // Forward declaration
+Bel *bel_evlist(Bel *elist, Bel *lenv);         // Forward declaration
+Bel *bel_apply_primop(Bel *sym, Bel *args);     // Forward declaration
+Bel *bel_bind(Bel *vars, Bel *vals, Bel *lenv); // Forward declaration
 
 Bel*
 bel_eval(Bel *exp, Bel *lenv)
@@ -1074,18 +1074,22 @@ bel_eval(Bel *exp, Bel *lenv)
     }
     
     // if
+    // TODO
     
     // apply
-    
-    // join
+    // TODO
     
     // where (not straightforward)
+    // TODO
     
     // dyn: dynamic binding
+    // TODO
     
     // after
+    // TODO
     
     // set: Global binding
+    // TODO
     
     // TODO: ccc
     
@@ -1187,7 +1191,7 @@ bel_evlist(Bel *elist, Bel *lenv)
     return bel_mkpair(eval_result, ev_rest);
 }
 
-// Primitive functions
+// Forward declarations of primitive functions
 Bel *bel_prim_id(Bel *args);
 Bel *bel_prim_join(Bel *args);
 Bel *bel_prim_car(Bel *args);
@@ -1205,7 +1209,7 @@ Bel *bel_prim_stat(Bel *args);
 Bel *bel_prim_coin(Bel *args);
 //Bel *bel_prim_sys(Bel *args);
 
-// Primitive operators
+// Forward declarations of primitive operators
 //Bel *bel_prim_add(Bel *args);
 //Bel *bel_prim_sub(Bel *args);
 //Bel *bel_prim_mul(Bel *args);
@@ -1216,7 +1220,7 @@ Bel *bel_prim_coin(Bel *args);
 //Bel *bel_prim_geq(Bel *args);
 //Bel *bel_prim_eq(Bel *args);
 
-// Other primitives
+//  Forward declarations of other primitives
 Bel *bel_prim_err(Bel *args);
 
 #define bel_is_prim(sym, lit)                     \
@@ -1551,7 +1555,8 @@ bel_prim_stat(Bel *args)
     case BEL_STREAM_WRITE:  return bel_mksymbol("out");
     default: // ...wat
         return bel_mkerror(
-            bel_mkstring("The stream ~a has an unknown status."),
+            bel_mkstring("The stream ~a has an unknown "
+                         "status."),
             bel_mkpair(stream, bel_g_nil));
     }
 }
