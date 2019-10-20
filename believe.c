@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <errno.h>
+#include <math.h>
 
 #ifdef BEL_DEBUG
 #define GC_DEBUG
@@ -20,7 +21,8 @@ typedef enum
     BEL_SYMBOL,
     BEL_PAIR,
     BEL_CHAR,
-    BEL_STREAM
+    BEL_STREAM,
+    BEL_NUMBER
 } BEL_TYPE;
 
 typedef struct BEL Bel; // Forward declaration
@@ -50,6 +52,38 @@ typedef struct
     uint8_t            cache_used;
 } Bel_stream;
 
+typedef enum {
+    BEL_NUMBER_INT,
+    BEL_NUMBER_FLOAT,
+    BEL_NUMBER_FRACTION,
+    BEL_NUMBER_COMPLEX
+} BEL_NUMBER_TYPE;
+
+typedef int64_t Bel_longint;
+typedef double  Bel_float;
+
+typedef struct BEL_NUMBER Bel_number; // Forward declaration
+
+typedef struct {
+    Bel *numer;
+    Bel *denom;
+} Bel_fraction;
+
+typedef struct {
+    Bel *real;
+    Bel *imag;
+} Bel_complex;
+
+struct BEL_NUMBER {
+    BEL_NUMBER_TYPE type;
+    union {
+        Bel_longint  num_int;
+        Bel_float    num_float;
+        Bel_fraction num_frac;
+        Bel_complex  num_compl;
+    };
+};
+
 // Aliased as 'Bel' before
 struct BEL
 {
@@ -59,6 +93,7 @@ struct BEL
         Bel_pair   *pair;
         Bel_char    chr;
         Bel_stream  stream;
+        Bel_number  number;
     };
 };
 
@@ -205,6 +240,9 @@ bel_quotep(Bel *x)
     return bel_idp(bel_car(x),
                    bel_mksymbol("quote"));
 }
+
+#define bel_numberp(x)                          \
+    ((x)->type==BEL_NUMBER)
 
 typedef struct {
     const char **tbl;
@@ -607,6 +645,48 @@ bel_init_streams(void)
 }
 
 Bel*
+bel_mkinteger(int64_t num)
+{
+    Bel *ret            = GC_MALLOC(sizeof (*ret));
+    ret->type           = BEL_NUMBER;
+    ret->number.type    = BEL_NUMBER_INT;
+    ret->number.num_int = num;
+    return ret;
+}
+
+Bel*
+bel_mkfloat(double num)
+{
+    Bel *ret              = GC_MALLOC(sizeof (*ret));
+    ret->type             = BEL_NUMBER;
+    ret->number.type      = BEL_NUMBER_FLOAT;
+    ret->number.num_float = num;
+    return ret;
+}
+
+Bel*
+bel_mkfraction(Bel *numer, Bel *denom)
+{
+    Bel *ret                   = GC_MALLOC(sizeof (*ret));
+    ret->type                  = BEL_NUMBER;
+    ret->number.type           = BEL_NUMBER_FRACTION;
+    ret->number.num_frac.numer = numer;
+    ret->number.num_frac.denom = denom;
+    return ret;
+}
+
+Bel*
+bel_mkcomplex(Bel *real, Bel *imag)
+{
+    Bel *ret                   = GC_MALLOC(sizeof (*ret));
+    ret->type                  = BEL_NUMBER;
+    ret->number.type           = BEL_NUMBER_COMPLEX;
+    ret->number.num_compl.real = real;
+    ret->number.num_compl.imag = imag;
+    return ret;
+}
+
+Bel*
 bel_mkerror(Bel *format, Bel *arglist)
 {
     return bel_mkpair(
@@ -998,6 +1078,44 @@ bel_print_stream(Bel *obj)
 }
 
 void
+bel_print_number(Bel *num, int force_sign)
+{
+    switch(num->number.type) {
+    case BEL_NUMBER_INT:
+        if(force_sign && (num->number.num_int >= 0))
+            putchar('+');
+        printf("%ld", num->number.num_int);
+        break;
+    case BEL_NUMBER_FLOAT:
+        if(force_sign && (num->number.num_float >= 0.0))
+            putchar('+');
+        printf("%lg", num->number.num_float);
+        // Trailing .0 on round number
+        if(num->number.num_float
+           == trunc(num->number.num_float)) {
+            printf(".0");
+        }
+        break;
+    case BEL_NUMBER_FRACTION:
+        printf("#(f ");
+        bel_print_number(num->number.num_frac.numer, 0);
+        putchar('/');
+        bel_print_number(num->number.num_frac.denom, 0);
+        putchar(')');
+        break;
+    case BEL_NUMBER_COMPLEX:
+        printf("#(c ");
+        bel_print_number(num->number.num_frac.numer, 0);
+        bel_print_number(num->number.num_frac.denom, 1);
+        printf("i)");
+        break;
+    default:
+        printf("#<\?\?\?>");
+        break;
+    }
+}
+
+void
 bel_print(Bel *obj)
 {
     switch(obj->type) {
@@ -1018,6 +1136,9 @@ bel_print(Bel *obj)
         break;
     case BEL_STREAM:
         bel_print_stream(obj);
+        break;
+    case BEL_NUMBER:
+        bel_print_number(obj, 0);
         break;
     default:
         printf("#<\?\?\?>"); // wat
@@ -1043,8 +1164,9 @@ bel_eval(Bel *exp, Bel *lenv)
     putchar(10);
 #endif
 
-    // number: eval to itself
-    // TODO
+    // numbers eval to themselves
+    if(bel_numberp(exp))
+        return exp;
     
     // symbol
     if(bel_symbolp(exp)) {
@@ -2079,6 +2201,35 @@ eval_test()
     putchar(10); putchar(10);
 
     result = bel_eval(bel_g_nil, bel_g_nil);
+    printf("Result: ");
+    bel_print(result);
+    putchar(10); putchar(10);
+
+    
+    // Eval some numbers
+    result = bel_eval(bel_mkinteger(42), bel_g_nil);
+    printf("Result: ");
+    bel_print(result);
+    putchar(10); putchar(10);
+
+    result = bel_eval(bel_mkfloat(42.0), bel_g_nil);
+    printf("Result: ");
+    bel_print(result);
+    putchar(10); putchar(10);
+
+    result = bel_eval(bel_mkfraction(
+                          bel_mkinteger(2),
+                          bel_mkinteger(3)),
+                      bel_g_nil);
+    printf("Result: ");
+    bel_print(result);
+    putchar(10); putchar(10);
+
+    
+    result = bel_eval(bel_mkcomplex(
+                          bel_mkfloat(2.0),
+                          bel_mkfloat(3.4)),
+                      bel_g_nil);
     printf("Result: ");
     bel_print(result);
     putchar(10); putchar(10);

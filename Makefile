@@ -1,6 +1,6 @@
 CC     = clang
 CFLAGS = --std=c11 -g -O2 -Wall -DBEL_DEBUG
-CLIBS  = -lgc
+CLIBS  = -lgc -lm
 BIN    = believe
 OBJ    = believe.o
 

@@ -208,14 +208,14 @@ SOFTWARE.
 * Tools and scripts
 ** Makefile
 
-This software was primarily developed on Void Linux x86\_64, using the
+This software was primarily developed on Void Linux x86_64, using the
 Clang compiler. The following Makefile is the one used for building
 Believe.
 
 #+begin_src makefile :tangle Makefile
 CC     = clang
 CFLAGS = --std=c11 -g -O2 -Wall -DBEL_DEBUG
-CLIBS  = -lgc
+CLIBS  = -lgc -lm
 BIN    = believe
 OBJ    = believe.o
 
@@ -437,7 +437,8 @@ We'll be using =stdio.h= for default console I/O, plus =stdint.h= for some
 standard integer types. =string.h= provides definitions to handle string
 manipulation on the C side, however Bel is supposed to have its own
 string representation, to be discussed later. =errno.h= is used to fetch
-error strings from streams, for example.
+error strings from streams, for example; and =math.h= is useful for math
+operations.
 
 #+begin_src C
 #include <stdio.h>
@@ -446,6 +447,7 @@ error strings from streams, for example.
 #include <stdint.h>
 #include <string.h>
 #include <errno.h>
+#include <math.h>
 #+end_src
 
 ** Definitions
@@ -506,7 +508,8 @@ typedef enum
     BEL_SYMBOL,
     BEL_PAIR,
     BEL_CHAR,
-    BEL_STREAM
+    BEL_STREAM,
+    BEL_NUMBER
 } BEL_TYPE;
 #+end_src
 
@@ -592,6 +595,71 @@ typedef struct
 } Bel_stream;
 #+end_src
 
+** Number
+
+Bel does not specify any numeric types in its specification. In fact,
+numbers could be reproduced by using Church numerals, for
+example. However, this approach has a huge impact on performance,
+enough to make us want actual numeric types in our interpreter.
+
+A /number/ in Believe is an actual union of many types. The /number/ can
+be an integer, a float, a fraction or even a complex number in its
+constitution, but this coercion happens away from the eyes of the Bel
+user. From his standpoint, there is only an opaque /number/.
+
+Let's start by defining the enumeration of types, and our basign
+integer and floats for Bel. Integers are C /64-bit signed ints/,
+and floats are, in fact, C /doubles/.
+
+#+begin_src C
+typedef enum {
+    BEL_NUMBER_INT,
+    BEL_NUMBER_FLOAT,
+    BEL_NUMBER_FRACTION,
+    BEL_NUMBER_COMPLEX
+} BEL_NUMBER_TYPE;
+
+typedef int64_t Bel_longint;
+typedef double  Bel_float;
+#+end_src
+
+We forward declare the =Bel_number= structure as a /typedef/ for a =struct
+BEL_NUMBER=.
+
+#+begin_src C
+typedef struct BEL_NUMBER Bel_number; // Forward declaration
+#+end_src
+
+Now we define our /fraction/ and /complex/ subtypes. Notice that they use
+=Bel_number= in their constitution. This is on purpose, as it allows us
+to create recursive definitions of numbers.
+
+#+begin_src C
+typedef struct {
+    Bel *numer;
+    Bel *denom;
+} Bel_fraction;
+
+typedef struct {
+    Bel *real;
+    Bel *imag;
+} Bel_complex;
+#+end_src
+
+All that is left is to define our =Bel_number= formally.
+
+#+begin_src C
+struct BEL_NUMBER {
+    BEL_NUMBER_TYPE type;
+    union {
+        Bel_longint  num_int;
+        Bel_float    num_float;
+        Bel_fraction num_frac;
+        Bel_complex  num_compl;
+    };
+};
+#+end_src
+
 ** The =Bel= structure
 
 The remaining thing to do is join all the types into the =Bel= type,
@@ -607,6 +675,7 @@ struct BEL
         Bel_pair   *pair;
         Bel_char    chr;
         Bel_stream  stream;
+        Bel_number  number;
     };
 };
 #+end_src
@@ -931,6 +1000,15 @@ bel_quotep(Bel *x)
     return bel_idp(bel_car(x),
                    bel_mksymbol("quote"));
 }
+#+end_src
+
+*** =numberp=
+
+=bel_numberp= determines whether =x= is a number or not.
+
+#+begin_src C
+#define bel_numberp(x)                          \
+    ((x)->type==BEL_NUMBER)
 #+end_src
 
 ** Symbol Table and Symbols
@@ -1489,6 +1567,89 @@ them. The Boehm GC does not have finalizers for C bindings, so
 unfortunately it is not possible for now to call a finalizer which
 automatically closes the stream when the stream object is garbage
 collected.
+
+** Numbers
+
+As stated before, numbers are not described in Bel specification,
+however we're implementing it for minimal ease and performance for
+arithmetic manipulation.
+
+We've built a resilient and recursive model for constituting numbers,
+so we begin by arranging tools to create them.
+
+*** Number creation
+
+/Integers/ are pretty straightforward: we just allocate a proper space
+and store them.
+
+#+begin_src C
+Bel*
+bel_mkinteger(int64_t num)
+{
+    Bel *ret            = GC_MALLOC(sizeof (*ret));
+    ret->type           = BEL_NUMBER;
+    ret->number.type    = BEL_NUMBER_INT;
+    ret->number.num_int = num;
+    return ret;
+}
+#+end_src
+
+The same goes for the /float/ type (which is actually a C double).
+
+#+begin_src C
+Bel*
+bel_mkfloat(double num)
+{
+    Bel *ret              = GC_MALLOC(sizeof (*ret));
+    ret->type             = BEL_NUMBER;
+    ret->number.type      = BEL_NUMBER_FLOAT;
+    ret->number.num_float = num;
+    return ret;
+}
+#+end_src
+
+A fraction has a layer of complexity, though. We take a numerator and
+a denominator as /numbers/, but we need to make sure they are
+numbers. This kind of check is not performed here, but on later uses,
+it needs to happen.
+
+#+begin_src C
+Bel*
+bel_mkfraction(Bel *numer, Bel *denom)
+{
+    Bel *ret                   = GC_MALLOC(sizeof (*ret));
+    ret->type                  = BEL_NUMBER;
+    ret->number.type           = BEL_NUMBER_FRACTION;
+    ret->number.num_frac.numer = numer;
+    ret->number.num_frac.denom = denom;
+    return ret;
+}
+#+end_src
+
+We follow the same principle for a complex number.
+
+#+begin_src C
+Bel*
+bel_mkcomplex(Bel *real, Bel *imag)
+{
+    Bel *ret                   = GC_MALLOC(sizeof (*ret));
+    ret->type                  = BEL_NUMBER;
+    ret->number.type           = BEL_NUMBER_COMPLEX;
+    ret->number.num_compl.real = real;
+    ret->number.num_compl.imag = imag;
+    return ret;
+}
+#+end_src
+
+*** Number arithmetic
+
+#+TODO: Add
+
+#+TODO: Subtract
+
+#+TODO: Multiply
+
+#+TODO: Divide
 
 ** Errors
 
@@ -2217,6 +2378,75 @@ bel_print_stream(Bel *obj)
 }
 #+end_src
 
+** Printing numbers
+
+We develop a function to print an arbitrary number. The function takes
+the number itself and a parameter which tells whether the sign should
+be explicit (the reason for that will be evident soon).
+
+To print an /integer/, the only thing to do is to print a =long int=. We
+prepend it with a plus if the number is positive and the explicit sign
+flag is on.
+
+To print a /float/, we print a =double= with reduced notation. If the
+number is round, we append =.0= to it. We also follow the same rule of
+/integers/ when prepending the plus sign.
+
+A /fraction/ is a pair of two numbers. We just enclose them in a textual
+representation like =#(f number)=, where =number= is the numerator and
+the denominator separated by a slash. These two components can also be
+numbers of any kind, so we print them recursively, without forcing the
+plus sign.
+
+A /complex/ is also a pair of two numbers of any kind, where the first
+number is the /real/ part and the second number is the /imaginary/ part,
+which multiplies =i=. So we enclose it in a textual representation like
+=#(c number)=, where =number= is a complex number in the form =R+Ai=. In
+this form, =R= is the real part, printed as any Bel number; =A= is the
+imaginary part, but we force it to print its sign on screen, and then
+we prepend it with an =i=. To force =A='s sign to appear, we call this
+function recursively, with the =force_sign= flag active.
+
+#+begin_src C
+void
+bel_print_number(Bel *num, int force_sign)
+{
+    switch(num->number.type) {
+    case BEL_NUMBER_INT:
+        if(force_sign && (num->number.num_int >= 0))
+            putchar('+');
+        printf("%ld", num->number.num_int);
+        break;
+    case BEL_NUMBER_FLOAT:
+        if(force_sign && (num->number.num_float >= 0.0))
+            putchar('+');
+        printf("%lg", num->number.num_float);
+        // Trailing .0 on round number
+        if(num->number.num_float
+           == trunc(num->number.num_float)) {
+            printf(".0");
+        }
+        break;
+    case BEL_NUMBER_FRACTION:
+        printf("#(f ");
+        bel_print_number(num->number.num_frac.numer, 0);
+        putchar('/');
+        bel_print_number(num->number.num_frac.denom, 0);
+        putchar(')');
+        break;
+    case BEL_NUMBER_COMPLEX:
+        printf("#(c ");
+        bel_print_number(num->number.num_frac.numer, 0);
+        bel_print_number(num->number.num_frac.denom, 1);
+        printf("i)");
+        break;
+    default:
+        printf("#<\?\?\?>");
+        break;
+    }
+}
+#+end_src
+
 ** Generic printing
 
 The next function handles the printing of any data type. Notice that
@@ -2244,6 +2474,9 @@ bel_print(Bel *obj)
         break;
     case BEL_STREAM:
         bel_print_stream(obj);
+        break;
+    case BEL_NUMBER:
+        bel_print_number(obj, 0);
         break;
     default:
         printf("#<\?\?\?>"); // wat
@@ -2310,8 +2543,9 @@ bel_eval(Bel *exp, Bel *lenv)
     putchar(10);
 #endif
 
-    // number: eval to itself
-    // TODO
+    // numbers eval to themselves
+    if(bel_numberp(exp))
+        return exp;
     
     // symbol
     if(bel_symbolp(exp)) {
@@ -3132,6 +3366,8 @@ bel_bind(Bel *vars, Bel *vals, Bel *lenv)
 }
 #+end_src
 
+* COMMENT Parser
+* COMMENT Interpreter
 * Debug
 
 The following definitions are related to testing what we have so
@@ -3710,6 +3946,35 @@ eval_test()
     putchar(10); putchar(10);
 
     result = bel_eval(bel_g_nil, bel_g_nil);
+    printf("Result: ");
+    bel_print(result);
+    putchar(10); putchar(10);
+
+    
+    // Eval some numbers
+    result = bel_eval(bel_mkinteger(42), bel_g_nil);
+    printf("Result: ");
+    bel_print(result);
+    putchar(10); putchar(10);
+
+    result = bel_eval(bel_mkfloat(42.0), bel_g_nil);
+    printf("Result: ");
+    bel_print(result);
+    putchar(10); putchar(10);
+
+    result = bel_eval(bel_mkfraction(
+                          bel_mkinteger(2),
+                          bel_mkinteger(3)),
+                      bel_g_nil);
+    printf("Result: ");
+    bel_print(result);
+    putchar(10); putchar(10);
+
+    
+    result = bel_eval(bel_mkcomplex(
+                          bel_mkfloat(2.0),
+                          bel_mkfloat(3.4)),
+                      bel_g_nil);
     printf("Result: ");
     bel_print(result);
     putchar(10); putchar(10);
