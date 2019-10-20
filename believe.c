@@ -1031,82 +1031,118 @@ Bel *bel_evlist(Bel *elist, Bel *lenv);         // Forward declaration
 Bel *bel_apply_primop(Bel *sym, Bel *args);     // Forward declaration
 Bel *bel_bind(Bel *vars, Bel *vals, Bel *lenv); // Forward declaration
 
+Bel *bel_special_if(Bel *exp, Bel *lenv);       // Forward declaration
+Bel *bel_special_quote(Bel *exp, Bel *lenv);    // Forward declaration
+
 Bel*
 bel_eval(Bel *exp, Bel *lenv)
 {
 #ifdef BEL_DEBUG
-        printf("eval>  ");
-        bel_print(exp);
-        putchar(10);
+    printf("eval>  ");
+    bel_print(exp);
+    putchar(10);
 #endif
 
     // number: eval to itself
     // TODO
     
-    // symbol: look it up
+    // symbol
     if(bel_symbolp(exp)) {
+        // If one of axiom symbols, eval to itself
+        if(bel_idp(exp, bel_g_nil)
+           || bel_idp(exp, bel_g_t)
+           || bel_idp(exp, bel_g_o)
+           || bel_idp(exp, bel_g_apply))
+            return exp;
+        // else lookup on table
         return bel_lookup(lenv, exp);
     }
 
-    // quote, length two:  give back the second element
-    if(bel_quotep(exp)) {
-        uint64_t len = bel_length(exp);
-        if(len != 2) {
-            return bel_mkerror(
-                bel_mkstring("Malformed quote: can only "
-                             "quote one object."),
-                bel_g_nil);
-        }
+    // quote
+    if(bel_quotep(exp))
+        return bel_special_quote(exp, lenv);
+    
+    // lit
+    else if(bel_literalp(exp))
+        return exp; // eval to itself
 
-        return bel_car(bel_cdr(exp));
-    }
+    else if(bel_proper_list_p(exp)) {
+        // fn: closure
+        if(bel_idp(bel_car(exp), bel_mksymbol("fn")))
+            return bel_mkclosure(lenv, bel_cdr(exp));
     
-    // lit: eval to itself
-    else if(bel_literalp(exp)) {
-        return exp;
-    }
-    
-    // fn: closure
-    else if(bel_proper_list_p(exp)
-            && bel_idp(bel_car(exp),
-                      bel_mksymbol("fn"))) {
-        return bel_mkclosure(lenv, bel_cdr(exp));
-    }
-    
-    // if
-    // TODO
-    
-    // apply
-    // TODO
-    
-    // where (not straightforward)
-    // TODO
-    
-    // dyn: dynamic binding
-    // TODO
-    
-    // after
-    // TODO
-    
-    // set: Global binding
-    // TODO
-    
-    // TODO: ccc
-    
-    // TODO: thread
+        // if
+        if(bel_idp(bel_car(exp), bel_mksymbol("if")))
+            return bel_special_if(exp, lenv);
 
-    // else it is the case of an application
-    else {
-        if(!bel_proper_list_p(exp)) {
-            return bel_mkerror(
-                bel_mkstring("~a is not a proper list "
-                             "for the application of "
-                             "a function."),
-                bel_mkpair(exp, bel_g_nil));
-        }
+        // TODO:
+        // apply
+        // where (not straightforward)
+        // dyn (dynamic binding)
+        // after
+        // set (global binding)
+        // ccc (call/cc)
+        // thread
+
+        // otherwise it is the case of an application
         return bel_apply(bel_eval(bel_car(exp), lenv),
                          bel_evlist(bel_cdr(exp), lenv));
     }
+
+    return bel_mkerror(
+        bel_mkstring("~a is not a proper list "
+                     "for the application of "
+                     "a function."),
+        bel_mkpair(exp, bel_g_nil));
+}
+
+Bel*
+bel_special_if(Bel *exp, Bel *lenv)
+{
+    Bel *body       = bel_cdr(exp);
+    uint64_t length = bel_length(body);
+
+    if(length < 2) {
+        return bel_mkerror(
+            bel_mkstring("if statement must have at "
+                         "least one predicate with "
+                         "a consequent."),
+            bel_g_nil);
+    }
+
+    Bel *predicate;
+    Bel *consequent;
+            
+    while(1) {
+        predicate  = bel_car(body);
+        consequent = bel_car(bel_cdr(body));
+        body = bel_cdr(bel_cdr(body));
+
+        // nil consequent = return-eval predicate
+        if(bel_nilp(consequent)) {
+            return bel_eval(predicate, lenv);
+        }
+
+        if(!bel_nilp(bel_eval(predicate, lenv))) {
+            return bel_eval(consequent, lenv);
+        }
+    }
+            
+    return bel_g_nil;
+}
+
+Bel*
+bel_special_quote(Bel *exp, Bel *lenv)
+{
+    uint64_t len = bel_length(exp);
+    if(len != 2) {
+        return bel_mkerror(
+            bel_mkstring("Malformed quote: can only "
+                         "quote one object."),
+            bel_g_nil);
+    }
+
+    return bel_car(bel_cdr(exp));
 }
 
 Bel*
@@ -1235,86 +1271,38 @@ Bel*
 bel_apply_primop(Bel *sym, Bel *args)
 {
     // Primitive functions
-    if(bel_is_prim(sym, "id"))
-        return bel_prim_id(args);
-
-    else if(bel_is_prim(sym, "join"))
-        return bel_prim_join(args);
-
-    else if(bel_is_prim(sym, "car"))
-        return bel_prim_car(args);
-
-    else if(bel_is_prim(sym, "cdr"))
-        return bel_prim_cdr(args);
-
-    else if(bel_is_prim(sym, "type"))
-        return bel_prim_type(args);
-
-    else if(bel_is_prim(sym, "xar"))
-        return bel_prim_xar(args);
-
-    else if(bel_is_prim(sym, "xdr"))
-        return bel_prim_xdr(args);
-
-    else if(bel_is_prim(sym, "sym"))
-        return bel_prim_sym(args);
-
-    else if(bel_is_prim(sym, "nom"))
-        return bel_prim_nom(args);
-
-    else if(bel_is_prim(sym, "wrb"))
-        return bel_prim_wrb(args);
-
-    else if(bel_is_prim(sym, "rdb"))
-        return bel_prim_rdb(args);
-
-    else if(bel_is_prim(sym, "ops"))
-        return bel_prim_ops(args);
-
-    else if(bel_is_prim(sym, "cls"))
-        return bel_prim_cls(args);
-
-    else if(bel_is_prim(sym, "stat"))
-        return bel_prim_stat(args);
-
-    else if(bel_is_prim(sym, "coin"))
-        return bel_prim_coin(args);
-
-    else if(bel_is_prim(sym, "sys"))
-        return bel_unimplemented(sym);
+    if(bel_is_prim(sym, "id"))        return bel_prim_id(args);
+    else if(bel_is_prim(sym, "join")) return bel_prim_join(args);
+    else if(bel_is_prim(sym, "car"))  return bel_prim_car(args);
+    else if(bel_is_prim(sym, "cdr"))  return bel_prim_cdr(args);
+    else if(bel_is_prim(sym, "type")) return bel_prim_type(args);
+    else if(bel_is_prim(sym, "xar"))  return bel_prim_xar(args);
+    else if(bel_is_prim(sym, "xdr"))  return bel_prim_xdr(args);
+    else if(bel_is_prim(sym, "sym"))  return bel_prim_sym(args);
+    else if(bel_is_prim(sym, "nom"))  return bel_prim_nom(args);
+    else if(bel_is_prim(sym, "wrb"))  return bel_prim_wrb(args);
+    else if(bel_is_prim(sym, "rdb"))  return bel_prim_rdb(args);
+    else if(bel_is_prim(sym, "ops"))  return bel_prim_ops(args);
+    else if(bel_is_prim(sym, "cls"))  return bel_prim_cls(args);
+    else if(bel_is_prim(sym, "stat")) return bel_prim_stat(args);
+    else if(bel_is_prim(sym, "coin")) return bel_prim_coin(args);
+    else if(bel_is_prim(sym, "sys"))  return bel_unimplemented(sym);
 
     // Primitive operators
-    else if(bel_is_prim(sym, "+"))
-        return bel_unimplemented(sym);
-
-    else if(bel_is_prim(sym, "-"))
-        return bel_unimplemented(sym);
-
-    else if(bel_is_prim(sym, "*"))
-        return bel_unimplemented(sym);
-
-    else if(bel_is_prim(sym, "/"))
-        return bel_unimplemented(sym);
-
-    else if(bel_is_prim(sym, "<"))
-        return bel_unimplemented(sym);
-
-    else if(bel_is_prim(sym, "<="))
-        return bel_unimplemented(sym);
-
-    else if(bel_is_prim(sym, ">"))
-        return bel_unimplemented(sym);
-
-    else if(bel_is_prim(sym, ">="))
-        return bel_unimplemented(sym);
-
-    else if(bel_is_prim(sym, "="))
-        return bel_unimplemented(sym);
+    else if(bel_is_prim(sym, "+"))    return bel_unimplemented(sym);
+    else if(bel_is_prim(sym, "-"))    return bel_unimplemented(sym);
+    else if(bel_is_prim(sym, "*"))    return bel_unimplemented(sym);
+    else if(bel_is_prim(sym, "/"))    return bel_unimplemented(sym);
+    else if(bel_is_prim(sym, "<"))    return bel_unimplemented(sym);
+    else if(bel_is_prim(sym, "<="))   return bel_unimplemented(sym);
+    else if(bel_is_prim(sym, ">"))    return bel_unimplemented(sym);
+    else if(bel_is_prim(sym, ">="))   return bel_unimplemented(sym);
+    else if(bel_is_prim(sym, "="))    return bel_unimplemented(sym);
     
     // Other primitives
-    else if(bel_is_prim(sym, "err"))
-        return bel_prim_err(args);
+    else if(bel_is_prim(sym, "err"))  return bel_prim_err(args);
 
+    // Otherwise, unknown application operation
     else {
         return bel_mkerror(
             bel_mkstring("Unknown primitive ~a."),
@@ -2005,6 +1993,94 @@ eval_test()
     result = bel_eval(form, bel_g_nil);
     
     printf("Result: "); bel_print(result);
+    putchar(10); putchar(10);
+
+    
+    // (if (id (quote bar) (quote foo)) (quote okay)
+    //     (id (quote foo) (quote bar)) (quote okay)
+    //                                  (quote nope))
+    form = bel_mkpair(
+        bel_mksymbol("if"),
+        bel_mkpair(
+            bel_mkpair(
+                bel_mksymbol("id"),
+                bel_mkpair(
+                    bel_mkpair(
+                        bel_mksymbol("quote"),
+                        bel_mkpair(
+                            bel_mksymbol("bar"),
+                            bel_g_nil)),
+                    bel_mkpair(
+                        bel_mkpair(
+                            bel_mksymbol("quote"),
+                            bel_mkpair(
+                                bel_mksymbol("foo"),
+                                bel_g_nil)),
+                        bel_g_nil))),
+            bel_mkpair(
+                bel_mkpair(
+                    bel_mksymbol("quote"),
+                    bel_mkpair(
+                        bel_mksymbol("okay"),
+                        bel_g_nil)),
+                bel_mkpair(
+                    bel_mkpair(
+                        bel_mksymbol("id"),
+                        bel_mkpair(
+                            bel_mkpair(
+                                bel_mksymbol("quote"),
+                                bel_mkpair(
+                                    bel_mksymbol("foo"),
+                                    bel_g_nil)),
+                            bel_mkpair(
+                                bel_mkpair(
+                                    bel_mksymbol("quote"),
+                                    bel_mkpair(
+                                        bel_mksymbol("bar"),
+                                        bel_g_nil)),
+                                bel_g_nil))),
+                    bel_mkpair(
+                        bel_mkpair(
+                            bel_mksymbol("quote"),
+                            bel_mkpair(
+                                bel_mksymbol("okay"),
+                                bel_g_nil)),
+                        bel_mkpair(
+                            bel_mkpair(
+                                bel_mksymbol("quote"),
+                                bel_mkpair(
+                                    bel_mksymbol("nope"),
+                                    bel_g_nil)),
+                            bel_g_nil))))));
+    printf("Form:   ");
+    bel_print(form);
+    putchar(10);
+    
+    result = bel_eval(form, bel_g_nil);
+    
+    printf("Result: "); bel_print(result);
+    putchar(10); putchar(10);
+
+    // Eval some axioms
+    puts("Evaluating some axioms");
+    result = bel_eval(bel_g_t, bel_g_nil);
+    printf("Result: ");
+    bel_print(result);
+    putchar(10); putchar(10);
+
+    result = bel_eval(bel_g_o, bel_g_nil);
+    printf("Result: ");
+    bel_print(result);
+    putchar(10); putchar(10);
+
+    result = bel_eval(bel_g_apply, bel_g_nil);
+    printf("Result: ");
+    bel_print(result);
+    putchar(10); putchar(10);
+
+    result = bel_eval(bel_g_nil, bel_g_nil);
+    printf("Result: ");
+    bel_print(result);
     putchar(10); putchar(10);
 }
 

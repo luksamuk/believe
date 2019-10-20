@@ -165,15 +165,15 @@ SOFTWARE.
     lookup]
   - [ ] Dynamic binding (visible everywhere for short time)
   - [x] Hierarchical lookup (=bel_lookup=)
-- [ ] Functions
-  - [ ] Lexical bindings
+- [x] Functions
+  - [x] Lexical bindings
 - [ ] Evaluation [wip]
-  - [ ] Eval [wip]
+  - [x] Eval [wip]
     - [ ] Special forms [wip]
       - [x] =quote=
       - [x] =lit=
         - [x] =fn=   => literal closure
-      - [ ] =if=
+      - [x] =if=
       - [ ] =apply=
       - [x] =join=
       - [ ] =where=  => not so straightforward
@@ -182,8 +182,7 @@ SOFTWARE.
       - [ ] =ccc=    => Later?
       - [ ] =thread= => Later?
       - [ ] =set=    => global binding
-  - [ ] Apply [wip]
-    - [ ] Primitives (application) [wip]
+  - [x] Apply
   
 ** On-the-fly checklist
 - [x] Environment functions
@@ -195,16 +194,16 @@ SOFTWARE.
 - [x] Test for errors on core functions
 - [x] Dynamic environment
 - [x] Assignments/Unassignments
+- [x] =err= primitive function, basic error handling
+- [x] Use =BEL_DEBUG= flag everywhere!
+- [x] Move debug printing functions to actual printing behaviour
+- [x] Prototype evaluator
+- [ ] Proper error propagation
 - [ ] Add proper references with Org-ref and bibtex
 - [ ] Lexical environment object =scope=, shadowable, not unique (is it
   necessary?)
-- [ ] =err= primitive function, basic error handling and propagation
-  (WIP)
-- [x] Use =BEL_DEBUG= flag everywhere!
 - [ ] Prevent circular printing. Particularly useful for environments
   and closures
-- [ ] Move debug printing functions to actual printing behaviour
-- [ ] Prototype evaluator
 
 * Tools and scripts
 ** Makefile
@@ -271,7 +270,7 @@ export GC_PRINT_STATS=1
 ./believe
 #+end_src
 
-#+RESULTS[94b57beffeb8149ed822eb732ce8c9ac526fa891]:
+#+RESULTS[d36b5571dbf656b59cdf6d41f37ea2aa61b40c84]:
 #+begin_example
 clang --std=c11 -g -O2 -Wall -DBEL_DEBUG -c -o believe.o believe.c
 clang --std=c11 -g -O2 -Wall -DBEL_DEBUG -lgc -o believe believe.o
@@ -302,7 +301,7 @@ Char: 104 (h) => "01101000"
 Char: 105 (i) => "01101001"
 Char: 106 (j) => "01101010"
   -- Read five bytes from Believe's source
-Stream: #<stream :status input {0x0221b2b0}>
+Stream: #<stream :status input {0x010f72b0}>
 "00100011" => \#
 "01101001" => \i
 "01101110" => \n
@@ -389,6 +388,44 @@ eval>  x
 eval>  x
 apply> (lit prim id) at (foo foo)
 Result: t
+
+Form:   (if (id (quote bar) (quote foo)) (quote okay) (id (quote foo) (quote bar)) (quote okay) (quote nope))
+eval>  (if (id (quote bar) (quote foo)) (quote okay) (id (quote foo) (quote bar)) (quote okay) (quote nope))
+eval>  (id (quote bar) (quote foo))
+eval>  id
+eval>  (quote bar)
+eval>  (quote foo)
+apply> (lit prim id) at (bar foo)
+eval>  (id (quote bar) (quote foo))
+eval>  id
+eval>  (quote bar)
+eval>  (quote foo)
+apply> (lit prim id) at (bar foo)
+eval>  (id (quote foo) (quote bar))
+eval>  id
+eval>  (quote foo)
+eval>  (quote bar)
+apply> (lit prim id) at (foo bar)
+eval>  (id (quote foo) (quote bar))
+eval>  id
+eval>  (quote foo)
+eval>  (quote bar)
+apply> (lit prim id) at (foo bar)
+eval>  (quote nope)
+Result: nope
+
+Evaluating some axioms
+eval>  t
+Result: t
+
+eval>  o
+Result: o
+
+eval>  apply
+Result: apply
+
+eval>  nil
+Result: nil
 
 #+end_example
 
@@ -2237,7 +2274,16 @@ Bel *bel_apply_primop(Bel *sym, Bel *args);     // Forward declaration
 Bel *bel_bind(Bel *vars, Bel *vals, Bel *lenv); // Forward declaration
 #+end_src
 
-** The =eval= function
+The following forward declarations are related to /special forms/ on the
+evaluator. These special forms are handled outside of the /eval/
+function to make it more succint.
+
+#+begin_src C
+Bel *bel_special_if(Bel *exp, Bel *lenv);       // Forward declaration
+Bel *bel_special_quote(Bel *exp, Bel *lenv);    // Forward declaration
+#+end_src
+
+** The /eval/ function
 
 =bel_eval= is the /evaluation/ function. The objective is to take a
 particular expression, identify what it is (whether it is a special
@@ -2259,82 +2305,161 @@ Bel*
 bel_eval(Bel *exp, Bel *lenv)
 {
 #ifdef BEL_DEBUG
-        printf("eval>  ");
-        bel_print(exp);
-        putchar(10);
+    printf("eval>  ");
+    bel_print(exp);
+    putchar(10);
 #endif
 
     // number: eval to itself
     // TODO
     
-    // symbol: look it up
+    // symbol
     if(bel_symbolp(exp)) {
+        // If one of axiom symbols, eval to itself
+        if(bel_idp(exp, bel_g_nil)
+           || bel_idp(exp, bel_g_t)
+           || bel_idp(exp, bel_g_o)
+           || bel_idp(exp, bel_g_apply))
+            return exp;
+        // else lookup on table
         return bel_lookup(lenv, exp);
     }
 
-    // quote, length two:  give back the second element
-    if(bel_quotep(exp)) {
-        uint64_t len = bel_length(exp);
-        if(len != 2) {
-            return bel_mkerror(
-                bel_mkstring("Malformed quote: can only "
-                             "quote one object."),
-                bel_g_nil);
-        }
+    // quote
+    if(bel_quotep(exp))
+        return bel_special_quote(exp, lenv);
+    
+    // lit
+    else if(bel_literalp(exp))
+        return exp; // eval to itself
 
-        return bel_car(bel_cdr(exp));
-    }
+    else if(bel_proper_list_p(exp)) {
+        // fn: closure
+        if(bel_idp(bel_car(exp), bel_mksymbol("fn")))
+            return bel_mkclosure(lenv, bel_cdr(exp));
     
-    // lit: eval to itself
-    else if(bel_literalp(exp)) {
-        return exp;
-    }
-    
-    // fn: closure
-    else if(bel_proper_list_p(exp)
-            && bel_idp(bel_car(exp),
-                      bel_mksymbol("fn"))) {
-        return bel_mkclosure(lenv, bel_cdr(exp));
-    }
-    
-    // if
-    // TODO
-    
-    // apply
-    // TODO
-    
-    // where (not straightforward)
-    // TODO
-    
-    // dyn: dynamic binding
-    // TODO
-    
-    // after
-    // TODO
-    
-    // set: Global binding
-    // TODO
-    
-    // TODO: ccc
-    
-    // TODO: thread
+        // if
+        if(bel_idp(bel_car(exp), bel_mksymbol("if")))
+            return bel_special_if(exp, lenv);
 
-    // else it is the case of an application
-    else {
-        if(!bel_proper_list_p(exp)) {
-            return bel_mkerror(
-                bel_mkstring("~a is not a proper list "
-                             "for the application of "
-                             "a function."),
-                bel_mkpair(exp, bel_g_nil));
-        }
+        // TODO:
+        // apply
+        // where (not straightforward)
+        // dyn (dynamic binding)
+        // after
+        // set (global binding)
+        // ccc (call/cc)
+        // thread
+
+        // otherwise it is the case of an application
         return bel_apply(bel_eval(bel_car(exp), lenv),
                          bel_evlist(bel_cdr(exp), lenv));
     }
+
+    return bel_mkerror(
+        bel_mkstring("~a is not a proper list "
+                     "for the application of "
+                     "a function."),
+        bel_mkpair(exp, bel_g_nil));
 }
 #+end_src
 
-** The =apply= function
+*** Evaluating special forms
+
+Some special forms require greater attention, and so it is a little
+better to give them their own function.
+
+**** =(if . clauses)=
+
+The conditional =if= takes any number of clauses (at least two), and
+does their evaluation in pairs of clauses (not to be confused with the
+pair data type).
+
+Suppose that we have a conditional such as
+
+#+begin_example lisp
+(if cond1 pred1 cond2 pred2)
+#+end_example
+
+We evaluate =cond1=. If its result is not =nil=, we return the evaluation
+of =pred1=.
+
+If evaluation of =cond1= is =nil=, however, we don't evaluate =pred1=; we
+proceed to test the evaluation of =cond2=. If =cond2= yields a non-=nil=
+result, however, we return the evaluation of =pred2=.
+
+There can also be a different scenario, where the number of clauses is
+odd, like
+
+#+begin_example lisp
+(if cond1 pred1 cond2 pred2 altern)
+#+end_example
+
+If, during evaluation, =cond2= did not yield a non-=nil= result, then
+=pred2= would be skipped; however, as there are no more pairs, but only
+the a single =altern= clause, it will be evaluated and its results will
+be returned, as an alternative.
+
+#+begin_src C
+Bel*
+bel_special_if(Bel *exp, Bel *lenv)
+{
+    Bel *body       = bel_cdr(exp);
+    uint64_t length = bel_length(body);
+
+    if(length < 2) {
+        return bel_mkerror(
+            bel_mkstring("if statement must have at "
+                         "least one predicate with "
+                         "a consequent."),
+            bel_g_nil);
+    }
+
+    Bel *predicate;
+    Bel *consequent;
+            
+    while(1) {
+        predicate  = bel_car(body);
+        consequent = bel_car(bel_cdr(body));
+        body = bel_cdr(bel_cdr(body));
+
+        // nil consequent = return-eval predicate
+        if(bel_nilp(consequent)) {
+            return bel_eval(predicate, lenv);
+        }
+
+        if(!bel_nilp(bel_eval(predicate, lenv))) {
+            return bel_eval(consequent, lenv);
+        }
+    }
+            
+    return bel_g_nil;
+}
+#+end_src
+
+**** =(quote x)=
+
+In Lisp languages, quoting an atom, like the expression ='a=, translates
+to an expression such as =(quote a)=, which will then be evaluated by
+returning only the symbol =a=.
+
+#+begin_src C
+Bel*
+bel_special_quote(Bel *exp, Bel *lenv)
+{
+    uint64_t len = bel_length(exp);
+    if(len != 2) {
+        return bel_mkerror(
+            bel_mkstring("Malformed quote: can only "
+                         "quote one object."),
+            bel_g_nil);
+    }
+
+    return bel_car(bel_cdr(exp));
+}
+#+end_src
+
+** The /apply/ function
 
 =bel_apply= is the /application/ function. It takes a certain /function/ and
 applies to the /list of evaluated arguments/. A function can be a
@@ -2488,7 +2613,7 @@ Bel *bel_prim_coin(Bel *args);
 Bel *bel_prim_err(Bel *args);
 #+end_src
 
-**** =apply-primop=
+**** Applying primitive operations
 
 The =bel_apply_primop= function is the function which applies a
 primitive operation, identified as a symbol, to a list of evaluated
@@ -2528,86 +2653,38 @@ Bel*
 bel_apply_primop(Bel *sym, Bel *args)
 {
     // Primitive functions
-    if(bel_is_prim(sym, "id"))
-        return bel_prim_id(args);
-
-    else if(bel_is_prim(sym, "join"))
-        return bel_prim_join(args);
-
-    else if(bel_is_prim(sym, "car"))
-        return bel_prim_car(args);
-
-    else if(bel_is_prim(sym, "cdr"))
-        return bel_prim_cdr(args);
-
-    else if(bel_is_prim(sym, "type"))
-        return bel_prim_type(args);
-
-    else if(bel_is_prim(sym, "xar"))
-        return bel_prim_xar(args);
-
-    else if(bel_is_prim(sym, "xdr"))
-        return bel_prim_xdr(args);
-
-    else if(bel_is_prim(sym, "sym"))
-        return bel_prim_sym(args);
-
-    else if(bel_is_prim(sym, "nom"))
-        return bel_prim_nom(args);
-
-    else if(bel_is_prim(sym, "wrb"))
-        return bel_prim_wrb(args);
-
-    else if(bel_is_prim(sym, "rdb"))
-        return bel_prim_rdb(args);
-
-    else if(bel_is_prim(sym, "ops"))
-        return bel_prim_ops(args);
-
-    else if(bel_is_prim(sym, "cls"))
-        return bel_prim_cls(args);
-
-    else if(bel_is_prim(sym, "stat"))
-        return bel_prim_stat(args);
-
-    else if(bel_is_prim(sym, "coin"))
-        return bel_prim_coin(args);
-
-    else if(bel_is_prim(sym, "sys"))
-        return bel_unimplemented(sym);
+    if(bel_is_prim(sym, "id"))        return bel_prim_id(args);
+    else if(bel_is_prim(sym, "join")) return bel_prim_join(args);
+    else if(bel_is_prim(sym, "car"))  return bel_prim_car(args);
+    else if(bel_is_prim(sym, "cdr"))  return bel_prim_cdr(args);
+    else if(bel_is_prim(sym, "type")) return bel_prim_type(args);
+    else if(bel_is_prim(sym, "xar"))  return bel_prim_xar(args);
+    else if(bel_is_prim(sym, "xdr"))  return bel_prim_xdr(args);
+    else if(bel_is_prim(sym, "sym"))  return bel_prim_sym(args);
+    else if(bel_is_prim(sym, "nom"))  return bel_prim_nom(args);
+    else if(bel_is_prim(sym, "wrb"))  return bel_prim_wrb(args);
+    else if(bel_is_prim(sym, "rdb"))  return bel_prim_rdb(args);
+    else if(bel_is_prim(sym, "ops"))  return bel_prim_ops(args);
+    else if(bel_is_prim(sym, "cls"))  return bel_prim_cls(args);
+    else if(bel_is_prim(sym, "stat")) return bel_prim_stat(args);
+    else if(bel_is_prim(sym, "coin")) return bel_prim_coin(args);
+    else if(bel_is_prim(sym, "sys"))  return bel_unimplemented(sym);
 
     // Primitive operators
-    else if(bel_is_prim(sym, "+"))
-        return bel_unimplemented(sym);
-
-    else if(bel_is_prim(sym, "-"))
-        return bel_unimplemented(sym);
-
-    else if(bel_is_prim(sym, "*"))
-        return bel_unimplemented(sym);
-
-    else if(bel_is_prim(sym, "/"))
-        return bel_unimplemented(sym);
-
-    else if(bel_is_prim(sym, "<"))
-        return bel_unimplemented(sym);
-
-    else if(bel_is_prim(sym, "<="))
-        return bel_unimplemented(sym);
-
-    else if(bel_is_prim(sym, ">"))
-        return bel_unimplemented(sym);
-
-    else if(bel_is_prim(sym, ">="))
-        return bel_unimplemented(sym);
-
-    else if(bel_is_prim(sym, "="))
-        return bel_unimplemented(sym);
+    else if(bel_is_prim(sym, "+"))    return bel_unimplemented(sym);
+    else if(bel_is_prim(sym, "-"))    return bel_unimplemented(sym);
+    else if(bel_is_prim(sym, "*"))    return bel_unimplemented(sym);
+    else if(bel_is_prim(sym, "/"))    return bel_unimplemented(sym);
+    else if(bel_is_prim(sym, "<"))    return bel_unimplemented(sym);
+    else if(bel_is_prim(sym, "<="))   return bel_unimplemented(sym);
+    else if(bel_is_prim(sym, ">"))    return bel_unimplemented(sym);
+    else if(bel_is_prim(sym, ">="))   return bel_unimplemented(sym);
+    else if(bel_is_prim(sym, "="))    return bel_unimplemented(sym);
     
     // Other primitives
-    else if(bel_is_prim(sym, "err"))
-        return bel_prim_err(args);
+    else if(bel_is_prim(sym, "err"))  return bel_prim_err(args);
 
+    // Otherwise, unknown application operation
     else {
         return bel_mkerror(
             bel_mkstring("Unknown primitive ~a."),
@@ -2973,6 +3050,10 @@ bel_prim_coin(Bel *args)
 
 =sys= takes a string =x= and sends it to the operational system, as a
 console command.
+
+This function specifically is somewhat a matter of concern, because it
+opens up for the execution of an arbitrary command on the operational
+system.
 
 #+begin_src C
 Bel*
@@ -3448,6 +3529,8 @@ global_assignment_test()
 
 *** Evaluator test
 
+#+TODO: Too long! Replace this!
+
 #+begin_src C
 void
 eval_test()
@@ -3541,6 +3624,94 @@ eval_test()
     result = bel_eval(form, bel_g_nil);
     
     printf("Result: "); bel_print(result);
+    putchar(10); putchar(10);
+
+    
+    // (if (id (quote bar) (quote foo)) (quote okay)
+    //     (id (quote foo) (quote bar)) (quote okay)
+    //                                  (quote nope))
+    form = bel_mkpair(
+        bel_mksymbol("if"),
+        bel_mkpair(
+            bel_mkpair(
+                bel_mksymbol("id"),
+                bel_mkpair(
+                    bel_mkpair(
+                        bel_mksymbol("quote"),
+                        bel_mkpair(
+                            bel_mksymbol("bar"),
+                            bel_g_nil)),
+                    bel_mkpair(
+                        bel_mkpair(
+                            bel_mksymbol("quote"),
+                            bel_mkpair(
+                                bel_mksymbol("foo"),
+                                bel_g_nil)),
+                        bel_g_nil))),
+            bel_mkpair(
+                bel_mkpair(
+                    bel_mksymbol("quote"),
+                    bel_mkpair(
+                        bel_mksymbol("okay"),
+                        bel_g_nil)),
+                bel_mkpair(
+                    bel_mkpair(
+                        bel_mksymbol("id"),
+                        bel_mkpair(
+                            bel_mkpair(
+                                bel_mksymbol("quote"),
+                                bel_mkpair(
+                                    bel_mksymbol("foo"),
+                                    bel_g_nil)),
+                            bel_mkpair(
+                                bel_mkpair(
+                                    bel_mksymbol("quote"),
+                                    bel_mkpair(
+                                        bel_mksymbol("bar"),
+                                        bel_g_nil)),
+                                bel_g_nil))),
+                    bel_mkpair(
+                        bel_mkpair(
+                            bel_mksymbol("quote"),
+                            bel_mkpair(
+                                bel_mksymbol("okay"),
+                                bel_g_nil)),
+                        bel_mkpair(
+                            bel_mkpair(
+                                bel_mksymbol("quote"),
+                                bel_mkpair(
+                                    bel_mksymbol("nope"),
+                                    bel_g_nil)),
+                            bel_g_nil))))));
+    printf("Form:   ");
+    bel_print(form);
+    putchar(10);
+    
+    result = bel_eval(form, bel_g_nil);
+    
+    printf("Result: "); bel_print(result);
+    putchar(10); putchar(10);
+
+    // Eval some axioms
+    puts("Evaluating some axioms");
+    result = bel_eval(bel_g_t, bel_g_nil);
+    printf("Result: ");
+    bel_print(result);
+    putchar(10); putchar(10);
+
+    result = bel_eval(bel_g_o, bel_g_nil);
+    printf("Result: ");
+    bel_print(result);
+    putchar(10); putchar(10);
+
+    result = bel_eval(bel_g_apply, bel_g_nil);
+    printf("Result: ");
+    bel_print(result);
+    putchar(10); putchar(10);
+
+    result = bel_eval(bel_g_nil, bel_g_nil);
+    printf("Result: ");
+    bel_print(result);
     putchar(10); putchar(10);
 }
 #+end_src
