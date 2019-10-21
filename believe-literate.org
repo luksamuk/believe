@@ -4187,7 +4187,7 @@ bel_bind(Bel *vars, Bel *vals, Bel *lenv)
 
     if(vars_ended && !vals_ended) {
         return bel_mkerror(
-            bel_mkstring("Too many variables in "
+            bel_mkstring("Too few variables in "
                          "function application"),
             bel_g_nil);
     } else if(!vars_ended && vals_ended) {
