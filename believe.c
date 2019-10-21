@@ -1639,6 +1639,11 @@ bel_eval(Bel *exp, Bel *lenv)
     else if(bel_literalp(exp))
         return exp; // eval to itself
 
+    // string
+    else if(bel_stringp(exp))
+        return exp; // eval to itself
+
+    // Special forms
     else if(bel_proper_list_p(exp)) {
         // fn: closure
         if(bel_idp(bel_car(exp), bel_mksymbol("fn")))
@@ -1816,7 +1821,7 @@ Bel *bel_prim_ops(Bel *args);
 Bel *bel_prim_cls(Bel *args);
 Bel *bel_prim_stat(Bel *args);
 Bel *bel_prim_coin(Bel *args);
-//Bel *bel_prim_sys(Bel *args);
+Bel *bel_prim_sys(Bel *args);
 
 // Forward declarations of primitive operators
 //Bel *bel_prim_add(Bel *args);
@@ -1859,7 +1864,7 @@ bel_apply_primop(Bel *sym, Bel *args)
     else if(bel_is_prim(sym, "cls"))  return bel_prim_cls(args);
     else if(bel_is_prim(sym, "stat")) return bel_prim_stat(args);
     else if(bel_is_prim(sym, "coin")) return bel_prim_coin(args);
-    else if(bel_is_prim(sym, "sys"))  return bel_unimplemented(sym);
+    else if(bel_is_prim(sym, "sys"))  return bel_prim_sys(args);
 
     // Primitive operators
     else if(bel_is_prim(sym, "+"))    return bel_unimplemented(sym);
@@ -2127,6 +2132,27 @@ bel_prim_coin(Bel *args)
 {
     BEL_CHECK_ARITY(args, 0);
     return (rand() % 2) ? bel_g_t : bel_g_nil;
+}
+
+Bel*
+bel_prim_sys(Bel *args)
+{
+    BEL_CHECK_ARITY(args, 1);
+
+    Bel *str = bel_car(args);
+    
+    if(!bel_stringp(str)) {
+        return bel_mkerror(
+            bel_mkstring("The object ~a is not "
+                         "a string."),
+            bel_mkpair(str, bel_g_nil));
+    }
+    
+    const char *com = bel_cstring(str);
+
+    int64_t ret = system(com);
+
+    return bel_mkinteger(ret);
 }
 
 Bel*
@@ -2723,6 +2749,26 @@ eval_test()
     printf("Result: "); bel_print(result);
     putchar(10); putchar(10);
 
+
+    // (sys "echo Hello, world!")
+    // NOTE: I am commenting out this test since
+    //       this function could open some security
+    //       holes in systems unadvertedly using it.
+    /* form = bel_mkpair( */
+    /*     bel_mksymbol("sys"), */
+    /*     bel_mkpair( */
+    /*         bel_mkstring("echo Hello, world!"), */
+    /*         bel_g_nil)); */
+    /* printf("Form:   "); */
+    /* bel_print(form); */
+    /* putchar(10); */
+    
+    /* result = bel_eval(form, bel_g_nil); */
+    
+    /* printf("Result: "); bel_print(result); */
+    /* putchar(10); putchar(10); */
+
+    
     // Eval some axioms
     puts("Evaluating some axioms");
     result = bel_eval(bel_g_t, bel_g_nil);
