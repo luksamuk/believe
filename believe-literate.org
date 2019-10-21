@@ -146,6 +146,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 #+end_src
 
+* Acknowledgements
+
+This is an open-source project which anyone can contribute to. I'd
+like to thank the people who helped me so far with this project. Here
+is a list of them.
+
+- Carl Mäsak ([[https://github.com/masak][github.com/masak]])
+
 * COMMENT TO-DO list
 ** Roadmap
 - [x] Data types
@@ -276,7 +284,7 @@ export GC_PRINT_STATS=1
 clang --std=c11 -g -O2 -Wall -DBEL_DEBUG -c -o believe.o believe.c
 clang --std=c11 -g -O2 -Wall -DBEL_DEBUG -lgc -lm -o believe believe.o
 
-Believe 0.1
+Believe 0.2
 A Bel Lisp interpreter
 Copyright (c) 2019 Lucas Vieira
 This software is distributed under the MIT license.
@@ -302,7 +310,7 @@ Char: 104 (h) => "01101000"
 Char: 105 (i) => "01101001"
 Char: 106 (j) => "01101010"
   -- Read five bytes from Believe's source
-Stream: #<stream :status input {0x0223e2b0}>
+Stream: #<stream :status input {0x00f1f2b0}>
 "00100011" => \#
 "01101001" => \i
 "01101110" => \n
