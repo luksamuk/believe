@@ -1124,10 +1124,29 @@ bel_num_div(Bel *x, Bel *y)
             bel_num_mul(x->number.num_frac.denom,
                         y->number.num_frac.numer));
     case BEL_NUMBER_COMPLEX:
-        return bel_mkerror(
-            bel_mkstring("Complex number division is "
-                         "not yet implemented"),
-            bel_g_nil);
+    {
+        Bel *numer = bel_mkcomplex(
+            bel_num_add(
+                bel_num_mul(x->number.num_compl.real,
+                            y->number.num_compl.real),
+                bel_num_mul(x->number.num_compl.imag,
+                            y->number.num_compl.imag)),
+            bel_num_add(
+                bel_num_mul(
+                    bel_mkinteger(-1),
+                    bel_num_mul(x->number.num_compl.real,
+                                y->number.num_compl.imag)),
+                bel_num_mul(x->number.num_compl.imag,
+                            y->number.num_compl.real)));
+
+        Bel *denom = bel_num_add(
+            bel_num_mul(y->number.num_compl.real,
+                        y->number.num_compl.real),
+            bel_num_mul(y->number.num_compl.imag,
+                        y->number.num_compl.imag));
+
+        return bel_mkfraction(numer, denom);
+    }
     default: break;
     }
 
@@ -2510,9 +2529,6 @@ number_test()
     a = bel_mkinteger(4);
     b = bel_mkinteger(2);
 
-    printf("a = ");   bel_print(a);
-    printf("\nb = "); bel_print(b);
-    putchar(10);
     printf("(+ ");
     bel_print(a);
     putchar(' ');
@@ -2526,9 +2542,6 @@ number_test()
     a = bel_mkfloat(4.0);
     b = bel_mkfloat(3.5);
 
-    printf("a = ");   bel_print(a);
-    printf("\nb = "); bel_print(b);
-    putchar(10);
     printf("(- ");
     bel_print(a);
     putchar(' ');
@@ -2544,9 +2557,6 @@ number_test()
     b = bel_mkfraction(bel_mkinteger(1),
                        bel_mkinteger(6));
 
-    printf("a = ");   bel_print(a);
-    printf("\nb = "); bel_print(b);
-    putchar(10);
     printf("(+ ");
     bel_print(a);
     putchar(' ');
@@ -2562,9 +2572,6 @@ number_test()
     b = bel_mkcomplex(bel_mkinteger(1),
                       bel_mkinteger(4));
 
-    printf("a = ");   bel_print(a);
-    printf("\nb = "); bel_print(b);
-    putchar(10);
     printf("(* ");
     bel_print(a);
     putchar(' ');
@@ -2573,13 +2580,20 @@ number_test()
     bel_print(bel_num_mul(a, b));
     putchar(10);
 
+    // Complex division
+    // Reusing a and b from last example
+    printf("(/ ");
+    bel_print(a);
+    putchar(' ');
+    bel_print(b);
+    printf(") => ");
+    bel_print(bel_num_div(a, b));
+    putchar(10);
+
     // Integer division (inexact)
     a = bel_mkinteger(7);
     b = bel_mkinteger(2);
 
-    printf("a = ");   bel_print(a);
-    printf("\nb = "); bel_print(b);
-    putchar(10);
     printf("(/ ");
     bel_print(a);
     putchar(' ');
