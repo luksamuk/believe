@@ -302,7 +302,7 @@ Char: 104 (h) => "01101000"
 Char: 105 (i) => "01101001"
 Char: 106 (j) => "01101010"
   -- Read five bytes from Believe's source
-Stream: #<stream :status input {0x00c302b0}>
+Stream: #<stream :status input {0x0223e2b0}>
 "00100011" => \#
 "01101001" => \i
 "01101110" => \n
@@ -446,6 +446,41 @@ Result: #(f 2/3)
 
 eval>  #(c 2.0+3.4i)
 Result: #(c 2.0+3.4i)
+
+  -- Arithmetic evaluation test
+Expression: (+ 2 #(c 3+7i) #(f 1/3))
+eval>  (+ 2 #(c 3+7i) #(f 1/3))
+eval>  +
+eval>  2
+eval>  #(c 3+7i)
+eval>  #(f 1/3)
+apply> (lit prim +) at (2 #(c 3+7i) #(f 1/3))
+Result: #(c #(f 16/3)+7i)
+
+Expression: (- #(c 3+8i))
+eval>  (- #(c 3+8i))
+eval>  -
+eval>  #(c 3+8i)
+apply> (lit prim -) at (#(c 3+8i))
+Result: #(c -3-8i)
+
+Expression: (* 1 2 3 4 5)
+eval>  (* 1 2 3 4 5)
+eval>  *
+eval>  1
+eval>  2
+eval>  3
+eval>  4
+eval>  5
+apply> (lit prim *) at (1 2 3 4 5)
+Result: 120
+
+Expression: (/ 45.0)
+eval>  (/ 45.0)
+eval>  /
+eval>  45.0
+apply> (lit prim /) at (45.0)
+Result: 0.0222222
 
 #+end_example
 
