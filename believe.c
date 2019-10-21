@@ -6,13 +6,24 @@
 #include <errno.h>
 #include <math.h>
 
+/* Believe v0.2                                           *
+ * A Bel Lisp interpreter.                                *
+ * Copyright (c) 2019 Lucas Vieira.                       *
+ * This program is distributed under the MIT License. See *
+ * the LICENSE file for details.                          *
+ *                                                        *
+ * Development information can also be consulted on the   *
+ * book which accompanies this software, which was        * 
+ * written in literate programming form. For more         *
+ * information, see https://github.com/luksamuk/believe.  */
+
 #ifdef BEL_DEBUG
 #define GC_DEBUG
 #endif
 
 #include <gc.h>
 
-#define BELIEVE_VERSION   "0.1"
+#define BELIEVE_VERSION   "0.2"
 #define BELIEVE_COPYRIGHT "2019 Lucas Vieira"
 #define BELIEVE_LICENSE   "MIT"
 
