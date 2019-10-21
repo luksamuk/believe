@@ -1,5 +1,6 @@
 #+TITLE:    Believe: A Bel interpreter built with C11 [Beta]
 #+AUTHOR:   Lucas Vieira
+#+EMAIL:    lucasvieira@protonmail.com
 # #+DATE:     2019
 #+PROPERTY: header-args:C :eval no :main no :tangle believe.c
 #+STARTUP:  content
@@ -270,10 +271,10 @@ export GC_PRINT_STATS=1
 ./believe
 #+end_src
 
-#+RESULTS[d36b5571dbf656b59cdf6d41f37ea2aa61b40c84]:
+#+RESULTS[94b57beffeb8149ed822eb732ce8c9ac526fa891]:
 #+begin_example
 clang --std=c11 -g -O2 -Wall -DBEL_DEBUG -c -o believe.o believe.c
-clang --std=c11 -g -O2 -Wall -DBEL_DEBUG -lgc -o believe believe.o
+clang --std=c11 -g -O2 -Wall -DBEL_DEBUG -lgc -lm -o believe believe.o
 
 Believe 0.1
 A Bel Lisp interpreter
@@ -301,7 +302,7 @@ Char: 104 (h) => "01101000"
 Char: 105 (i) => "01101001"
 Char: 106 (j) => "01101010"
   -- Read five bytes from Believe's source
-Stream: #<stream :status input {0x010f72b0}>
+Stream: #<stream :status input {0x00c302b0}>
 "00100011" => \#
 "01101001" => \i
 "01101110" => \n
@@ -360,6 +361,13 @@ Lookup:            (lit err "The symbol ~a is unbound." foo)
 Environment:       nil
 Unbinding result:  nil
 Lookup:            (lit err "The symbol ~a is unbound." foo)
+  -- Number arithmetic tests
+(+ 4 2) => 6
+(- 4.0 3.5) => 0.5
+(+ #(f 1/3) #(f 1/6)) => #(f 9/18)
+(* #(c 3+2i) #(c 1+4i)) => #(c -5+14i)
+(/ #(c 3+2i) #(c 1+4i)) => #(f #(c 11-10i)/17)
+(/ 7 2) => #(f 7/2)
   -- Evaluator test
 Form:   (quote foo)
 eval>  (quote foo)
@@ -426,6 +434,18 @@ Result: apply
 
 eval>  nil
 Result: nil
+
+eval>  42
+Result: 42
+
+eval>  42.0
+Result: 42.0
+
+eval>  #(f 2/3)
+Result: #(f 2/3)
+
+eval>  #(c 2.0+3.4i)
+Result: #(c 2.0+3.4i)
 
 #+end_example
 
