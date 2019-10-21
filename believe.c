@@ -183,9 +183,6 @@ bel_proper_list_p(Bel *x)
     if(!bel_pairp(x))
         return 0;
     
-    if(bel_nilp(x))
-        return 1;
-    
     Bel *itr = x;
     while(!bel_nilp(itr)) {
         if(!bel_pairp(itr))
