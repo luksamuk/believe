@@ -177,9 +177,9 @@ bel_proper_list_p(Bel *x)
     
     Bel *itr = x;
     while(!bel_nilp(itr)) {
-        itr = bel_cdr(itr);
-        if(!bel_pairp(x))
+        if(!bel_pairp(itr))
             return 0;
+        itr = bel_cdr(itr);
     }
 
     return 1;
@@ -243,6 +243,26 @@ bel_quotep(Bel *x)
 
 #define bel_numberp(x)                          \
     ((x)->type==BEL_NUMBER)
+
+int
+bel_number_list_p(Bel *x)
+{
+    if(!bel_proper_list_p(x)) {
+        return 0;
+    }
+
+    Bel *itr = x;
+    while(!bel_nilp(itr)) {
+        Bel *car = bel_car(itr);
+
+        if(!bel_numberp(car))
+            return 0;
+
+        itr = bel_cdr(itr);
+    }
+
+    return 1;
+}
 
 typedef struct {
     const char **tbl;
@@ -1115,7 +1135,7 @@ bel_num_div(Bel *x, Bel *y)
                 x->number.num_int / y->number.num_int);
         }
     case BEL_NUMBER_FLOAT:
-        return bel_mkinteger(
+        return bel_mkfloat(
             x->number.num_float / y->number.num_float);
     case BEL_NUMBER_FRACTION:
         return bel_mkfraction(
@@ -1843,10 +1863,10 @@ Bel *bel_prim_coin(Bel *args);
 Bel *bel_prim_sys(Bel *args);
 
 // Forward declarations of primitive operators
-//Bel *bel_prim_add(Bel *args);
-//Bel *bel_prim_sub(Bel *args);
-//Bel *bel_prim_mul(Bel *args);
-//Bel *bel_prim_div(Bel *args);
+Bel *bel_prim_add(Bel *args);
+Bel *bel_prim_sub(Bel *args);
+Bel *bel_prim_mul(Bel *args);
+Bel *bel_prim_div(Bel *args);
 //Bel *bel_prim_less(Bel *args);
 //Bel *bel_prim_leq(Bel *args);
 //Bel *bel_prim_great(Bel *args);
@@ -1886,10 +1906,10 @@ bel_apply_primop(Bel *sym, Bel *args)
     else if(bel_is_prim(sym, "sys"))  return bel_prim_sys(args);
 
     // Primitive operators
-    else if(bel_is_prim(sym, "+"))    return bel_unimplemented(sym);
-    else if(bel_is_prim(sym, "-"))    return bel_unimplemented(sym);
-    else if(bel_is_prim(sym, "*"))    return bel_unimplemented(sym);
-    else if(bel_is_prim(sym, "/"))    return bel_unimplemented(sym);
+    else if(bel_is_prim(sym, "+"))    return bel_prim_add(args);
+    else if(bel_is_prim(sym, "-"))    return bel_prim_sub(args);
+    else if(bel_is_prim(sym, "*"))    return bel_prim_mul(args);
+    else if(bel_is_prim(sym, "/"))    return bel_prim_div(args);
     else if(bel_is_prim(sym, "<"))    return bel_unimplemented(sym);
     else if(bel_is_prim(sym, "<="))   return bel_unimplemented(sym);
     else if(bel_is_prim(sym, ">"))    return bel_unimplemented(sym);
@@ -2173,6 +2193,144 @@ bel_prim_sys(Bel *args)
     int64_t ret = system(com);
 
     return bel_mkinteger(ret);
+}
+
+Bel*
+bel_prim_add(Bel *args)
+{
+    if(!bel_number_list_p(args)) {
+        return bel_mkerror(
+            bel_mkstring("Cannot add a non-number."),
+            bel_g_nil);
+    }
+
+    uint64_t length = bel_length(args);
+    // No args: return 0
+    if(length == 0) {
+        return bel_mkinteger(0);
+    }
+
+    // One arg: identity
+    if(length == 1) {
+        return bel_car(args);
+    }
+
+    Bel *ret = bel_car(args);
+    Bel *itr = bel_cdr(args);
+    while(!bel_nilp(itr)) {
+        ret = bel_num_add(ret, bel_car(itr));
+        itr = bel_cdr(itr);
+    }
+
+    return ret;
+}
+
+Bel*
+bel_prim_sub(Bel *args)
+{
+    if(!bel_number_list_p(args)) {
+        return bel_mkerror(
+            bel_mkstring("Cannot subtract a "
+                         "non-number."),
+            bel_g_nil);
+    }
+
+    uint64_t length = bel_length(args);
+    // No args: error
+    if(length == 0) {
+        return bel_mkerror(
+            bel_mkstring("Subtraction takes at "
+                         "least one argument."),
+            bel_g_nil);
+    }
+
+    // One arg: invert
+    if(length == 1) {
+        return bel_num_mul(bel_mkinteger(-1),
+                           bel_car(args));
+    }
+
+    Bel *ret = bel_car(args);
+    Bel *itr = bel_cdr(args);
+    while(!bel_nilp(itr)) {
+        ret = bel_num_sub(ret, bel_car(itr));
+        itr = bel_cdr(itr);
+    }
+
+    return ret;
+}
+
+Bel*
+bel_prim_mul(Bel *args)
+{
+    if(!bel_number_list_p(args)) {
+        return bel_mkerror(
+            bel_mkstring("Cannot multiply a "
+                         "non-number."),
+            bel_g_nil);
+    }
+
+    uint64_t length = bel_length(args);
+    // No args: return 1
+    if(length == 0) {
+        return bel_mkinteger(1);
+    }
+
+    // One arg: identity
+    if(length == 1) {
+        return bel_car(args);
+    }
+
+    Bel *ret = bel_car(args);
+    Bel *itr = bel_cdr(args);
+    while(!bel_nilp(itr)) {
+        ret = bel_num_mul(ret, bel_car(itr));
+        itr = bel_cdr(itr);
+    }
+
+    return ret;
+}
+
+Bel*
+bel_prim_div(Bel *args)
+{
+    if(!bel_number_list_p(args)) {
+        return bel_mkerror(
+            bel_mkstring("Cannot divide a "
+                         "non-number."),
+            bel_g_nil);
+    }
+
+    uint64_t length = bel_length(args);
+    // No args: error
+    if(length == 0) {
+        return bel_mkerror(
+            bel_mkstring("Division takes at "
+                         "least one argument."),
+            bel_g_nil);
+    }
+
+    // One arg: reciprocal
+    if(length == 1) {
+        return bel_num_div(bel_mkinteger(1),
+                           bel_car(args));
+    }
+
+    Bel *ret = bel_car(args);
+    Bel *itr = bel_cdr(args);
+    while(!bel_nilp(itr)) {
+        ret = bel_num_div(ret, bel_car(itr));
+
+        // If there is a division by zero
+        // or something, return immediately
+        if(bel_errorp(ret)) {
+            return ret;
+        }
+        
+        itr = bel_cdr(itr);
+    }
+
+    return ret;
 }
 
 Bel*
@@ -2836,6 +2994,85 @@ eval_test()
     putchar(10); putchar(10);
 }
 
+void
+arithmetic_eval_test()
+{
+    Bel *exp;
+    Bel *result;
+
+    // (+ 2 #(c 3+7i) #(f 1/3))
+    exp = bel_mkpair(
+        bel_mksymbol("+"),
+        bel_mkpair(
+            bel_mkinteger(2),
+            bel_mkpair(
+                bel_mkcomplex(bel_mkinteger(3),
+                              bel_mkinteger(7)),
+                bel_mkpair(
+                    bel_mkfraction(bel_mkinteger(1),
+                                   bel_mkinteger(3)),
+                    bel_g_nil))));
+    printf("Expression: ");
+    bel_print(exp); putchar(10);
+
+    result = bel_eval(exp, bel_g_nil);
+    printf("Result: ");
+    bel_print(result); putchar(10);
+    putchar(10);
+
+    
+    //(- #(c 3-8i))
+    exp = bel_mkpair(
+        bel_mksymbol("-"),
+        bel_mkpair(
+            bel_mkcomplex(bel_mkinteger(3),
+                          bel_mkinteger(8)),
+            bel_g_nil));
+    printf("Expression: ");
+    bel_print(exp); putchar(10);
+
+    result = bel_eval(exp, bel_g_nil);
+    printf("Result: ");
+    bel_print(result); putchar(10);
+    putchar(10);
+
+    
+    // (* 1 2 3 4 5)
+    exp = bel_mkpair(
+        bel_mksymbol("*"),
+        bel_mkpair(
+            bel_mkinteger(1),
+            bel_mkpair(
+                bel_mkinteger(2),
+                bel_mkpair(
+                    bel_mkinteger(3),
+                    bel_mkpair(
+                        bel_mkinteger(4),
+                        bel_mkpair(
+                            bel_mkinteger(5),
+                            bel_g_nil))))));
+    printf("Expression: ");
+    bel_print(exp); putchar(10);
+
+    result = bel_eval(exp, bel_g_nil);
+    printf("Result: ");
+    bel_print(result); putchar(10);
+    putchar(10);
+
+    exp = bel_mkpair(
+        bel_mksymbol("/"),
+        bel_mkpair(
+            bel_mkfloat(45.0),
+            bel_g_nil));
+    printf("Expression: ");
+    bel_print(exp); putchar(10);
+
+    result = bel_eval(exp, bel_g_nil);
+    printf("Result: ");
+    bel_print(result); putchar(10);
+    putchar(10);
+}
+
 Bel*
 bel_init(void)
 {
@@ -2888,6 +3125,8 @@ run_tests()
     number_test();
     puts("  -- Evaluator test");
     eval_test();
+    puts("  -- Arithmetic evaluation test");
+    arithmetic_eval_test();
 }
 
 int
