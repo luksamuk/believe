@@ -910,14 +910,11 @@ bel_proper_list_p(Bel *x)
     if(!bel_pairp(x))
         return 0;
     
-    if(bel_nilp(x))
-        return 1;
-    
     Bel *itr = x;
     while(!bel_nilp(itr)) {
-        itr = bel_cdr(itr);
         if(!bel_pairp(x))
             return 0;
+        itr = bel_cdr(itr);
     }
 
     return 1;
