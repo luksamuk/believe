@@ -500,7 +500,9 @@ procedure for data manipulation will be defined afterwards.
 ** Enumerating Bel types
 
 We begin by specifying all data types, which Bel has four: symbols,
-pairs, characters and streams.
+pairs, characters and streams. We also add a number type, which is
+non-standard, but will be useful; this decision will be explained in
+its section.
 
 #+begin_src C
 typedef enum
@@ -597,19 +599,18 @@ typedef struct
 
 ** Number
 
-Bel does not specify any numeric types in its specification. In fact,
-numbers could be reproduced by using Church numerals, for
+Bel does not specify any numeric types in its standard. In fact,
+numbers could be reproduced in Bel by using Church numerals, for
 example. However, this approach has a huge impact on performance,
 enough to make us want actual numeric types in our interpreter.
 
-A /number/ in Believe is an actual union of many types. The /number/ can
+A /number/ in Believe is a union of many number subtypes. The /number/ can
 be an integer, a float, a fraction or even a complex number in its
 constitution, but this coercion happens away from the eyes of the Bel
-user. From his standpoint, there is only an opaque /number/.
+programmer; from his standpoint, there is only an opaque /number/ type.
 
-Let's start by defining the enumeration of types, and our basign
-integer and floats for Bel. Integers are C /64-bit signed ints/,
-and floats are, in fact, C /doubles/.
+Let's start by defining the enumeration of types. Integers are C
+/64-bit signed ints/, and floats are, in fact, C /doubles/.
 
 #+begin_src C
 typedef enum {
@@ -3554,7 +3555,7 @@ bel_prim_cdr(Bel *args)
 ***** =(type x)=
 
 =type= returns a symbol which specifies the type of =x=. The returning
-values can be =symbol=, =pair=, =char= or =stream=.
+values can be =symbol=, =pair=, =char=, =stream= or =number=.
 
 #+begin_src C
 Bel*
@@ -3566,6 +3567,7 @@ bel_prim_type(Bel *args)
     case BEL_PAIR:   return bel_mksymbol("pair");    break;
     case BEL_CHAR:   return bel_mksymbol("char");    break;
     case BEL_STREAM: return bel_mksymbol("stream");  break;
+    case BEL_NUMBER: return bel_mksymbol("number");  break;
     default:         return bel_mksymbol("unknown"); break;
     };
 }

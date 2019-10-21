@@ -1956,6 +1956,7 @@ bel_prim_type(Bel *args)
     case BEL_PAIR:   return bel_mksymbol("pair");    break;
     case BEL_CHAR:   return bel_mksymbol("char");    break;
     case BEL_STREAM: return bel_mksymbol("stream");  break;
+    case BEL_NUMBER: return bel_mksymbol("number");  break;
     default:         return bel_mksymbol("unknown"); break;
     };
 }
