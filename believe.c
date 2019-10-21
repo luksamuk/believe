@@ -667,6 +667,20 @@ bel_mkfloat(double num)
 Bel*
 bel_mkfraction(Bel *numer, Bel *denom)
 {
+    if(!bel_numberp(numer)) {
+        return bel_mkerror(
+            bel_mkstring("The object ~a is not "
+                         "a number."),
+            bel_mkpair(numer, bel_g_nil));
+    }
+
+    if(!bel_numberp(denom)) {
+        return bel_mkerror(
+            bel_mkstring("The object ~a is not "
+                         "a number."),
+            bel_mkpair(numer, bel_g_nil));
+    }
+    
     Bel *ret                   = GC_MALLOC(sizeof (*ret));
     ret->type                  = BEL_NUMBER;
     ret->number.type           = BEL_NUMBER_FRACTION;
@@ -678,12 +692,449 @@ bel_mkfraction(Bel *numer, Bel *denom)
 Bel*
 bel_mkcomplex(Bel *real, Bel *imag)
 {
+    if(!bel_numberp(real)) {
+        return bel_mkerror(
+            bel_mkstring("The object ~a is not "
+                         "a number."),
+            bel_mkpair(real, bel_g_nil));
+    }
+
+    if(!bel_numberp(imag)) {
+        return bel_mkerror(
+            bel_mkstring("The object ~a is not "
+                         "a number."),
+            bel_mkpair(imag, bel_g_nil));
+    }
+    
     Bel *ret                   = GC_MALLOC(sizeof (*ret));
     ret->type                  = BEL_NUMBER;
     ret->number.type           = BEL_NUMBER_COMPLEX;
     ret->number.num_compl.real = real;
     ret->number.num_compl.imag = imag;
     return ret;
+}
+
+Bel *bel_num_add(Bel *x, Bel *y);
+Bel *bel_num_sub(Bel *x, Bel *y);
+Bel *bel_num_mul(Bel *x, Bel *y);
+Bel *bel_num_div(Bel *x, Bel *y);
+
+Bel*
+bel_num_coerce(Bel *number, BEL_NUMBER_TYPE type)
+{
+    if(number->number.type == type)
+        return number;
+
+    switch(number->number.type) {
+    case BEL_NUMBER_INT:
+    {
+        switch(type) {
+        case BEL_NUMBER_FLOAT:
+            return bel_mkfloat(
+                (double)number->number.num_int);
+        case BEL_NUMBER_FRACTION:
+            return bel_mkfraction(
+                number,
+                bel_mkinteger(1));
+        case BEL_NUMBER_COMPLEX:
+            return bel_mkcomplex(
+                number,
+                bel_mkinteger(0));
+        default: break;
+        };
+    }
+    break;
+    case BEL_NUMBER_FLOAT:
+    {
+        switch(type) {
+        case BEL_NUMBER_INT:
+            return bel_mkinteger(
+                (int64_t)trunc(number->number.num_float));
+        case BEL_NUMBER_FRACTION:
+        {
+            double num  = number->number.num_float;
+            double trun = trunc(num);
+            int i = 0;
+            while(num != trun) {
+                num *= 10.0;
+                trun = trunc(num);
+                i++;
+            }
+            return bel_mkfraction(
+                bel_mkinteger((int64_t)num),
+                bel_mkinteger((int64_t)pow(10, i)));
+        }
+        case BEL_NUMBER_COMPLEX:
+            return bel_mkcomplex(number,
+                                 bel_mkfloat(0.0));
+        default: break;
+        };
+    }
+    break;
+    case BEL_NUMBER_FRACTION:
+    {
+        switch(type) {
+        case BEL_NUMBER_INT:
+        {
+            Bel *float_res =
+                bel_num_div(
+                    bel_num_coerce(
+                        number->number.num_frac.numer,
+                        BEL_NUMBER_FLOAT),
+                    bel_num_coerce(
+                        number->number.num_frac.denom,
+                        BEL_NUMBER_FLOAT));
+            
+            return bel_mkinteger(
+                (int64_t)trunc(
+                    float_res->number.num_float));
+        }
+        case BEL_NUMBER_FLOAT:
+            return bel_num_div(
+                bel_num_coerce(
+                    number->number.num_frac.numer,
+                    BEL_NUMBER_FLOAT),
+                bel_num_coerce(
+                    number->number.num_frac.denom,
+                    BEL_NUMBER_FLOAT));
+        case BEL_NUMBER_COMPLEX:
+            return bel_mkcomplex(number,
+                                 bel_mkinteger(0));
+        default: break;
+        };
+    }
+    break;
+    case BEL_NUMBER_COMPLEX:
+    {
+        switch(type) {
+        case BEL_NUMBER_INT:
+        {
+            Bel *coerced =
+                bel_num_coerce(
+                    number->number.num_compl.real,
+                    BEL_NUMBER_FLOAT);
+            
+            return bel_mkinteger(
+                (int64_t)trunc(
+                    coerced->number.num_float));
+        }
+        case BEL_NUMBER_FLOAT:
+            return bel_num_coerce(
+                number->number.num_compl.real,
+                BEL_NUMBER_FLOAT);
+        case BEL_NUMBER_FRACTION:
+            return bel_num_coerce(
+                number->number.num_compl.real,
+                BEL_NUMBER_FRACTION);
+        default: break;
+        };
+    }
+    break;
+    default: break;
+    };
+
+    return number;
+}
+
+Bel*
+bel_num_mksametype(Bel *x, Bel *y)
+{
+    switch(x->number.type) {
+    case BEL_NUMBER_INT:
+        switch(y->number.type) {
+        case BEL_NUMBER_INT:
+            // int -> int -> int
+            return bel_mkpair(x, y);
+        case BEL_NUMBER_FLOAT:
+            // int -> float -> float
+            return bel_mkpair(
+                bel_num_coerce(x, BEL_NUMBER_FLOAT),
+                y);
+        case BEL_NUMBER_FRACTION:
+            // int -> fraction -> fraction
+            return bel_mkpair(
+                bel_num_coerce(x, BEL_NUMBER_FRACTION),
+                y);
+        case BEL_NUMBER_COMPLEX:
+            // int -> complex -> complex
+            return bel_mkpair(
+                bel_num_coerce(x, BEL_NUMBER_COMPLEX),
+                y);
+        default: break;
+        }
+        break;
+    case BEL_NUMBER_FLOAT:
+        switch(y->number.type) {
+        case BEL_NUMBER_INT:
+            // float -> int -> float
+            // duplicate
+            return bel_num_mksametype(y, x);
+        case BEL_NUMBER_FLOAT:
+            // float -> float -> float
+            // same type
+            return bel_mkpair(x, y);
+        case BEL_NUMBER_FRACTION:
+            // float -> fraction -> fraction
+            return bel_mkpair(
+                bel_num_coerce(x, BEL_NUMBER_FRACTION),
+                y);
+        case BEL_NUMBER_COMPLEX:
+            // float -> complex -> complex
+            return bel_mkpair(
+                bel_num_coerce(x, BEL_NUMBER_COMPLEX),
+                y);
+            break;
+        default: break;
+        }
+        break;
+    case BEL_NUMBER_FRACTION:
+        switch(y->number.type) {
+        case BEL_NUMBER_INT:
+            // fraction -> int -> int
+            // duplicate
+            return bel_num_mksametype(y, x);
+        case BEL_NUMBER_FLOAT:
+            // fraction -> float -> fraction
+            // duplicate
+            return bel_num_mksametype(y, x);
+        case BEL_NUMBER_FRACTION:
+            // fraction -> fraction -> fraction
+            // same type
+            return bel_mkpair(x, y);
+        case BEL_NUMBER_COMPLEX:
+            // fraction -> complex -> complex
+            return bel_mkpair(
+                bel_num_coerce(x, BEL_NUMBER_COMPLEX),
+                y);
+            break;
+        default: break;
+        }
+        break;
+    case BEL_NUMBER_COMPLEX:
+        switch(y->number.type) {
+        case BEL_NUMBER_INT:
+            // complex -> int -> complex
+            // duplicate
+            return bel_num_mksametype(y, x);
+        case BEL_NUMBER_FLOAT:
+            // complex -> float -> complex
+            // duplicate
+            return bel_num_mksametype(y, x);
+        case BEL_NUMBER_FRACTION:
+            // complex -> fraction -> complex
+            // duplicate
+            return bel_num_mksametype(y, x);
+        case BEL_NUMBER_COMPLEX:
+            // complex -> complex -> complex
+            // same type
+            return bel_mkpair(x, y);
+        default: break;
+        }
+        break;
+    default: break;
+    }
+}
+
+#define BEL_NUM_SAMETYPE(x, y)                  \
+    {                                           \
+    Bel *p = bel_num_mksametype(x, y);          \
+    x = bel_car(p);                             \
+    y = bel_cdr(p);                             \
+    }
+
+int
+bel_num_zerop(Bel *x)
+{
+    switch(x->number.type) {
+    case BEL_NUMBER_INT:
+        return (x->number.num_int == 0);
+    case BEL_NUMBER_FLOAT:
+        return (x->number.num_float == 0.0)
+            || (x->number.num_float == -0.0);
+    case BEL_NUMBER_FRACTION:
+        return bel_num_zerop(
+            x->number.num_frac.numer);
+    case BEL_NUMBER_COMPLEX:
+        return (bel_num_zerop(
+                    x->number.num_compl.real))
+            && (bel_num_zerop(
+                    x->number.num_compl.imag));
+    }
+
+    // This should not be reached...
+    return 0;
+}
+
+Bel*
+bel_num_add(Bel *x, Bel *y)
+{
+    BEL_NUM_SAMETYPE(x, y);
+    
+    switch(x->number.type) {
+    case BEL_NUMBER_INT:
+        return bel_mkinteger(
+            x->number.num_int + y->number.num_int);
+    case BEL_NUMBER_FLOAT:
+        return bel_mkfloat(
+            x->number.num_float + y->number.num_float);
+    case BEL_NUMBER_FRACTION:
+    {
+        Bel *new_numer_x =
+            bel_num_mul(x->number.num_frac.numer,
+                        y->number.num_frac.denom);
+        Bel *new_numer_y =
+            bel_num_mul(x->number.num_frac.denom,
+                        y->number.num_frac.numer);
+        Bel *new_denom =
+            bel_num_mul(x->number.num_frac.denom,
+                        y->number.num_frac.denom);
+
+        return bel_mkfraction(
+            bel_num_add(new_numer_x, new_numer_y),
+            new_denom);
+    }
+    case BEL_NUMBER_COMPLEX:
+        return bel_mkcomplex(
+            bel_num_add(x->number.num_compl.real,
+                        y->number.num_compl.real),
+            bel_num_add(x->number.num_compl.imag,
+                        y->number.num_compl.imag));
+    default: break;
+    };
+    
+    return bel_mkerror(
+        bel_mkstring("Error while adding ~a and ~a."),
+        bel_mkpair(x, bel_mkpair(y, bel_g_nil)));
+}
+
+Bel*
+bel_num_sub(Bel *x, Bel *y)
+{
+    BEL_NUM_SAMETYPE(x, y);
+
+    switch(x->number.type) {
+    case BEL_NUMBER_INT:
+        return bel_mkinteger(
+            x->number.num_int - y->number.num_int);
+    case BEL_NUMBER_FLOAT:
+        return bel_mkfloat(
+            x->number.num_float - y->number.num_float);
+    case BEL_NUMBER_FRACTION:
+    {
+        Bel *new_numer_x =
+            bel_num_mul(x->number.num_frac.numer,
+                        y->number.num_frac.denom);
+        Bel *new_numer_y =
+            bel_num_mul(x->number.num_frac.denom,
+                        y->number.num_frac.numer);
+        Bel *new_denom =
+            bel_num_mul(x->number.num_frac.denom,
+                        y->number.num_frac.denom);
+
+        return bel_mkfraction(
+            bel_num_sub(new_numer_x, new_numer_y),
+            new_denom);
+    }
+    case BEL_NUMBER_COMPLEX:
+        return bel_mkcomplex(
+            bel_num_sub(x->number.num_compl.real,
+                        y->number.num_compl.real),
+            bel_num_sub(x->number.num_compl.imag,
+                        y->number.num_compl.imag));
+    default: break;
+    };
+    
+    return bel_mkerror(
+        bel_mkstring("Error while subtracting ~a "
+                     "and ~a."),
+        bel_mkpair(x, bel_mkpair(y, bel_g_nil)));
+}
+
+Bel*
+bel_num_mul(Bel *x, Bel *y)
+{
+    BEL_NUM_SAMETYPE(x, y);
+    
+    switch(x->number.type) {
+    case BEL_NUMBER_INT:
+        return bel_mkinteger(
+            x->number.num_int * y->number.num_int);
+    case BEL_NUMBER_FLOAT:
+        return bel_mkfloat(
+            x->number.num_float * y->number.num_float);
+    case BEL_NUMBER_FRACTION:
+        return bel_mkfraction(
+            bel_num_mul(x->number.num_frac.numer,
+                        y->number.num_frac.numer),
+            bel_num_mul(x->number.num_frac.denom,
+                        y->number.num_frac.denom));
+    case BEL_NUMBER_COMPLEX:
+    {
+        Bel *real =
+            bel_num_sub(
+                bel_num_mul(x->number.num_compl.real,
+                            y->number.num_compl.real),
+                bel_num_mul(x->number.num_compl.imag,
+                            y->number.num_compl.imag));
+        Bel *imag =
+            bel_num_add(
+                bel_num_mul(x->number.num_compl.real,
+                            y->number.num_compl.imag),
+                bel_num_mul(x->number.num_compl.imag,
+                            y->number.num_compl.real));
+
+        return bel_mkcomplex(real, imag);
+    }
+    break;
+    default: break;
+    };
+
+    return bel_mkerror(
+        bel_mkstring("Error while multiplying "
+                     "~a and ~a."),
+        bel_mkpair(x, bel_mkpair(y, bel_g_nil)));
+}
+
+Bel*
+bel_num_div(Bel *x, Bel *y)
+{
+    BEL_NUM_SAMETYPE(x, y);
+
+    if(bel_num_zerop(y)) {
+        return bel_mkerror(
+            bel_mkstring("Cannot divide by zero."),
+            bel_g_nil);
+    }
+    
+    switch(x->number.type) {
+    case BEL_NUMBER_INT:
+        if(x->number.num_int % y->number.num_int) {
+            return bel_mkfraction(x, y);
+        } else {
+            return bel_mkinteger(
+                x->number.num_int / y->number.num_int);
+        }
+    case BEL_NUMBER_FLOAT:
+        return bel_mkinteger(
+            x->number.num_float / y->number.num_float);
+    case BEL_NUMBER_FRACTION:
+        return bel_mkfraction(
+            bel_num_mul(x->number.num_frac.numer,
+                        y->number.num_frac.denom),
+            bel_num_mul(x->number.num_frac.denom,
+                        y->number.num_frac.numer));
+    case BEL_NUMBER_COMPLEX:
+        return bel_mkerror(
+            bel_mkstring("Complex number division is "
+                         "not yet implemented"),
+            bel_g_nil);
+    default: break;
+    }
+
+    return bel_mkerror(
+        bel_mkstring("Error while dividing "
+                     "~a and ~a."),
+        bel_mkpair(x, bel_mkpair(y, bel_g_nil)));
 }
 
 Bel*
@@ -2024,6 +2475,95 @@ global_assignment_test()
 }
 
 void
+number_test()
+{
+    Bel *a;
+    Bel *b;
+
+    // Integer sum
+    a = bel_mkinteger(4);
+    b = bel_mkinteger(2);
+
+    printf("a = ");   bel_print(a);
+    printf("\nb = "); bel_print(b);
+    putchar(10);
+    printf("(+ ");
+    bel_print(a);
+    putchar(' ');
+    bel_print(b);
+    printf(") => ");
+    bel_print(bel_num_add(a, b));
+    putchar(10);
+
+    
+    // Float subtraction
+    a = bel_mkfloat(4.0);
+    b = bel_mkfloat(3.5);
+
+    printf("a = ");   bel_print(a);
+    printf("\nb = "); bel_print(b);
+    putchar(10);
+    printf("(- ");
+    bel_print(a);
+    putchar(' ');
+    bel_print(b);
+    printf(") => ");
+    bel_print(bel_num_sub(a, b));
+    putchar(10);
+
+
+    // Fraction sum
+    a = bel_mkfraction(bel_mkinteger(1),
+                       bel_mkinteger(3));
+    b = bel_mkfraction(bel_mkinteger(1),
+                       bel_mkinteger(6));
+
+    printf("a = ");   bel_print(a);
+    printf("\nb = "); bel_print(b);
+    putchar(10);
+    printf("(+ ");
+    bel_print(a);
+    putchar(' ');
+    bel_print(b);
+    printf(") => ");
+    bel_print(bel_num_add(a, b));
+    putchar(10);
+
+    
+    // Complex multiplication
+    a = bel_mkcomplex(bel_mkinteger(3),
+                      bel_mkinteger(2));
+    b = bel_mkcomplex(bel_mkinteger(1),
+                      bel_mkinteger(4));
+
+    printf("a = ");   bel_print(a);
+    printf("\nb = "); bel_print(b);
+    putchar(10);
+    printf("(* ");
+    bel_print(a);
+    putchar(' ');
+    bel_print(b);
+    printf(") => ");
+    bel_print(bel_num_mul(a, b));
+    putchar(10);
+
+    // Integer division (inexact)
+    a = bel_mkinteger(7);
+    b = bel_mkinteger(2);
+
+    printf("a = ");   bel_print(a);
+    printf("\nb = "); bel_print(b);
+    putchar(10);
+    printf("(/ ");
+    bel_print(a);
+    putchar(' ');
+    bel_print(b);
+    printf(") => ");
+    bel_print(bel_num_div(a, b));
+    putchar(10);
+}
+
+void
 eval_test()
 {
     Bel *form;
@@ -2283,6 +2823,8 @@ run_tests()
     lexical_environment_test();
     puts("  -- Globals and assignment tests");
     global_assignment_test();
+    puts("  -- Number arithmetic tests");
+    number_test();
     puts("  -- Evaluator test");
     eval_test();
 }
