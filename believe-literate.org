@@ -896,7 +896,7 @@ an /atom/ and a /pair/.
 *** =idp=
 
 =bel_idp= tests whether an object is identical to another.
-According to the Bel specification, identity is stricted than
+According to the Bel specification, identity is stricter than
 equality: there is only one of each symbol and character, but pairs
 and streams are never identical.
 
@@ -950,8 +950,8 @@ An empty list is considered a proper list as well.
 
 =bel_proper_list_p= checks whether a list is indeed a proper list. We do
 that by traversing the list, pair by pair. If the /cdr/ is =nil=, it is
-proper; if it is a pair, it proceeds the traversal. But if the /cdr/ is
-anything otherwise, then it is not a proper list.
+proper; if it is a pair, it proceeds with the traversal. But if the /cdr/
+is anything else, then it is not a proper list.
 
 #+begin_src C
 int
@@ -1267,7 +1267,7 @@ bel_cdr(Bel *p)
 }
 #+end_src
 
-Let's also build an utility to return the size of a list. This is a
+Let's also build a utility to return the size of a list. This is a
 =O(n)= operation which takes a well-formed list and iterates over
 it.
 
@@ -1407,7 +1407,7 @@ bel_mkstring(const char *str)
 }
 #+end_src
 
-We also add an utility to take back a Bel string and turn it into a
+We also add a utility to take back a Bel string and turn it into a
 garbage-collected C string.
 
 Note that the errors it can produce are instead dumped to the console
@@ -1767,7 +1767,7 @@ bel_mkcomplex(Bel *real, Bel *imag)
 
 *** Number arithmetic
 
-The following operations happen always between two numbers. Me make
+The following operations always happen between two numbers. We make
 sure they are of compatible types to perform these operations, and
 then we return numbers of a proper subtype afterwards.
 
@@ -2821,7 +2821,7 @@ bel_mkprim(Bel *sym)
 #+end_src
 
 The next definition is a macro where, given an environment =env= and a
-C string literal =x=, it generates a primitive por =x= and pushes it to
+C string literal =x=, it generates a primitive for =x= and pushes it to
 the enviroment =env=.
 
 #+begin_src C
@@ -3121,7 +3121,7 @@ bel_print(Bel *obj)
 
 The evaluator is the most crucial part of the Bel system. We follow
 the pattern of the /metacircular evaluator/: by having two functions,
-=eval= and =apply=, we make them call themselves mutually, incrementing
+=eval= and =apply=, we make them call themselves mutually, equipping
 them with auxiliary functions and special forms to produce a working
 interpreter for a Lisp language.
 
@@ -4184,7 +4184,7 @@ bel_bind(Bel *vars, Bel *vals, Bel *lenv)
 
     if(vars_ended && !vals_ended) {
         return bel_mkerror(
-            bel_mkstring("Too many variables in "
+            bel_mkstring("Too few variables in "
                          "function application"),
             bel_g_nil);
     } else if(!vars_ended && vals_ended) {
