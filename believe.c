@@ -153,16 +153,58 @@ Bel *bel_cdr(Bel*);                         // Forward declaration
 #define bel_streamp(x)                          \
     (((x)->type==BEL_STREAM))
 
+#define bel_numberp(x)                          \
+    ((x)->type==BEL_NUMBER)
+
+int bel_idp_nums(Bel *x, Bel *y); // Forward declaration
+
 int
 bel_idp(Bel *x, Bel *y)
 {
-    if((!bel_symbolp(x) && !bel_charp(x))
-       || (!bel_symbolp(y) && !bel_charp(y)))
-        return 0;
-
     if(bel_symbolp(x))
         return (x->sym == y->sym);
-    return (x->chr == y->chr);
+    else if(bel_charp(x))
+        return (x->chr == y->chr);
+    else if(bel_numberp(x)) {
+        // Non-standard
+        return bel_idp_nums(x, y);
+    }
+
+    // For pairs and streams, check for
+    // pointer aliasing
+    return (x == y);
+}
+
+int
+bel_idp_nums(Bel *x, Bel *y)
+{
+    if(x->number.type == y->number.type) {
+        switch(x->number.type) {
+        case BEL_NUMBER_INT:
+            return (x->number.num_int
+                    == y->number.num_int);
+        case BEL_NUMBER_FLOAT:
+            return (x->number.num_float
+                    == y->number.num_float);
+        case BEL_NUMBER_FRACTION:
+            return
+                (bel_idp_nums(
+                    x->number.num_frac.numer,
+                    y->number.num_frac.numer)
+                 && bel_idp_nums(
+                     x->number.num_frac.denom,
+                     y->number.num_frac.denom));
+        case BEL_NUMBER_COMPLEX:
+            return
+                (bel_idp_nums(
+                    x->number.num_compl.real,
+                    y->number.num_compl.real)
+                 && bel_idp_nums(
+                     x->number.num_compl.imag,
+                     y->number.num_compl.imag));
+        };
+    }
+    return 0;
 }
 
 int
@@ -248,9 +290,6 @@ bel_quotep(Bel *x)
     return bel_idp(bel_car(x),
                    bel_mksymbol("quote"));
 }
-
-#define bel_numberp(x)                          \
-    ((x)->type==BEL_NUMBER)
 
 int
 bel_number_list_p(Bel *x)
@@ -3020,6 +3059,24 @@ arithmetic_eval_test()
                     bel_mkfraction(bel_mkinteger(1),
                                    bel_mkinteger(3)),
                     bel_g_nil))));
+    printf("Expression: ");
+    bel_print(exp); putchar(10);
+
+    result = bel_eval(exp, bel_g_nil);
+    printf("Result: ");
+    bel_print(result); putchar(10);
+    putchar(10);
+
+    // (id #(c 1+3i) #(c 1+3i))
+    exp = bel_mkpair(
+        bel_mksymbol("id"),
+        bel_mkpair(
+            bel_mkcomplex(bel_mkinteger(1),
+                          bel_mkinteger(3)),
+            bel_mkpair(
+                bel_mkcomplex(bel_mkinteger(1),
+                              bel_mkinteger(3)),
+                bel_g_nil)));
     printf("Expression: ");
     bel_print(exp); putchar(10);
 
