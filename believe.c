@@ -141,11 +141,9 @@ Bel *bel_cdr(Bel*);                         // Forward declaration
 #define bel_nilp(x)                             \
     (bel_symbolp(x) && ((x)->sym==BEL_NIL))
 
-#define bel_pairp(x)                            \
-    (((x)->type==BEL_PAIR) || bel_nilp(x))
+#define bel_pairp(x) ((x)->type==BEL_PAIR)
 
-#define bel_atomp(x)                             \
-    (bel_nilp(x) || !bel_pairp(x))
+#define bel_atomp(x) (!bel_pairp(x))
 
 #define bel_charp(x)                            \
     (((x)->type==BEL_CHAR))
@@ -390,28 +388,30 @@ bel_mkpair(Bel *car, Bel *cdr)
 Bel*
 bel_car(Bel *p)
 {
+    if(bel_nilp(p))
+        return bel_g_nil;
+    
     if(!bel_pairp(p)) {
         return bel_mkerror(
             bel_mkstring("Cannot extract the car of ~a."),
             bel_mkpair(p, bel_g_nil));
     }
     
-    if(bel_nilp(p))
-        return bel_g_nil;
     return p->pair->car;
 }
 
 Bel*
 bel_cdr(Bel *p)
 {
+    if(bel_nilp(p))
+        return bel_g_nil;
+    
     if(!bel_pairp(p)) {
         return bel_mkerror(
             bel_mkstring("Cannot extract the cdr of ~a."),
             bel_mkpair(p, bel_g_nil));
     }
     
-    if(bel_nilp(p))
-        return bel_g_nil;
     return p->pair->cdr;
 }
 
@@ -2715,7 +2715,8 @@ global_assignment_test()
     for(i = 0; i < 3; i++) {
         ret = bel_unbind(&lexenv, bel_mksymbol("foo"));
 
-        printf("\n\nEnvironment:       ");
+        printf("\n\n      After unbinding.");
+        printf("\nEnvironment:       ");
         bel_print(lexenv);
         printf("\nUnbinding result:  ");
         bel_print(ret);

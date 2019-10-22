@@ -638,35 +638,19 @@ data!
 
 *** =pairp=
 
-=bel_pairp= tests whether the element is a /pair/. That is, either it is a
-proper pair, or it is the symbol =nil=.
-
-Note that Bel does not explicitly specify that =nil= is a pair, but I am
-assuming it since one can "extract" the /car/ and the /cdr/ of =nil=.
+=bel_pairp= tests whether the element is a /pair/.
 
 #+begin_src C
-#define bel_pairp(x)                            \
-    (((x)->type==BEL_PAIR) || bel_nilp(x))
+#define bel_pairp(x) ((x)->type==BEL_PAIR)
 #+end_src
 
 *** =atomp=
 
-=bel_atomp= can be a little tricky to understand, altough the
-implementation is simple. Bel specifies that anything that is not a
-pair is called an atom. The problem, though, is to decide whether =nil=
-is an atom or not.
-
-Common Lisp takes =NIL= as being both a /cons/ and an /atom/ (since it is
-both a symbol and a representation for the empty list). I leveraged
-that and decided to say that, in Believe, an /atom/ is /anything that is
-not built out of a pair of at least two elements/. Note that there is
-no such thing like a "pair of one element", but I am considering =nil=
-as a pair of "zero" elements. So =nil= is the only symbol which is both
-an /atom/ and a /pair/.
+=bel_atomp= tests whether an element is not a /pair/ -- that is, if it is
+not "divisible".
 
 #+begin_src C
-#define bel_atomp(x)                             \
-    (bel_nilp(x) || !bel_pairp(x))
+#define bel_atomp(x) (!bel_pairp(x))
 #+end_src
 
 *** =charp=
@@ -1086,28 +1070,32 @@ Now we may easily extract information from pairs, using the /car/ and
 Bel*
 bel_car(Bel *p)
 {
+    if(bel_nilp(p))
+        return bel_g_nil;
+    
     if(!bel_pairp(p)) {
         return bel_mkerror(
             bel_mkstring("Cannot extract the car of ~a."),
             bel_mkpair(p, bel_g_nil));
     }
     
-    if(bel_nilp(p))
-        return bel_g_nil;
     return p->pair->car;
 }
+#+end_src
 
+#+begin_src C
 Bel*
 bel_cdr(Bel *p)
 {
+    if(bel_nilp(p))
+        return bel_g_nil;
+    
     if(!bel_pairp(p)) {
         return bel_mkerror(
             bel_mkstring("Cannot extract the cdr of ~a."),
             bel_mkpair(p, bel_g_nil));
     }
     
-    if(bel_nilp(p))
-        return bel_g_nil;
     return p->pair->cdr;
 }
 #+end_src
@@ -4443,7 +4431,8 @@ global_assignment_test()
     for(i = 0; i < 3; i++) {
         ret = bel_unbind(&lexenv, bel_mksymbol("foo"));
 
-        printf("\n\nEnvironment:       ");
+        printf("\n\n      After unbinding.");
+        printf("\nEnvironment:       ");
         bel_print(lexenv);
         printf("\nUnbinding result:  ");
         bel_print(ret);
