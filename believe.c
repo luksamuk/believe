@@ -127,8 +127,8 @@ Bel *bel_g_prim;
 Bel *bel_g_clo;
 
 Bel *bel_g_scope;
-Bel *bel_g_dynae;
 Bel *bel_g_globe;
+Bel *bel_g_dynae;
 
 Bel *bel_mkerror(Bel *format, Bel *vars);   // Forward declaration
 Bel *bel_mkstring(const char*);             // Forward declaration
@@ -1303,14 +1303,14 @@ bel_lookup(Bel *lenv, Bel *sym)
 {
     Bel *value;
 
-    // Lexical scope lookup
-    value = bel_env_lookup(lenv, sym);
+    // Dynamic scope lookup
+    value = bel_env_lookup(bel_g_dynae, sym);
     if(!bel_nilp(value)) {
         return value;
     }
-
-    // Dynamic scope lookup
-    value = bel_env_lookup(bel_g_dynae, sym);
+    
+    // Lexical scope lookup
+    value = bel_env_lookup(lenv, sym);
     if(!bel_nilp(value)) {
         return value;
     }
@@ -1382,12 +1382,12 @@ bel_assign(Bel *lenv, Bel *sym, Bel *new_val)
 {
     Bel *ret;
 
-    // Lexical assignment
-    ret = bel_env_replace_val(lenv, sym, new_val);
-    if(!bel_nilp(ret)) return sym;
-
     // Dynamic assignment
     ret = bel_env_replace_val(bel_g_dynae, sym, new_val);
+    if(!bel_nilp(ret)) return sym;
+    
+    // Lexical assignment
+    ret = bel_env_replace_val(lenv, sym, new_val);
     if(!bel_nilp(ret)) return sym;
 
     // Global assignment
@@ -1406,14 +1406,14 @@ bel_unbind(Bel **lenv, Bel *sym)
 {
     Bel *ans;
 
-    // Lexical unbinding
-    ans = bel_env_unbind(lenv, sym);
+    // Dynamic unbinding
+    ans = bel_env_unbind(&bel_g_dynae, sym);
     if(!bel_nilp(ans)) {
         return sym;
     }
-
-    // Dynamic unbinding
-    ans = bel_env_unbind(&bel_g_dynae, sym);
+    
+    // Lexical unbinding
+    ans = bel_env_unbind(lenv, sym);
     if(!bel_nilp(ans)) {
         return sym;
     }

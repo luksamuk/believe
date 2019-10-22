@@ -799,13 +799,13 @@ Bel *bel_g_prim;
 Bel *bel_g_clo;
 #+end_src
 
-We may also define temporary variables for the global, dynamic and
-lexical environments.
+We may also define temporary variables for the global, lexical and
+dynamic environments.
 
 #+begin_src C
 Bel *bel_g_scope;
-Bel *bel_g_dynae;
 Bel *bel_g_globe;
+Bel *bel_g_dynae;
 #+end_src
 
 *** Forward declarations
@@ -2525,7 +2525,7 @@ bel_env_lookup(Bel *env, Bel *sym)
 
 We also implement a proper lookup function which takes a lexical
 environment and a symbol. The function traverses all environments in
-order (lexical, dynamic, global) to find the associated value of the
+order (dynamic, lexical, global) to find the associated value of the
 given symbol. If the symbol is not found, returns an error.
 
 #+begin_src C
@@ -2534,14 +2534,14 @@ bel_lookup(Bel *lenv, Bel *sym)
 {
     Bel *value;
 
-    // Lexical scope lookup
-    value = bel_env_lookup(lenv, sym);
+    // Dynamic scope lookup
+    value = bel_env_lookup(bel_g_dynae, sym);
     if(!bel_nilp(value)) {
         return value;
     }
-
-    // Dynamic scope lookup
-    value = bel_env_lookup(bel_g_dynae, sym);
+    
+    // Lexical scope lookup
+    value = bel_env_lookup(lenv, sym);
     if(!bel_nilp(value)) {
         return value;
     }
@@ -2644,12 +2644,12 @@ bel_assign(Bel *lenv, Bel *sym, Bel *new_val)
 {
     Bel *ret;
 
-    // Lexical assignment
-    ret = bel_env_replace_val(lenv, sym, new_val);
-    if(!bel_nilp(ret)) return sym;
-
     // Dynamic assignment
     ret = bel_env_replace_val(bel_g_dynae, sym, new_val);
+    if(!bel_nilp(ret)) return sym;
+    
+    // Lexical assignment
+    ret = bel_env_replace_val(lenv, sym, new_val);
     if(!bel_nilp(ret)) return sym;
 
     // Global assignment
@@ -2675,14 +2675,14 @@ bel_unbind(Bel **lenv, Bel *sym)
 {
     Bel *ans;
 
-    // Lexical unbinding
-    ans = bel_env_unbind(lenv, sym);
+    // Dynamic unbinding
+    ans = bel_env_unbind(&bel_g_dynae, sym);
     if(!bel_nilp(ans)) {
         return sym;
     }
-
-    // Dynamic unbinding
-    ans = bel_env_unbind(&bel_g_dynae, sym);
+    
+    // Lexical unbinding
+    ans = bel_env_unbind(lenv, sym);
     if(!bel_nilp(ans)) {
         return sym;
     }
@@ -2700,21 +2700,24 @@ bel_unbind(Bel **lenv, Bel *sym)
 
 *** Types and hierarchy of environments
 
-There are three kinds of environments in Bel: Global, Dynamic and
-Lexical. The global environment (=bel_g_globe=, =globe=) contains symbols
+There are three kinds of environments in Bel: Global, Lexical and
+Dynamic. The global environment (=bel_g_globe=, =globe=) contains symbols
 which are always visible from all scopes. This environment lives for
 the lifetime of the interpreter.
-
-The dynamic environment (=bel_g_dynae=) is like the global environment
-on its regards to access (symbols are visible to the whole
-application). However, the dynamic environment lives for a short
-period of time, linked to the scope it is used.
 
 The lexical environment (=bel_g_scope=, =scope=) contains symbols which
 are visible only inside the current scope, and lives for a short
 period of time, linked to its scope. It is the environment captured by
 closures, and also the environment created when a closure is applied
 (as a specific symbol is bound to evaluate a closure's body).
+
+The dynamic environment (=bel_g_dynae=) is like the global environment
+on its regards to access (symbols are visible to the whole
+application). However, the dynamic environment lives for a short
+period of time, linked to the scope it is used.
+
+In Bel, any symbol lookup is performed by traversing the environments
+in the following order: /Dynamic/, /Lexical/, /Global/.
 
 *** Environment extension and capturing
 
@@ -2723,9 +2726,8 @@ top, environments (such as the lexical) can share symbols. For
 example, suppose the following closure called =orig-fun=.
 
 #+begin_example lisp
-(def orig-fun
-  (fn (x y)
-    (join (new-fun x) y)))
+(def orig-fun (x y)
+  (join (new-fun x) y))
 #+end_example
 
 Suppose further that this closure is applied to the symbols =foo= and
@@ -2739,9 +2741,8 @@ lexical environment during application would look like this:
 Suppose also that the closure =new-fun= is defined like this:
 
 #+begin_example lisp
-(def new-fun
-  (fn (x)
-    (id x 'foo)))
+(def new-fun (x)
+  (id x 'foo))
 #+end_example
 
 When =new-fun= is applied inside =orig-fun=, it captures =orig-fun='s
