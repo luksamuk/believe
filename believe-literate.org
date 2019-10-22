@@ -110,11 +110,28 @@ based on the prose that accompanies it.
 ** Licenses
 *** Prose license
 
-#+LATEX_ATTR: :width 0.2cm
-[[file:images/cc-by-sa.png]]
-
 This work is licensed under a [[http://creativecommons.org/licenses/by-sa/4.0/][Creative Commons Attribution-ShareAlike
-4.0 International License]]. See the link for more information.
+4.0 International License]]. This means that you are free to:
+
+- *Share*: copy and redistribute the material in any medium or format
+- *Adapt*: remix, transform, and build upon the material for any
+  purpose, even commercially.
+
+But only if you follow the terms below:
+
+- *Attribution*: You must give appropriate credit[fn:1], provide a link to the
+  license, and indicate if changes were made[fn:2]. You may do so in any
+  reasonable manner, but not in any way that suggests the licensor
+  endorses you or your use.
+- *ShareAlike*: If you remix, transform, or build upon the material, you
+  must distribute your contributions under the same license[fn:3] as the
+  original.
+
+
+See the link for more information.
+
+#+ATTR_LATEX: :width .2\textwidth
+[[file:images/cc-by-sa.png]]
 
 *** Software license
 
@@ -5017,3 +5034,14 @@ main(void)
 }
 #+end_src
 
+* Footnotes
+
+[fn:3] You can see a list of compatible licenses at
+https://creativecommons.org/compatible-licenses.
+
+[fn:2] You must indicate if you modified the material and retain an
+indication of previous modifications. 
+
+[fn:1] You must provide the name of the creator and attribution
+parties, a copyright notice, a license notice, a disclaimer notice,
+and a link to the original material.
