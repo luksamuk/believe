@@ -742,10 +742,10 @@ bel_mkcomplex(Bel *real, Bel *imag)
     return ret;
 }
 
-Bel *bel_num_add(Bel *x, Bel *y);
-Bel *bel_num_sub(Bel *x, Bel *y);
-Bel *bel_num_mul(Bel *x, Bel *y);
-Bel *bel_num_div(Bel *x, Bel *y);
+Bel *bel_num_add(Bel *x, Bel *y); // Forward declaration
+Bel *bel_num_sub(Bel *x, Bel *y); // Forward declaration
+Bel *bel_num_mul(Bel *x, Bel *y); // Forward declaration
+Bel *bel_num_div(Bel *x, Bel *y); // Forward declaration
 
 Bel*
 bel_num_coerce(Bel *number, BEL_NUMBER_TYPE type)

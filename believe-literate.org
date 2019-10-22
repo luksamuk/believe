@@ -1782,10 +1782,10 @@ then we return numbers of a proper subtype afterwards.
 **** Forward declarations
 
 #+begin_src C
-Bel *bel_num_add(Bel *x, Bel *y);
-Bel *bel_num_sub(Bel *x, Bel *y);
-Bel *bel_num_mul(Bel *x, Bel *y);
-Bel *bel_num_div(Bel *x, Bel *y);
+Bel *bel_num_add(Bel *x, Bel *y); // Forward declaration
+Bel *bel_num_sub(Bel *x, Bel *y); // Forward declaration
+Bel *bel_num_mul(Bel *x, Bel *y); // Forward declaration
+Bel *bel_num_div(Bel *x, Bel *y); // Forward declaration
 #+end_src
 
 **** Coercion
