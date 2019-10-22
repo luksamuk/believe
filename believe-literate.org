@@ -310,7 +310,7 @@ Char: 104 (h) => "01101000"
 Char: 105 (i) => "01101001"
 Char: 106 (j) => "01101010"
   -- Read five bytes from Believe's source
-Stream: #<stream :status input {0x00f1f2b0}>
+Stream: #<stream :status input {0x007ba2b0}>
 "00100011" => \#
 "01101001" => \i
 "01101110" => \n
@@ -489,6 +489,25 @@ eval>  /
 eval>  45.0
 apply> (lit prim /) at (45.0)
 Result: 0.0222222
+
+  -- Primitive arity test
+Expression: (id)
+eval>  (id)
+eval>  id
+apply> (lit prim id) at nil
+Result: t
+
+Expression: (join)
+eval>  (join)
+eval>  join
+apply> (lit prim join) at nil
+Result: (nil)
+
+Expression: (type)
+eval>  (type)
+eval>  type
+apply> (lit prim type) at nil
+Result: symbol
 
 #+end_example
 
@@ -3573,22 +3592,28 @@ bel_apply_primop(Bel *sym, Bel *args)
 }
 #+end_src
 
-**** Arity check
+**** Maximum arity check
 
 The following macro is a helper for checking the arity of a specific
 function. Passing the arguments list and the number of desired
-arguments performs such a check. If the arity is wrong, it returns an
-error complaining about it.
+arguments performs such a check. If the arity is greater than the
+given number, it returns an error complaining about it.
 
 Notice that this macro expects two things: to be called inside a
 function that returns a =Bel*= type, and that the arguments themselves
 are a /proper list/.
 
+It is also important to notice that Bel specifies that, when handling
+primitives, missing arguments default to =nil=, therefore passing less
+arguments than expected is not considered an error; since collecting
+arguments is handled by =bel_car= and =bel_cdr=, the missing arguments are
+guaranteed to be =nil= when retrieval is attempted.
+
 #+begin_src C
-#define BEL_CHECK_ARITY(args, num)                      \
+#define BEL_CHECK_MAX_ARITY(args, num)                  \
     {                                                   \
     uint64_t length = bel_length(args);                 \
-    if(length != num) {                                 \
+    if(length > num) {                                  \
     return bel_mkerror(                                 \
         bel_mkstring("Arity error"), bel_g_nil);        \
     }                                                   \
@@ -3609,7 +3634,7 @@ the same -- namely, characters and symbols.
 Bel*
 bel_prim_id(Bel *args)
 {
-    BEL_CHECK_ARITY(args, 2);
+    BEL_CHECK_MAX_ARITY(args, 2);
     return (bel_idp(bel_car(args),
                     bel_car(bel_cdr(args)))
             ? bel_g_t : bel_g_nil);
@@ -3624,7 +3649,7 @@ bel_prim_id(Bel *args)
 Bel*
 bel_prim_join(Bel *args)
 {
-    BEL_CHECK_ARITY(args, 2);
+    BEL_CHECK_MAX_ARITY(args, 2);
     return bel_mkpair(bel_car(args),
                       bel_car(bel_cdr(args)));
 }
@@ -3638,7 +3663,7 @@ bel_prim_join(Bel *args)
 Bel*
 bel_prim_car(Bel *args)
 {
-    BEL_CHECK_ARITY(args, 1);
+    BEL_CHECK_MAX_ARITY(args, 1);
     return bel_car(bel_car(args));
 }
 #+end_src
@@ -3649,7 +3674,7 @@ bel_prim_car(Bel *args)
 Bel*
 bel_prim_cdr(Bel *args)
 {
-    BEL_CHECK_ARITY(args, 1);
+    BEL_CHECK_MAX_ARITY(args, 1);
     return bel_cdr(bel_car(args));
 }
 #+end_src
@@ -3663,7 +3688,7 @@ values can be =symbol=, =pair=, =char=, =stream= or =number=.
 Bel*
 bel_prim_type(Bel *args)
 {
-    BEL_CHECK_ARITY(args, 1);
+    BEL_CHECK_MAX_ARITY(args, 1);
     switch(bel_car(args)->type) {
     case BEL_SYMBOL: return bel_mksymbol("symbol");  break;
     case BEL_PAIR:   return bel_mksymbol("pair");    break;
@@ -3683,7 +3708,7 @@ bel_prim_type(Bel *args)
 Bel*
 bel_prim_xar(Bel *args)
 {
-    BEL_CHECK_ARITY(args, 2);
+    BEL_CHECK_MAX_ARITY(args, 2);
     Bel *pair = bel_car(args);
     Bel *val  = bel_car(bel_cdr(args));
     if(!bel_pairp(pair)) {
@@ -3703,7 +3728,7 @@ bel_prim_xar(Bel *args)
 Bel*
 bel_prim_xdr(Bel *args)
 {
-    BEL_CHECK_ARITY(args, 2);
+    BEL_CHECK_MAX_ARITY(args, 2);
     Bel *pair = bel_car(args);
     Bel *val  = bel_car(bel_cdr(args));
     if(!bel_pairp(pair)) {
@@ -3725,7 +3750,7 @@ bel_prim_xdr(Bel *args)
 Bel*
 bel_prim_sym(Bel *args)
 {
-    BEL_CHECK_ARITY(args, 1);
+    BEL_CHECK_MAX_ARITY(args, 1);
     Bel *str = bel_car(args);
     if(!bel_stringp(str)) {
         return bel_mkerror(
@@ -3750,7 +3775,7 @@ bel_prim_sym(Bel *args)
 Bel*
 bel_prim_nom(Bel *args)
 {
-    BEL_CHECK_ARITY(args, 1);
+    BEL_CHECK_MAX_ARITY(args, 1);
     Bel *sym = bel_car(args);
     if(!bel_symbolp(sym)) {
         return bel_mkerror(
@@ -3775,7 +3800,7 @@ stream. If the stream is =nil=, it writes instead to =outs=.
 Bel*
 bel_prim_wrb(Bel *args)
 {
-    BEL_CHECK_ARITY(args, 2);
+    BEL_CHECK_MAX_ARITY(args, 2);
     Bel *x = bel_car(args);
     Bel *y = bel_car(bel_cdr(args));
 
@@ -3805,7 +3830,7 @@ bel_prim_wrb(Bel *args)
 Bel*
 bel_prim_rdb(Bel *args)
 {
-    BEL_CHECK_ARITY(args, 1);
+    BEL_CHECK_MAX_ARITY(args, 1);
     Bel *x = bel_car(args);
 
     if(bel_nilp(x)) {
@@ -3833,7 +3858,7 @@ by symbol =y=, which can be either =in= or =out=.
 Bel*
 bel_prim_ops(Bel *args)
 {
-    BEL_CHECK_ARITY(args, 2);
+    BEL_CHECK_MAX_ARITY(args, 2);
     Bel *x = bel_car(args);
     Bel *y = bel_car(bel_cdr(args));
 
@@ -3869,7 +3894,7 @@ returns =t=; if it is already closed, returns =nil=.
 Bel*
 bel_prim_cls(Bel *args)
 {
-    BEL_CHECK_ARITY(args, 1);
+    BEL_CHECK_MAX_ARITY(args, 1);
     Bel *stream = bel_car(args);
 
     if(!bel_streamp(stream)) {
@@ -3893,7 +3918,7 @@ depending on stream status.
 Bel*
 bel_prim_stat(Bel *args)
 {
-    BEL_CHECK_ARITY(args, 1);
+    BEL_CHECK_MAX_ARITY(args, 1);
     Bel *stream = bel_car(args);
     if(!bel_streamp(stream)) {
         return bel_mkerror(
@@ -3922,7 +3947,7 @@ bel_prim_stat(Bel *args)
 Bel*
 bel_prim_coin(Bel *args)
 {
-    BEL_CHECK_ARITY(args, 0);
+    BEL_CHECK_MAX_ARITY(args, 0);
     return (rand() % 2) ? bel_g_t : bel_g_nil;
 }
 #+end_src
@@ -3945,7 +3970,7 @@ system.
 Bel*
 bel_prim_sys(Bel *args)
 {
-    BEL_CHECK_ARITY(args, 1);
+    BEL_CHECK_MAX_ARITY(args, 1);
 
     Bel *str = bel_car(args);
     
@@ -5020,6 +5045,57 @@ arithmetic_eval_test()
 }
 #+end_src
 
+*** Arity tests
+
+The following tests check for the arity of primitive functions. By
+default, a small number of arguments is not a bug, and the missing
+arguments are traded for =nil=.
+
+#+begin_src C
+void
+arity_test()
+{
+    Bel *exp;
+    Bel *result;
+
+    // (id) => t
+    exp = bel_mkpair(
+        bel_mksymbol("id"),
+        bel_g_nil);
+    printf("Expression: ");
+    bel_print(exp); putchar(10);
+
+    result = bel_eval(exp, bel_g_nil);
+    printf("Result: ");
+    bel_print(result); putchar(10);
+    putchar(10);
+
+    // (join) => (nil . nil)
+    exp = bel_mkpair(
+        bel_mksymbol("join"),
+        bel_g_nil);
+    printf("Expression: ");
+    bel_print(exp); putchar(10);
+
+    result = bel_eval(exp, bel_g_nil);
+    printf("Result: ");
+    bel_print(result); putchar(10);
+    putchar(10);
+
+    // (type) => symbol
+    exp = bel_mkpair(
+        bel_mksymbol("type"),
+        bel_g_nil);
+    printf("Expression: ");
+    bel_print(exp); putchar(10);
+
+    result = bel_eval(exp, bel_g_nil);
+    printf("Result: ");
+    bel_print(result); putchar(10);
+    putchar(10);
+}
+#+end_src
+
 * Entry point
 ** Initialization
 
@@ -5088,6 +5164,8 @@ run_tests()
     eval_test();
     puts("  -- Arithmetic evaluation test");
     arithmetic_eval_test();
+    puts("  -- Primitive arity test");
+    arity_test();
 }
 #+end_src
 

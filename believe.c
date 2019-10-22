@@ -1935,10 +1935,10 @@ bel_apply_primop(Bel *sym, Bel *args)
     }
 }
 
-#define BEL_CHECK_ARITY(args, num)                      \
+#define BEL_CHECK_MAX_ARITY(args, num)                  \
     {                                                   \
     uint64_t length = bel_length(args);                 \
-    if(length != num) {                                 \
+    if(length > num) {                                  \
     return bel_mkerror(                                 \
         bel_mkstring("Arity error"), bel_g_nil);        \
     }                                                   \
@@ -1947,7 +1947,7 @@ bel_apply_primop(Bel *sym, Bel *args)
 Bel*
 bel_prim_id(Bel *args)
 {
-    BEL_CHECK_ARITY(args, 2);
+    BEL_CHECK_MAX_ARITY(args, 2);
     return (bel_idp(bel_car(args),
                     bel_car(bel_cdr(args)))
             ? bel_g_t : bel_g_nil);
@@ -1956,7 +1956,7 @@ bel_prim_id(Bel *args)
 Bel*
 bel_prim_join(Bel *args)
 {
-    BEL_CHECK_ARITY(args, 2);
+    BEL_CHECK_MAX_ARITY(args, 2);
     return bel_mkpair(bel_car(args),
                       bel_car(bel_cdr(args)));
 }
@@ -1964,21 +1964,21 @@ bel_prim_join(Bel *args)
 Bel*
 bel_prim_car(Bel *args)
 {
-    BEL_CHECK_ARITY(args, 1);
+    BEL_CHECK_MAX_ARITY(args, 1);
     return bel_car(bel_car(args));
 }
 
 Bel*
 bel_prim_cdr(Bel *args)
 {
-    BEL_CHECK_ARITY(args, 1);
+    BEL_CHECK_MAX_ARITY(args, 1);
     return bel_cdr(bel_car(args));
 }
 
 Bel*
 bel_prim_type(Bel *args)
 {
-    BEL_CHECK_ARITY(args, 1);
+    BEL_CHECK_MAX_ARITY(args, 1);
     switch(bel_car(args)->type) {
     case BEL_SYMBOL: return bel_mksymbol("symbol");  break;
     case BEL_PAIR:   return bel_mksymbol("pair");    break;
@@ -1992,7 +1992,7 @@ bel_prim_type(Bel *args)
 Bel*
 bel_prim_xar(Bel *args)
 {
-    BEL_CHECK_ARITY(args, 2);
+    BEL_CHECK_MAX_ARITY(args, 2);
     Bel *pair = bel_car(args);
     Bel *val  = bel_car(bel_cdr(args));
     if(!bel_pairp(pair)) {
@@ -2008,7 +2008,7 @@ bel_prim_xar(Bel *args)
 Bel*
 bel_prim_xdr(Bel *args)
 {
-    BEL_CHECK_ARITY(args, 2);
+    BEL_CHECK_MAX_ARITY(args, 2);
     Bel *pair = bel_car(args);
     Bel *val  = bel_car(bel_cdr(args));
     if(!bel_pairp(pair)) {
@@ -2024,7 +2024,7 @@ bel_prim_xdr(Bel *args)
 Bel*
 bel_prim_sym(Bel *args)
 {
-    BEL_CHECK_ARITY(args, 1);
+    BEL_CHECK_MAX_ARITY(args, 1);
     Bel *str = bel_car(args);
     if(!bel_stringp(str)) {
         return bel_mkerror(
@@ -2045,7 +2045,7 @@ bel_prim_sym(Bel *args)
 Bel*
 bel_prim_nom(Bel *args)
 {
-    BEL_CHECK_ARITY(args, 1);
+    BEL_CHECK_MAX_ARITY(args, 1);
     Bel *sym = bel_car(args);
     if(!bel_symbolp(sym)) {
         return bel_mkerror(
@@ -2060,7 +2060,7 @@ bel_prim_nom(Bel *args)
 Bel*
 bel_prim_wrb(Bel *args)
 {
-    BEL_CHECK_ARITY(args, 2);
+    BEL_CHECK_MAX_ARITY(args, 2);
     Bel *x = bel_car(args);
     Bel *y = bel_car(bel_cdr(args));
 
@@ -2086,7 +2086,7 @@ bel_prim_wrb(Bel *args)
 Bel*
 bel_prim_rdb(Bel *args)
 {
-    BEL_CHECK_ARITY(args, 1);
+    BEL_CHECK_MAX_ARITY(args, 1);
     Bel *x = bel_car(args);
 
     if(bel_nilp(x)) {
@@ -2105,7 +2105,7 @@ bel_prim_rdb(Bel *args)
 Bel*
 bel_prim_ops(Bel *args)
 {
-    BEL_CHECK_ARITY(args, 2);
+    BEL_CHECK_MAX_ARITY(args, 2);
     Bel *x = bel_car(args);
     Bel *y = bel_car(bel_cdr(args));
 
@@ -2136,7 +2136,7 @@ bel_prim_ops(Bel *args)
 Bel*
 bel_prim_cls(Bel *args)
 {
-    BEL_CHECK_ARITY(args, 1);
+    BEL_CHECK_MAX_ARITY(args, 1);
     Bel *stream = bel_car(args);
 
     if(!bel_streamp(stream)) {
@@ -2155,7 +2155,7 @@ bel_prim_cls(Bel *args)
 Bel*
 bel_prim_stat(Bel *args)
 {
-    BEL_CHECK_ARITY(args, 1);
+    BEL_CHECK_MAX_ARITY(args, 1);
     Bel *stream = bel_car(args);
     if(!bel_streamp(stream)) {
         return bel_mkerror(
@@ -2178,14 +2178,14 @@ bel_prim_stat(Bel *args)
 Bel*
 bel_prim_coin(Bel *args)
 {
-    BEL_CHECK_ARITY(args, 0);
+    BEL_CHECK_MAX_ARITY(args, 0);
     return (rand() % 2) ? bel_g_t : bel_g_nil;
 }
 
 Bel*
 bel_prim_sys(Bel *args)
 {
-    BEL_CHECK_ARITY(args, 1);
+    BEL_CHECK_MAX_ARITY(args, 1);
 
     Bel *str = bel_car(args);
     
@@ -3081,6 +3081,49 @@ arithmetic_eval_test()
     putchar(10);
 }
 
+void
+arity_test()
+{
+    Bel *exp;
+    Bel *result;
+
+    // (id) => t
+    exp = bel_mkpair(
+        bel_mksymbol("id"),
+        bel_g_nil);
+    printf("Expression: ");
+    bel_print(exp); putchar(10);
+
+    result = bel_eval(exp, bel_g_nil);
+    printf("Result: ");
+    bel_print(result); putchar(10);
+    putchar(10);
+
+    // (join) => (nil . nil)
+    exp = bel_mkpair(
+        bel_mksymbol("join"),
+        bel_g_nil);
+    printf("Expression: ");
+    bel_print(exp); putchar(10);
+
+    result = bel_eval(exp, bel_g_nil);
+    printf("Result: ");
+    bel_print(result); putchar(10);
+    putchar(10);
+
+    // (type) => symbol
+    exp = bel_mkpair(
+        bel_mksymbol("type"),
+        bel_g_nil);
+    printf("Expression: ");
+    bel_print(exp); putchar(10);
+
+    result = bel_eval(exp, bel_g_nil);
+    printf("Result: ");
+    bel_print(result); putchar(10);
+    putchar(10);
+}
+
 Bel*
 bel_init(void)
 {
@@ -3135,6 +3178,8 @@ run_tests()
     eval_test();
     puts("  -- Arithmetic evaluation test");
     arithmetic_eval_test();
+    puts("  -- Primitive arity test");
+    arity_test();
 }
 
 int
