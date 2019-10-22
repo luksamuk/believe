@@ -1434,8 +1434,6 @@ bel_assign(Bel *lenv, Bel *sym, Bel *new_val)
     if(!bel_nilp(ret)) return sym;
 
     // When not assignment was made, we push a global value
-    // TODO: We might need a proper warning API
-    puts("WARNING: Assignment failed, registering new global");
     bel_g_globe = bel_env_push(bel_g_globe, sym, new_val);
     return sym;
 }
