@@ -1689,6 +1689,8 @@ Bel *bel_bind(Bel *vars, Bel *vals, Bel *lenv); // Forward declaration
 
 Bel *bel_special_if(Bel *exp, Bel *lenv);       // Forward declaration
 Bel *bel_special_quote(Bel *exp, Bel *lenv);    // Forward declaration
+Bel *bel_special_dyn(Bel *rest, Bel *lenv);     // Forward declaration
+Bel *bel_special_set(Bel *clauses, Bel *lenv);  // Forward declaration
 
 Bel*
 bel_eval(Bel *exp, Bel *lenv)
@@ -1740,11 +1742,19 @@ bel_eval(Bel *exp, Bel *lenv)
         // TODO:
         // apply
         // where (not straightforward)
-        // dyn (dynamic binding)
+        
+        // dyn
+        if(bel_idp(bel_car(exp), bel_mksymbol("dyn")))
+            return bel_special_dyn(bel_cdr(exp), lenv);
+        
         // after
+        
         // set (global binding)
+        if(bel_idp(bel_car(exp), bel_mksymbol("set")))
+            return bel_special_set(bel_cdr(exp), lenv);
+        
         // ccc (call/cc)
-        // thread
+        // thread (does not share dynamic binding)
 
         // otherwise it is the case of an application
         return bel_apply(bel_eval(bel_car(exp), lenv),
@@ -1759,61 +1769,12 @@ bel_eval(Bel *exp, Bel *lenv)
 }
 
 Bel*
-bel_special_if(Bel *exp, Bel *lenv)
-{
-    Bel *body       = bel_cdr(exp);
-    uint64_t length = bel_length(body);
-
-    if(length < 2) {
-        return bel_mkerror(
-            bel_mkstring("if statement must have at "
-                         "least one predicate with "
-                         "a consequent."),
-            bel_g_nil);
-    }
-
-    Bel *predicate;
-    Bel *consequent;
-            
-    while(1) {
-        predicate  = bel_car(body);
-        consequent = bel_car(bel_cdr(body));
-        body = bel_cdr(bel_cdr(body));
-
-        // nil consequent = return-eval predicate
-        if(bel_nilp(consequent)) {
-            return bel_eval(predicate, lenv);
-        }
-
-        if(!bel_nilp(bel_eval(predicate, lenv))) {
-            return bel_eval(consequent, lenv);
-        }
-    }
-            
-    return bel_g_nil;
-}
-
-Bel*
-bel_special_quote(Bel *exp, Bel *lenv)
-{
-    uint64_t len = bel_length(exp);
-    if(len != 2) {
-        return bel_mkerror(
-            bel_mkstring("Malformed quote: can only "
-                         "quote one object."),
-            bel_g_nil);
-    }
-
-    return bel_car(bel_cdr(exp));
-}
-
-Bel*
 bel_apply(Bel *fun, Bel *args)
 {
 #ifdef BEL_DEBUG
     printf("apply> ");
     bel_print(fun);
-    printf(" at ");
+    printf(" -> ");
     bel_print(args);
     putchar(10);
 #endif
@@ -1863,6 +1824,151 @@ bel_apply(Bel *fun, Bel *args)
             bel_mkstring("~a is not a procedure"),
             bel_mkpair(fun, bel_g_nil));
     }
+}
+
+Bel*
+bel_special_quote(Bel *exp, Bel *lenv)
+{
+    uint64_t len = bel_length(exp);
+    if(len != 2) {
+        return bel_mkerror(
+            bel_mkstring("Malformed quote: can only "
+                         "quote one object."),
+            bel_g_nil);
+    }
+
+    return bel_car(bel_cdr(exp));
+}
+
+Bel*
+bel_special_if(Bel *exp, Bel *lenv)
+{
+    Bel *body       = bel_cdr(exp);
+    uint64_t length = bel_length(body);
+
+    if(length < 2) {
+        return bel_mkerror(
+            bel_mkstring("if statement must have at "
+                         "least one predicate with "
+                         "a consequent."),
+            bel_g_nil);
+    }
+
+    Bel *predicate;
+    Bel *consequent;
+            
+    while(1) {
+        predicate  = bel_car(body);
+        consequent = bel_car(bel_cdr(body));
+        body = bel_cdr(bel_cdr(body));
+
+        // nil consequent = return-eval predicate
+        if(bel_nilp(consequent)) {
+            return bel_eval(predicate, lenv);
+        }
+
+        if(!bel_nilp(bel_eval(predicate, lenv))) {
+            return bel_eval(consequent, lenv);
+        }
+    }
+            
+    return bel_g_nil;
+}
+
+Bel*
+bel_special_dyn(Bel *rest, Bel *lenv)
+{
+    uint64_t len = bel_length(rest);
+
+    if(len > 3) {
+        return bel_mkerror(
+            bel_mkstring("Too many arguments on "
+                         "dynamic binding."),
+            bel_g_nil);
+    }
+    
+    Bel *sym = bel_car(rest);
+    Bel *x   = bel_car(bel_cdr(rest));
+    Bel *y   = bel_car(bel_cdr(bel_cdr(rest)));
+
+    if(!bel_symbolp(sym)) {
+        return bel_mkerror(
+            bel_mkstring("Dynamic bindings can only "
+                         "be attributed to symbols."),
+            bel_g_nil);
+    }
+
+    if(bel_nilp(sym)) {
+        return bel_mkerror(
+            bel_mkstring("Cannot bind value to nil."),
+            bel_g_nil);
+    }
+
+#ifdef BEL_DEBUG
+    printf("dynb>  ");
+    bel_print(sym);
+    printf(" := ");
+    bel_print(x);
+    putchar(10);
+#endif
+    
+    bel_g_dynae =
+        bel_env_push(bel_g_dynae,
+                     sym,
+                     bel_eval(x, lenv));
+
+    Bel *ret = bel_eval(y, lenv);
+    bel_env_unbind(&bel_g_dynae, sym);
+    
+    return ret;
+}
+
+Bel*
+bel_special_set(Bel *clauses, Bel *lenv)
+{
+    Bel *syms = bel_g_nil;
+    Bel *vals = bel_g_nil;
+
+    Bel *itr = clauses;
+    while(!bel_nilp(itr)) {
+        Bel *sym = bel_car(itr);
+
+        if(!bel_symbolp(sym) || bel_nilp(sym)) {
+            return bel_mkerror(
+                bel_mkstring("Global bindings can only "
+                             "be attributed to valid "
+                             "symbols."),
+                bel_g_nil);
+        }
+        
+        Bel *val =
+            bel_eval(bel_car(bel_cdr(itr)),
+                     lenv);
+
+        if(bel_errorp(val)) {
+            return val;
+        }
+        
+        syms = bel_mkpair(sym, syms);
+        vals = bel_mkpair(val, vals);
+        
+        itr = bel_cdr(bel_cdr(itr));
+    }
+
+    while(!bel_nilp(syms)) {
+#ifdef BEL_DEBUG
+        printf("glob>  ");
+        bel_print(bel_car(syms));
+        printf(" := ");
+        bel_print(bel_car(vals));
+        putchar(10);
+#endif
+        bel_assign(bel_g_nil, bel_car(syms), bel_car(vals));
+        syms = bel_cdr(syms);
+        vals = bel_cdr(vals);
+    }
+
+    return bel_g_nil;
 }
 
 Bel*
@@ -2734,11 +2840,10 @@ number_test()
     a = bel_mkinteger(4);
     b = bel_mkinteger(2);
 
-    printf("(+ ");
     bel_print(a);
-    putchar(' ');
+    printf(" + ");
     bel_print(b);
-    printf(") => ");
+    printf(" = ");
     bel_print(bel_num_add(a, b));
     putchar(10);
 
@@ -2747,11 +2852,10 @@ number_test()
     a = bel_mkfloat(4.0);
     b = bel_mkfloat(3.5);
 
-    printf("(- ");
     bel_print(a);
-    putchar(' ');
+    printf(" - ");
     bel_print(b);
-    printf(") => ");
+    printf(" = ");
     bel_print(bel_num_sub(a, b));
     putchar(10);
 
@@ -2762,11 +2866,10 @@ number_test()
     b = bel_mkfraction(bel_mkinteger(1),
                        bel_mkinteger(6));
 
-    printf("(+ ");
     bel_print(a);
-    putchar(' ');
+    printf(" + ");
     bel_print(b);
-    printf(") => ");
+    printf(" = ");
     bel_print(bel_num_add(a, b));
     putchar(10);
 
@@ -2777,21 +2880,19 @@ number_test()
     b = bel_mkcomplex(bel_mkinteger(1),
                       bel_mkinteger(4));
 
-    printf("(* ");
     bel_print(a);
-    putchar(' ');
+    printf(" * ");
     bel_print(b);
-    printf(") => ");
+    printf(" = ");
     bel_print(bel_num_mul(a, b));
     putchar(10);
 
     // Complex division
     // Reusing a and b from last example
-    printf("(/ ");
     bel_print(a);
-    putchar(' ');
+    printf(" / ");
     bel_print(b);
-    printf(") => ");
+    printf(" = ");
     bel_print(bel_num_div(a, b));
     putchar(10);
 
@@ -2799,14 +2900,23 @@ number_test()
     a = bel_mkinteger(7);
     b = bel_mkinteger(2);
 
-    printf("(/ ");
     bel_print(a);
-    putchar(' ');
+    printf(" / ");
     bel_print(b);
-    printf(") => ");
+    printf(" = ");
     bel_print(bel_num_div(a, b));
     putchar(10);
 }
+
+#define BEL_EVAL_DEBRIEF(exp, res, env) \
+    {                                   \
+    printf("Expression: ");             \
+    bel_print(exp); putchar(10);        \
+    res = bel_eval(exp, env);           \
+    printf("Result: ");                 \
+    bel_print(res); putchar(10);        \
+    putchar(10);                        \
+    }
 
 void
 eval_test()
@@ -2820,14 +2930,7 @@ eval_test()
         bel_mkpair(
             bel_mksymbol("foo"),
             bel_g_nil));
-    printf("Form:   ");
-    bel_print(form);
-    putchar(10);
-    
-    result = bel_eval(form, bel_g_nil);
-    
-    printf("Result: "); bel_print(result);
-    putchar(10); putchar(10);
+    BEL_EVAL_DEBRIEF(form, result, bel_g_nil);
     
     // (join (quote foo) (quote bar))
     form =
@@ -2846,14 +2949,7 @@ eval_test()
                             bel_mksymbol("bar"),
                             bel_g_nil)),
                     bel_g_nil)));
-    printf("Form:   ");
-    bel_print(form);
-    putchar(10);
-    
-    result = bel_eval(form, bel_g_nil);
-    
-    printf("Result: "); bel_print(result);
-    putchar(10); putchar(10);
+    BEL_EVAL_DEBRIEF(form, result, bel_g_nil);
 
 
     // (fn (x) (id x x))
@@ -2872,14 +2968,7 @@ eval_test()
                             bel_mksymbol("x"),
                             bel_g_nil))),
                 bel_g_nil)));
-    printf("Form:   ");
-    bel_print(form);
-    putchar(10);
-    
-    result = bel_eval(form, bel_g_nil);
-    
-    printf("Result: "); bel_print(result);
-    putchar(10); putchar(10);
+    BEL_EVAL_DEBRIEF(form, result, bel_g_nil);
 
     
     // ((fn (x) (id x x)) (quote foo))
@@ -2893,14 +2982,7 @@ eval_test()
                         bel_mksymbol("foo"),
                         bel_g_nil)),
                 bel_g_nil));
-    printf("Form:   ");
-    bel_print(form);
-    putchar(10);
-    
-    result = bel_eval(form, bel_g_nil);
-    
-    printf("Result: "); bel_print(result);
-    putchar(10); putchar(10);
+    BEL_EVAL_DEBRIEF(form, result, bel_g_nil);
 
     
     // (if (id (quote bar) (quote foo)) (quote okay)
@@ -2959,14 +3041,7 @@ eval_test()
                                     bel_mksymbol("nope"),
                                     bel_g_nil)),
                             bel_g_nil))))));
-    printf("Form:   ");
-    bel_print(form);
-    putchar(10);
-    
-    result = bel_eval(form, bel_g_nil);
-    
-    printf("Result: "); bel_print(result);
-    putchar(10); putchar(10);
+    BEL_EVAL_DEBRIEF(form, result, bel_g_nil);
 
 
     // (sys "echo Hello, world!")
@@ -2978,66 +3053,39 @@ eval_test()
     /*     bel_mkpair( */
     /*         bel_mkstring("echo Hello, world!"), */
     /*         bel_g_nil)); */
-    /* printf("Form:   "); */
-    /* bel_print(form); */
-    /* putchar(10); */
-    
-    /* result = bel_eval(form, bel_g_nil); */
-    
-    /* printf("Result: "); bel_print(result); */
-    /* putchar(10); putchar(10); */
+    /* BEL_EVAL_DEBRIEF(form, result, bel_g_nil); */
 
     
     // Eval some axioms
     puts("Evaluating some axioms");
-    result = bel_eval(bel_g_t, bel_g_nil);
-    printf("Result: ");
-    bel_print(result);
-    putchar(10); putchar(10);
+    form = bel_g_t;
+    BEL_EVAL_DEBRIEF(form, result, bel_g_nil);
+    
+    form = bel_g_o;
+    BEL_EVAL_DEBRIEF(form, result, bel_g_nil);
 
-    result = bel_eval(bel_g_o, bel_g_nil);
-    printf("Result: ");
-    bel_print(result);
-    putchar(10); putchar(10);
+    form = bel_g_apply;
+    BEL_EVAL_DEBRIEF(form, result, bel_g_nil);
 
-    result = bel_eval(bel_g_apply, bel_g_nil);
-    printf("Result: ");
-    bel_print(result);
-    putchar(10); putchar(10);
-
-    result = bel_eval(bel_g_nil, bel_g_nil);
-    printf("Result: ");
-    bel_print(result);
-    putchar(10); putchar(10);
+    form = bel_g_nil;
+    BEL_EVAL_DEBRIEF(form, result, bel_g_nil);
 
     
     // Eval some numbers
-    result = bel_eval(bel_mkinteger(42), bel_g_nil);
-    printf("Result: ");
-    bel_print(result);
-    putchar(10); putchar(10);
+    form = bel_mkinteger(42);
+    BEL_EVAL_DEBRIEF(form, result, bel_g_nil);
 
-    result = bel_eval(bel_mkfloat(42.0), bel_g_nil);
-    printf("Result: ");
-    bel_print(result);
-    putchar(10); putchar(10);
+    form = bel_mkfloat(42.0);
+    BEL_EVAL_DEBRIEF(form, result, bel_g_nil);
 
-    result = bel_eval(bel_mkfraction(
-                          bel_mkinteger(2),
-                          bel_mkinteger(3)),
-                      bel_g_nil);
-    printf("Result: ");
-    bel_print(result);
-    putchar(10); putchar(10);
+    form = bel_mkfraction(bel_mkinteger(2),
+                          bel_mkinteger(3));
+    BEL_EVAL_DEBRIEF(form, result, bel_g_nil);
 
     
-    result = bel_eval(bel_mkcomplex(
-                          bel_mkfloat(2.0),
-                          bel_mkfloat(3.4)),
-                      bel_g_nil);
-    printf("Result: ");
-    bel_print(result);
-    putchar(10); putchar(10);
+    form = bel_mkcomplex(bel_mkfloat(2.0),
+                         bel_mkfloat(3.4));
+    BEL_EVAL_DEBRIEF(form, result, bel_g_nil);
 }
 
 void
@@ -3058,13 +3106,7 @@ arithmetic_eval_test()
                     bel_mkfraction(bel_mkinteger(1),
                                    bel_mkinteger(3)),
                     bel_g_nil))));
-    printf("Expression: ");
-    bel_print(exp); putchar(10);
-
-    result = bel_eval(exp, bel_g_nil);
-    printf("Result: ");
-    bel_print(result); putchar(10);
-    putchar(10);
+    BEL_EVAL_DEBRIEF(exp, result, bel_g_nil);
 
     // (id #(c 1+3i) #(c 1+3i))
     exp = bel_mkpair(
@@ -3076,13 +3118,7 @@ arithmetic_eval_test()
                 bel_mkcomplex(bel_mkinteger(1),
                               bel_mkinteger(3)),
                 bel_g_nil)));
-    printf("Expression: ");
-    bel_print(exp); putchar(10);
-
-    result = bel_eval(exp, bel_g_nil);
-    printf("Result: ");
-    bel_print(result); putchar(10);
-    putchar(10);
+    BEL_EVAL_DEBRIEF(exp, result, bel_g_nil);
 
     
     //(- #(c 3-8i))
@@ -3092,13 +3128,7 @@ arithmetic_eval_test()
             bel_mkcomplex(bel_mkinteger(3),
                           bel_mkinteger(8)),
             bel_g_nil));
-    printf("Expression: ");
-    bel_print(exp); putchar(10);
-
-    result = bel_eval(exp, bel_g_nil);
-    printf("Result: ");
-    bel_print(result); putchar(10);
-    putchar(10);
+    BEL_EVAL_DEBRIEF(exp, result, bel_g_nil);
 
     
     // (* 1 2 3 4 5)
@@ -3115,26 +3145,14 @@ arithmetic_eval_test()
                         bel_mkpair(
                             bel_mkinteger(5),
                             bel_g_nil))))));
-    printf("Expression: ");
-    bel_print(exp); putchar(10);
-
-    result = bel_eval(exp, bel_g_nil);
-    printf("Result: ");
-    bel_print(result); putchar(10);
-    putchar(10);
+    BEL_EVAL_DEBRIEF(exp, result, bel_g_nil);
 
     exp = bel_mkpair(
         bel_mksymbol("/"),
         bel_mkpair(
             bel_mkfloat(45.0),
             bel_g_nil));
-    printf("Expression: ");
-    bel_print(exp); putchar(10);
-
-    result = bel_eval(exp, bel_g_nil);
-    printf("Result: ");
-    bel_print(result); putchar(10);
-    putchar(10);
+    BEL_EVAL_DEBRIEF(exp, result, bel_g_nil);
 }
 
 void
@@ -3147,37 +3165,95 @@ arity_test()
     exp = bel_mkpair(
         bel_mksymbol("id"),
         bel_g_nil);
-    printf("Expression: ");
-    bel_print(exp); putchar(10);
-
-    result = bel_eval(exp, bel_g_nil);
-    printf("Result: ");
-    bel_print(result); putchar(10);
-    putchar(10);
+    BEL_EVAL_DEBRIEF(exp, result, bel_g_nil);
 
     // (join) => (nil . nil)
     exp = bel_mkpair(
         bel_mksymbol("join"),
         bel_g_nil);
-    printf("Expression: ");
-    bel_print(exp); putchar(10);
-
-    result = bel_eval(exp, bel_g_nil);
-    printf("Result: ");
-    bel_print(result); putchar(10);
-    putchar(10);
+    BEL_EVAL_DEBRIEF(exp, result, bel_g_nil);
 
     // (type) => symbol
     exp = bel_mkpair(
         bel_mksymbol("type"),
         bel_g_nil);
-    printf("Expression: ");
-    bel_print(exp); putchar(10);
+    BEL_EVAL_DEBRIEF(exp, result, bel_g_nil);
+}
 
-    result = bel_eval(exp, bel_g_nil);
-    printf("Result: ");
-    bel_print(result); putchar(10);
-    putchar(10);
+void
+dynamic_binding_test()
+{
+    Bel *exp;
+    Bel *result;
+
+    // (dyn x (/ 1 2)
+    //   (+ x 1))
+    exp = bel_mkpair(
+        bel_mksymbol("dyn"),
+        bel_mkpair(
+            bel_mksymbol("x"),
+            bel_mkpair(
+                bel_mkpair(
+                    bel_mksymbol("/"),
+                    bel_mkpair(
+                        bel_mkinteger(1),
+                        bel_mkpair(
+                            bel_mkinteger(2),
+                            bel_g_nil))),
+                bel_mkpair(
+                    bel_mkpair(
+                        bel_mksymbol("+"),
+                        bel_mkpair(
+                            bel_mksymbol("x"),
+                            bel_mkpair(
+                                bel_mkinteger(1),
+                                bel_g_nil))),
+                    bel_g_nil))));
+    BEL_EVAL_DEBRIEF(exp, result, bel_g_nil);
+}
+
+void
+global_binding_test()
+{
+    Bel *exp;
+    Bel *result;
+
+    // function definition
+    // (fn (x) (* x x))
+    exp = bel_mkpair(
+        bel_mksymbol("fn"),
+        bel_mkpair(
+            bel_mkpair(
+                bel_mksymbol("x"),
+                bel_g_nil),
+            bel_mkpair(
+                bel_mkpair(
+                    bel_mksymbol("*"),
+                    bel_mkpair(
+                        bel_mksymbol("x"),
+                        bel_mkpair(
+                            bel_mksymbol("x"),
+                            bel_g_nil))),
+                bel_g_nil)));
+    
+    // assignment
+    // (set square (fn (x) (* x x)))
+    exp = bel_mkpair(
+        bel_mksymbol("set"),
+        bel_mkpair(
+            bel_mksymbol("square"),
+            bel_mkpair(exp, bel_g_nil)));
+    BEL_EVAL_DEBRIEF(exp, result, bel_g_nil);
+
+    
+    // (square #(f 1/2))
+    exp = bel_mkpair(
+        bel_mksymbol("square"),
+        bel_mkpair(
+            bel_mkfraction(bel_mkinteger(1),
+                           bel_mkinteger(2)),
+            bel_g_nil));
+    BEL_EVAL_DEBRIEF(exp, result, bel_g_nil);
 }
 
 Bel*
@@ -3236,6 +3312,10 @@ run_tests()
     arithmetic_eval_test();
     puts("  -- Primitive arity test");
     arity_test();
+    puts("  -- Dynamic binding test");
+    dynamic_binding_test();
+    puts("  -- Global binding test");
+    global_binding_test();
 }
 
 int
