@@ -220,7 +220,7 @@ bel_errorp(Bel *x)
 int
 bel_proper_list_p(Bel *x)
 {
-    if(!bel_pairp(x))
+    if(!bel_pairp(x) && !bel_nilp(x))
         return 0;
     
     Bel *itr = x;
@@ -3144,6 +3144,28 @@ arithmetic_eval_test()
         bel_mksymbol("/"),
         bel_mkpair(
             bel_mkfloat(45.0),
+            bel_g_nil));
+    BEL_EVAL_DEBRIEF(exp, result, bel_g_nil);
+
+    
+    // Spec conformity tests
+    // (-) should return 0
+    exp = bel_mkpair(
+        bel_mksymbol("-"),
+        bel_g_nil);
+    BEL_EVAL_DEBRIEF(exp, result, bel_g_nil);
+
+    // (/) should return 1
+    exp = bel_mkpair(
+        bel_mksymbol("/"),
+        bel_g_nil);
+    BEL_EVAL_DEBRIEF(exp, result, bel_g_nil);
+
+    // (/ 5) should return 5
+    exp = bel_mkpair(
+        bel_mksymbol("/"),
+        bel_mkpair(
+            bel_mkinteger(5),
             bel_g_nil));
     BEL_EVAL_DEBRIEF(exp, result, bel_g_nil);
 }
