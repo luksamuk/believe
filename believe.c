@@ -2387,12 +2387,9 @@ bel_prim_sub(Bel *args)
     }
 
     uint64_t length = bel_length(args);
-    // No args: error
+    // No args: return zero
     if(length == 0) {
-        return bel_mkerror(
-            bel_mkstring("Subtraction takes at "
-                         "least one argument."),
-            bel_g_nil);
+        return bel_mkinteger(0);
     }
 
     // One arg: invert
@@ -2453,18 +2450,14 @@ bel_prim_div(Bel *args)
     }
 
     uint64_t length = bel_length(args);
-    // No args: error
+    // No args: return 1
     if(length == 0) {
-        return bel_mkerror(
-            bel_mkstring("Division takes at "
-                         "least one argument."),
-            bel_g_nil);
+        return bel_mkinteger(1);
     }
 
-    // One arg: reciprocal
+    // One arg: return such number
     if(length == 1) {
-        return bel_num_div(bel_mkinteger(1),
-                           bel_car(args));
+        return bel_car(args);
     }
 
     Bel *ret = bel_car(args);

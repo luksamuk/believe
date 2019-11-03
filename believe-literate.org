@@ -3989,7 +3989,7 @@ bel_prim_add(Bel *args)
 ***** Subtraction
 
 Subtracts all given values on the list, reducing them to a single
-number. If no argument is given, returns an error. If called with a
+number. If no argument is given, returns zero. If called with a
 single argument, inverts that argument, multiplying it by =-1=.
 
 #+begin_src C
@@ -4004,12 +4004,9 @@ bel_prim_sub(Bel *args)
     }
 
     uint64_t length = bel_length(args);
-    // No args: error
+    // No args: return zero
     if(length == 0) {
-        return bel_mkerror(
-            bel_mkstring("Subtraction takes at "
-                         "least one argument."),
-            bel_g_nil);
+        return bel_mkinteger(0);
     }
 
     // One arg: invert
@@ -4073,8 +4070,8 @@ bel_prim_mul(Bel *args)
 ***** Division
 
 Divides all given arguments on the given list, reducing them to a
-single number. If no argument is given, returns an error. If called
-with a single argument, returns the argument's reciprocal (=1/x=).
+single number. If no argument is given, returns =1=. If called
+with a single argument, returns the given number.
 
 If any division yields an error (e.g. a division by zero), returns
 that error immediately.
@@ -4091,18 +4088,14 @@ bel_prim_div(Bel *args)
     }
 
     uint64_t length = bel_length(args);
-    // No args: error
+    // No args: return 1
     if(length == 0) {
-        return bel_mkerror(
-            bel_mkstring("Division takes at "
-                         "least one argument."),
-            bel_g_nil);
+        return bel_mkinteger(1);
     }
 
-    // One arg: reciprocal
+    // One arg: return such number
     if(length == 1) {
-        return bel_num_div(bel_mkinteger(1),
-                           bel_car(args));
+        return bel_car(args);
     }
 
     Bel *ret = bel_car(args);
