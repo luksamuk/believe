@@ -1,9 +1,11 @@
-#+TITLE:    Believe: A Bel interpreter built with C11 [Beta]
-#+AUTHOR:   Lucas Vieira
+#+TITLE:    Believe
+#+SUBTITLE: A Bel interpreter built with C11
+#+AUTHOR:   Lucas S. Vieira
 #+EMAIL:    lucasvieira@protonmail.com
 # #+DATE:     2019
 #+PROPERTY: header-args:C :eval no :main no :tangle believe.c
 #+STARTUP:  content
+#+OPTIONS:  title:nil toc:nil
 
 :LATEX_PROPERTIES:
 # Evaluate this block to use a book which starts with chapters instead
@@ -12,19 +14,23 @@
 #+begin_src emacs-lisp :tangle no :eval yes :results silent :exports none
 (add-to-list 'org-latex-classes
              '("book-noparts"
-               "\\documentclass{book}"
+               "\\documentclass{memoir}"
                ("\\chapter{%s}" . "\\chapter*{%s}")
                ("\\section{%s}" . "\\section*{%s}")
                ("\\subsection{%s}" . "\\subsection*{%s}")
                ("\\subsubsection{%s}" . "\\subsubsection*{%s}")
                ("\\paragraph{%s}" . "\\paragraph*{%s}")
                ("\\subparagraph{%s}" . "\\subparagraph*{%s}")))
+
+(setq org-latex-listings 'minted)
 #+end_src
 
 # Preamble
 # #+LATEX_CLASS: article
+
 #+LATEX_CLASS: book-noparts
-#+LATEX_CLASS_OPTIONS: [a4paper,twoside]
+#+LATEX_CLASS_OPTIONS: [openright,a4paper,twoside]
+
 #+LATEX_HEADER: \usepackage[brazil]{babel}
 #+LATEX_HEADER: \usepackage{times}
 #+LATEX_HEADER: \usepackage[utf8]{inputenc}
@@ -32,7 +38,7 @@
 #+LATEX_HEADER: \usepackage{color}
 #+LATEX_HEADER: \usepackage{microtype}
 #+LATEX_HEADER: \usepackage{titlesec}
-#+LATEX_HEADER: \usepackage[brazilian, hyperpageref]{backref}
+#+LATEX_HEADER: \usepackage[english, hyperpageref]{backref}
 #+LATEX_HEADER: \usepackage{hyperref}
 #+LATEX_HEADER: \usepackage[alf,abnt-emphasize=bf,abnt-doi=link]{abntex2cite}
 #+LATEX_HEADER: \usepackage{indentfirst}
@@ -43,6 +49,8 @@
 #+LATEX_HEADER: \usepackage{geometry}
 #+LATEX_HEADER: \usepackage{tikz}
 #+LATEX_HEADER: \usepackage{draftwatermark}
+#+LATEX_HEADER: \usepackage{fancyhdr}
+#+LATEX_HEADER: \usepackage{titling}
 
 # Remove colorization of links
 #+LATEX_HEADER: \definecolor{blue}{RGB}{41,5,195}
@@ -65,9 +73,54 @@
 
 # Make watermark softer
 #+LATEX_HEADER: \SetWatermarkLightness{0.85}
+
+# Spacing
+#+LATEX: \frenchspacing
 :END:
 
+#+LATEX: \frontmatter
+
+:COVER:
+#+LATEX: \makeatletter
+#+LATEX: \begin{titlingpage}
+#+LATEX: \phantom{xxx}
+#+LATEX: \vspace{0.5cm}
+#+LATEX: \huge
+#+LATEX: \raggedright
+#+LATEX: \@author\\
+#+LATEX: \vspace{2.5cm}
+#+LATEX: \huge 
+#+LATEX: {\raggedleft
+# #+LATEX: \includegraphics[scale=0.9]{logo.pdf}\\[1cm]
+#+LATEX: \textbf{\HUGE\textcolor{blue}{\@title}}\\
+#+LATEX: {\large Version 0.2}\\[1cm]
+#+LATEX: }
+#+LATEX: \centering 
+#+LATEX:
+#+LATEX: \vfill
+#+LATEX: \Large
+#+LATEX:
+#+LATEX: \vfill
+#+LATEX: \@date
+#+LATEX: \end{titlingpage}
+#+LATEX: \makeatother
+:END:
+
+:TABLE_OF_CONTENTS:
+#+LATEX: \setcounter{secnumdepth}{5}
+#+LATEX: \setcounter{tocdepth}{5}
+#+LATEX: \pdfbookmark[0]{\contentsname}{toc}
+#+LATEX: \tableofcontents*
+#+LATEX: \cleardoublepage
+:END:
+
+#+LATEX: \mainmatter
+
 * Introduction
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
+#+LATEX: \addcontentsline{toc}{chapter}{Introduction}
 
 The goal of this project is to provide a fully-functioning
 implementation of the Bel language, proposed by Paul Graham. The main
@@ -163,13 +216,21 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 #+end_src
 
-* Acknowledgements
+** Acknowledgements
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
+#+LATEX: \addcontentsline{toc}{chapter}{Acknowledgements}
 
 This is an open-source project which anyone can contribute to. I'd
 like to thank the people who helped me so far with this project. Here
 is a list of them.
 
 - Carl Mäsak ([[https://github.com/masak][github.com/masak]])
+
+** COMMENT Contribution guidelines
+
+#+TODO: Add them here.
 
 * COMMENT TO-DO list
 ** Roadmap
