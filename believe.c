@@ -3298,39 +3298,57 @@ bel_init(void)
 void
 run_tests()
 {
-    puts("-- Running debug tests");
-    puts("  -- String test");
-    string_test();
-    puts("  -- Notation test");
-    notation_test();
-    puts("  -- List test");
-    list_test();
-    puts("  -- Closure representation test");
-    closure_repr_test();
-    puts("  -- Character List & Lookup test");
-    character_list_test();
-    puts("  -- Read five bytes from Believe's source");
-    read_file_test();
-    puts("  -- Show a few errors on screen");
-    show_errors_test();
-    puts("  -- Lookup a few primitives and print them");
-    lookup_primitives_test();
-    puts("  -- Lexical environment tests");
-    lexical_environment_test();
-    puts("  -- Globals and assignment tests");
-    global_assignment_test();
-    puts("  -- Number arithmetic tests");
-    number_test();
-    puts("  -- Evaluator test");
-    eval_test();
-    puts("  -- Arithmetic evaluation test");
-    arithmetic_eval_test();
-    puts("  -- Primitive arity test");
-    arity_test();
-    puts("  -- Dynamic binding test");
-    dynamic_binding_test();
-    puts("  -- Global binding test");
-    global_binding_test();
+    int opt;
+
+    do {
+        puts("-- Believe test menu\n"
+             "   Choose a test to run:\n"
+             " 1. String test\n"
+             " 2. Notation test\n"
+             " 3. List test\n"
+             " 4. Closure representation test\n"
+             " 5. Character List & Lookup test\n"
+             " 6. Read five bytes from Believe's source\n"
+             " 7. Show a few errors on screen\n"
+             " 8. Lookup a few primitives and print them\n"
+             " 9. Lexical environment test\n"
+             "10. Globals and assignment tests\n"
+             "11. Number arithmetic tests\n"
+             "12. Evaluator test\n"
+             "13. Arithmetic evaluation test\n"
+             "14. Primitive arity test\n"
+             "15. Dynamic binding test\n"
+             "16. Global binding test\n"
+             
+             " 0. Exit menu");
+        printf("Option >> ");
+        scanf("%d", &opt);
+
+        // flush here
+
+        putchar(10);
+        switch(opt) {
+        default: puts("Invalid option.");    break;
+        case 0:  break;
+        case  1: string_test();              break;
+        case  2: notation_test();            break;
+        case  3: list_test();                break;
+        case  4: closure_repr_test();        break;
+        case  5: character_list_test();      break;
+        case  6: read_file_test();           break;
+        case  7: show_errors_test();         break;
+        case  8: lookup_primitives_test();   break;
+        case  9: lexical_environment_test(); break;
+        case 10: global_assignment_test();   break;
+        case 11: number_test();              break;
+        case 12: eval_test();                break;
+        case 13: arithmetic_eval_test();     break;
+        case 14: arity_test();               break;
+        case 15: dynamic_binding_test();     break;
+        case 16: global_binding_test();      break;
+        }
+        
+    } while(opt != 0);
 }
 
 int
