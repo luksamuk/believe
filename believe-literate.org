@@ -11,6 +11,7 @@
 # Evaluate this block to use a book which starts with chapters instead
 # of parts.
 
+#+NAME: setclass
 #+begin_src emacs-lisp :tangle no :eval yes :results silent :exports none
 (add-to-list 'org-latex-classes
              '("book-noparts"
@@ -23,13 +24,17 @@
                ("\\subparagraph{%s}" . "\\subparagraph*{%s}")))
 
 (setq org-latex-listings 'minted)
+
+nil ;; prevent output
 #+end_src
+
+#+CALL: setclass()
 
 # Preamble
 # #+LATEX_CLASS: article
 
 #+LATEX_CLASS: book-noparts
-#+LATEX_CLASS_OPTIONS: [openright,a4paper,twoside]
+#+LATEX_CLASS_OPTIONS: [openright,a4paper,twoside,12pt]
 
 #+LATEX_HEADER: \usepackage[brazil]{babel}
 #+LATEX_HEADER: \usepackage{times}
@@ -78,6 +83,36 @@
 #+LATEX: \frenchspacing
 :END:
 
+:CODE_BLOCK_STYLE:
+#+LATEX_HEADER: \usepackage{minted}
+
+# List of styles: https://help.farbox.com/pygments.html
+
+# Monokai style
+# #+LATEX_HEADER: \usemintedstyle{monokai}
+# #+LATEX_HEADER: \definecolor{monokaibg}{HTML}{383838}
+# #+LATEX_HEADER: \setminted{bgcolor=monokaibg}
+
+# Perldoc style
+#+LATEX_HEADER: \usemintedstyle{perldoc}
+#+LATEX_HEADER: \definecolor{perldocbg}{HTML}{ffffcc}
+#+LATEX_HEADER: \setminted{bgcolor=perldocbg}
+
+# Manni style
+# #+LATEX_HEADER: \usemintedstyle{manni}
+# #+LATEX_HEADER: \definecolor{lightgrey}{HTML}{efefef}
+# #+LATEX_HEADER: \setminted{bgcolor=lightgrey}
+
+# Line numbers
+#+LATEX_HEADER: \setminted{linenos=true}
+
+# Font size
+#+LATEX_HEADER: \setminted{fontsize=\small, baselinestretch=1}
+
+# Line breaking
+#+LATEX_HEADER: \setminted{breaklines=true}
+:END:
+
 #+LATEX: \frontmatter
 
 :COVER:
@@ -116,11 +151,24 @@
 
 #+LATEX: \mainmatter
 
-* Introduction
+* Acknowledgements
 :PROPERTIES:
 :UNNUMBERED: t
 :END:
-#+LATEX: \addcontentsline{toc}{chapter}{Introduction}
+#+LATEX: \addcontentsline{toc}{chapter}{Acknowledgements}
+
+This is an open-source project which anyone can contribute to. I'd
+like to thank the people who helped me so far with this project.
+
+Many thanks to Carl Mäsak ([[https://github.com/masak][github.com/masak]]) not only for contributing
+with code, but also for highlighting a lot of important aspects in the
+Bel specification, and also for taking time to discuss other
+implementation aspects of the interpreter. This kind of contribution
+is priceless, since it is easy to overlook important details on
+technical documents. An extra pair of eyes on that regard is always
+welcome.
+
+* Introduction
 
 The goal of this project is to provide a fully-functioning
 implementation of the Bel language, proposed by Paul Graham. The main
@@ -160,11 +208,24 @@ understanding of what is being written comes before the code itself,
 so that the reader is able to take and analyse parts of said code
 based on the prose that accompanies it.
 
-** Licenses
-*** Prose license
+** Licensing
 
-This work is licensed under a [[http://creativecommons.org/licenses/by-sa/4.0/][Creative Commons Attribution-ShareAlike
-4.0 International License]]. This means that you are free to:
+The Believe project is composed of two relevant documents: one being
+the /textbook/, which contains all the prose parts plus the code blocks
+in relevant places; and another being the /code/, which is composed
+solely of the code blocks contained in this /textbook/, and can be
+understood both as the /code/ blocks of the /textbook/ or as a separate,
+/tangled/ file containing the relevant discussed code.
+
+When redistributing the /textbook/, one should take the /textbook/ license
+into consideration. But anyone using the /code/ parts of the /textbook/ or
+the /tangled/ code file included in the project's repository, for /any/
+purpose, should take the /code/ license into consideration as well.
+
+*** Textbook license
+
+This work is licensed under a Creative Commons Attribution-ShareAlike
+4.0 International License. This means that you are free to:
 
 - *Share*: copy and redistribute the material in any medium or format
 - *Adapt*: remix, transform, and build upon the material for any
@@ -181,19 +242,15 @@ But only if you follow the terms below:
   original.
 
 
-See the link for more information.
+See the CC-BY-SA 4.0[fn:6] link for more information.
 
 #+ATTR_LATEX: :width .2\textwidth
 [[file:images/cc-by-sa.png]]
 
-*** Software license
+*** Code license
 
-This is a verbatim copy of the software's license file.
-
-#+begin_src text :tangle LICENSE
-MIT License
-
-Copyright (c) 2019 Lucas Vieira
+This software's code is distributed under the MIT License, Copyright
+(c) 2019 Lucas S. Vieira.
 
 Permission is hereby granted, free of charge, to any person obtaining
 a copy of this software and associated documentation files (the
@@ -214,25 +271,13 @@ BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
 ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-#+end_src
 
-** Acknowledgements
-:PROPERTIES:
-:UNNUMBERED: t
-:END:
-#+LATEX: \addcontentsline{toc}{chapter}{Acknowledgements}
+** Contribution guidelines
 
-This is an open-source project which anyone can contribute to. I'd
-like to thank the people who helped me so far with this project. Here
-is a list of them.
+# We delegate this to an external file.
+#+INCLUDE: CONTRIBUTING.org
 
-- Carl Mäsak ([[https://github.com/masak][github.com/masak]])
-
-** COMMENT Contribution guidelines
-
-#+TODO: Add them here.
-
-* COMMENT TO-DO list
+* COMMENT Backlog
 ** Roadmap
 - [x] Data types
   - [x] Symbols
@@ -5253,6 +5298,8 @@ main(void)
 #+end_src
 
 * Footnotes
+
+[fn:6] https://creativecommons.org/licenses/by-sa/4.0/
 
 [fn:3] You can see a list of compatible licenses at
 https://creativecommons.org/compatible-licenses.
