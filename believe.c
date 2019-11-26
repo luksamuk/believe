@@ -137,6 +137,7 @@ Bel *bel_mkstring(const char*);
 Bel *bel_mksymbol(const char*);
 Bel *bel_car(Bel*);
 Bel *bel_cdr(Bel*);
+Bel *bel_mklist(int, ...);
 
 #define bel_symbolp(x) ((x)->type==BEL_SYMBOL)
 
