@@ -1,5 +1,3 @@
-#+TITLE: Contribution guidelines
-
 Below are described a few guidelines to contribute to this project. It
 is important to follow them to avoid confusion when contributing.
 

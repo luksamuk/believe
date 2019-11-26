@@ -7,6 +7,22 @@
 #+STARTUP:  content
 #+OPTIONS:  title:nil toc:nil
 
+:HTML_PROPERTIES:
+# When exporting to HTML, use the ReadTheOrg template
+# by Fabrice Niessen (github.com/fniessen)
+
+#+HTML_HEAD: <link rel="stylesheet" type="text/css" href="https://fniessen.github.io/org-html-themes/styles/readtheorg/css/htmlize.css"/>
+#+HTML_HEAD: <link rel="stylesheet" type="text/css" href="https://fniessen.github.io/org-html-themes/styles/readtheorg/css/readtheorg.css"/>
+
+#+HTML_HEAD: <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+#+HTML_HEAD: <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
+#+HTML_HEAD: <script type="text/javascript" src="https://fniessen.github.io/org-html-themes/styles/lib/js/jquery.stickytableheaders.min.js"></script>
+#+HTML_HEAD: <script type="text/javascript" src="https://fniessen.github.io/org-html-themes/styles/readtheorg/js/readtheorg.js"></script>
+
+# Enable title and table of contents if exporting to HTML.
+# #+OPTIONS: title:t toc:t
+:END:
+
 :LATEX_PROPERTIES:
 # Evaluate this block to use a book which starts with chapters instead
 # of parts.
@@ -111,6 +127,9 @@ nil ;; prevent output
 
 # Line breaking
 #+LATEX_HEADER: \setminted{breaklines=true}
+
+# Tabs
+#+LATEX_HEADER: \setminted{obeytabs}
 :END:
 
 #+LATEX: \frontmatter
@@ -275,7 +294,7 @@ SOFTWARE.
 ** Contribution guidelines
 
 # We delegate this to an external file.
-#+INCLUDE: CONTRIBUTING.org
+#+INCLUDE: CONTRIBUTING.org :only-contents t
 
 * COMMENT Backlog
 ** Roadmap
@@ -726,11 +745,12 @@ be easily created, and so on.
 #+TODO: Is this even correct? Test whether bel_mkerror creates an infinite loop!
 
 #+begin_src C
-Bel *bel_mkerror(Bel *format, Bel *vars);   // Forward declaration
-Bel *bel_mkstring(const char*);             // Forward declaration
-Bel *bel_mksymbol(const char*);             // Forward declaration
-Bel *bel_car(Bel*);                         // Forward declaration
-Bel *bel_cdr(Bel*);                         // Forward declaration
+/* Forward declarations */
+Bel *bel_mkerror(Bel *format, Bel *vars);
+Bel *bel_mkstring(const char*);
+Bel *bel_mksymbol(const char*);
+Bel *bel_car(Bel*);
+Bel *bel_cdr(Bel*);
 #+end_src
 
 ** Predicates
@@ -1728,10 +1748,11 @@ then we return numbers of a proper subtype afterwards.
 **** Forward declarations
 
 #+begin_src C
-Bel *bel_num_add(Bel *x, Bel *y); // Forward declaration
-Bel *bel_num_sub(Bel *x, Bel *y); // Forward declaration
-Bel *bel_num_mul(Bel *x, Bel *y); // Forward declaration
-Bel *bel_num_div(Bel *x, Bel *y); // Forward declaration
+/* Forward declarations */
+Bel *bel_num_add(Bel *x, Bel *y);
+Bel *bel_num_sub(Bel *x, Bel *y);
+Bel *bel_num_mul(Bel *x, Bel *y);
+Bel *bel_num_div(Bel *x, Bel *y);
 #+end_src
 
 **** Coercion
@@ -2214,8 +2235,7 @@ bel_num_div(Bel *x, Bel *y)
             bel_num_add(
                 bel_num_mul(
                     bel_mkinteger(-1),
-                    bel_num_mul(x->number.num_compl.real,
-                                y->number.num_compl.imag)),
+                    bel_num_mul(x->number.num_compl.real, y->number.num_compl.imag)),
                 bel_num_mul(x->number.num_compl.imag,
                             y->number.num_compl.real)));
 
@@ -2361,8 +2381,7 @@ bel_init_ax_chars(void)
     size_t i;
     for(i = 0; i < 255; i++) {        
         // Build a pair which holds the character information
-        Bel *pair = bel_mkpair(bel_mkchar((Bel_char)i),
-                               bel_mkstring(bel_conv_bits(i)));
+        Bel *pair = bel_mkpair(bel_mkchar((Bel_char)i), bel_mkstring(bel_conv_bits(i)));
         // Assign the car of a node to the current pair,
         // set its cdr temporarily to nil
         list[i] = bel_mkpair(pair, bel_g_nil);
@@ -3085,11 +3104,12 @@ interpreter. Forward declarations are important for the mutual calling
 part.
 
 #+begin_src C
-Bel *bel_eval(Bel *exp, Bel *lenv);             // Forward declaration
-Bel *bel_apply(Bel *proc, Bel *args);           // Forward declaration
-Bel *bel_evlist(Bel *elist, Bel *lenv);         // Forward declaration
-Bel *bel_apply_primop(Bel *sym, Bel *args);     // Forward declaration
-Bel *bel_bind(Bel *vars, Bel *vals, Bel *lenv); // Forward declaration
+/* Forward declarations */
+Bel *bel_eval(Bel *exp, Bel *lenv);
+Bel *bel_apply(Bel *proc, Bel *args);
+Bel *bel_evlist(Bel *elist, Bel *lenv);
+Bel *bel_apply_primop(Bel *sym, Bel *args);
+Bel *bel_bind(Bel *vars, Bel *vals, Bel *lenv);
 #+end_src
 
 The following forward declarations are related to /special forms/ on the
@@ -3097,10 +3117,11 @@ evaluator. These special forms are handled outside of the /eval/
 function to make it more succinct.
 
 #+begin_src C
-Bel *bel_special_if(Bel *exp, Bel *lenv);       // Forward declaration
-Bel *bel_special_quote(Bel *exp, Bel *lenv);    // Forward declaration
-Bel *bel_special_dyn(Bel *rest, Bel *lenv);     // Forward declaration
-Bel *bel_special_set(Bel *clauses, Bel *lenv);  // Forward declaration
+/* Forward declarations */
+Bel *bel_special_if(Bel *exp, Bel *lenv);
+Bel *bel_special_quote(Bel *exp, Bel *lenv);
+Bel *bel_special_dyn(Bel *rest, Bel *lenv);
+Bel *bel_special_set(Bel *clauses, Bel *lenv);
 #+end_src
 
 ** The /eval/ function
@@ -3539,7 +3560,7 @@ that we can define a function which redirects to each one of them, and
 after that we give their proper definitions.
 
 #+begin_src C
-// Forward declarations of primitive functions
+/* Forward declarations of primitive functions */
 Bel *bel_prim_id(Bel *args);
 Bel *bel_prim_join(Bel *args);
 Bel *bel_prim_car(Bel *args);
@@ -3557,7 +3578,7 @@ Bel *bel_prim_stat(Bel *args);
 Bel *bel_prim_coin(Bel *args);
 Bel *bel_prim_sys(Bel *args);
 
-// Forward declarations of primitive operators
+/* Forward declarations of primitive operators */
 Bel *bel_prim_add(Bel *args);
 Bel *bel_prim_sub(Bel *args);
 Bel *bel_prim_mul(Bel *args);
@@ -3568,7 +3589,7 @@ Bel *bel_prim_div(Bel *args);
 //Bel *bel_prim_geq(Bel *args);
 //Bel *bel_prim_eq(Bel *args);
 
-//  Forward declarations of other primitives
+/* Forward declarations of other primitives */
 Bel *bel_prim_err(Bel *args);
 #+end_src
 
@@ -3594,9 +3615,9 @@ been implemented. This is important while the interpreter is under
 development.
 
 #+begin_src C
-#define bel_unimplemented(sym)                                  \
-    bel_mkerror(                                                \
-    bel_mkstring("~a is not implemented."),                     \
+#define bel_unimplemented(sym)                    \
+    bel_mkerror(                                  \
+    bel_mkstring("~a is not implemented."),       \
     bel_mkpair(sym, bel_g_nil))
 #+end_src
 
@@ -3612,36 +3633,62 @@ Bel*
 bel_apply_primop(Bel *sym, Bel *args)
 {
     // Primitive functions
-    if(bel_is_prim(sym, "id"))        return bel_prim_id(args);
-    else if(bel_is_prim(sym, "join")) return bel_prim_join(args);
-    else if(bel_is_prim(sym, "car"))  return bel_prim_car(args);
-    else if(bel_is_prim(sym, "cdr"))  return bel_prim_cdr(args);
-    else if(bel_is_prim(sym, "type")) return bel_prim_type(args);
-    else if(bel_is_prim(sym, "xar"))  return bel_prim_xar(args);
-    else if(bel_is_prim(sym, "xdr"))  return bel_prim_xdr(args);
-    else if(bel_is_prim(sym, "sym"))  return bel_prim_sym(args);
-    else if(bel_is_prim(sym, "nom"))  return bel_prim_nom(args);
-    else if(bel_is_prim(sym, "wrb"))  return bel_prim_wrb(args);
-    else if(bel_is_prim(sym, "rdb"))  return bel_prim_rdb(args);
-    else if(bel_is_prim(sym, "ops"))  return bel_prim_ops(args);
-    else if(bel_is_prim(sym, "cls"))  return bel_prim_cls(args);
-    else if(bel_is_prim(sym, "stat")) return bel_prim_stat(args);
-    else if(bel_is_prim(sym, "coin")) return bel_prim_coin(args);
-    else if(bel_is_prim(sym, "sys"))  return bel_prim_sys(args);
+    if(bel_is_prim(sym, "id"))
+        return bel_prim_id(args);
+    else if(bel_is_prim(sym, "join"))
+        return bel_prim_join(args);
+    else if(bel_is_prim(sym, "car"))
+        return bel_prim_car(args);
+    else if(bel_is_prim(sym, "cdr"))
+        return bel_prim_cdr(args);
+    else if(bel_is_prim(sym, "type"))
+        return bel_prim_type(args);
+    else if(bel_is_prim(sym, "xar"))
+        return bel_prim_xar(args);
+    else if(bel_is_prim(sym, "xdr"))
+        return bel_prim_xdr(args);
+    else if(bel_is_prim(sym, "sym"))
+        return bel_prim_sym(args);
+    else if(bel_is_prim(sym, "nom"))
+        return bel_prim_nom(args);
+    else if(bel_is_prim(sym, "wrb"))
+        return bel_prim_wrb(args);
+    else if(bel_is_prim(sym, "rdb"))
+        return bel_prim_rdb(args);
+    else if(bel_is_prim(sym, "ops"))
+        return bel_prim_ops(args);
+    else if(bel_is_prim(sym, "cls"))
+        return bel_prim_cls(args);
+    else if(bel_is_prim(sym, "stat"))
+        return bel_prim_stat(args);
+    else if(bel_is_prim(sym, "coin"))
+        return bel_prim_coin(args);
+    else if(bel_is_prim(sym, "sys"))
+        return bel_prim_sys(args);
 
     // Primitive operators
-    else if(bel_is_prim(sym, "+"))    return bel_prim_add(args);
-    else if(bel_is_prim(sym, "-"))    return bel_prim_sub(args);
-    else if(bel_is_prim(sym, "*"))    return bel_prim_mul(args);
-    else if(bel_is_prim(sym, "/"))    return bel_prim_div(args);
-    else if(bel_is_prim(sym, "<"))    return bel_unimplemented(sym);
-    else if(bel_is_prim(sym, "<="))   return bel_unimplemented(sym);
-    else if(bel_is_prim(sym, ">"))    return bel_unimplemented(sym);
-    else if(bel_is_prim(sym, ">="))   return bel_unimplemented(sym);
-    else if(bel_is_prim(sym, "="))    return bel_unimplemented(sym);
+    else if(bel_is_prim(sym, "+"))
+        return bel_prim_add(args);
+    else if(bel_is_prim(sym, "-"))
+        return bel_prim_sub(args);
+    else if(bel_is_prim(sym, "*"))
+        return bel_prim_mul(args);
+    else if(bel_is_prim(sym, "/"))
+        return bel_prim_div(args);
+    else if(bel_is_prim(sym, "<"))
+        return bel_unimplemented(sym);
+    else if(bel_is_prim(sym, "<="))
+        return bel_unimplemented(sym);
+    else if(bel_is_prim(sym, ">"))
+        return bel_unimplemented(sym);
+    else if(bel_is_prim(sym, ">="))
+        return bel_unimplemented(sym);
+    else if(bel_is_prim(sym, "="))
+        return bel_unimplemented(sym);
     
     // Other primitives
-    else if(bel_is_prim(sym, "err"))  return bel_prim_err(args);
+    else if(bel_is_prim(sym, "err"))
+        return bel_prim_err(args);
 
     // Otherwise, unknown application operation
     else {
@@ -3750,12 +3797,24 @@ bel_prim_type(Bel *args)
 {
     BEL_CHECK_MAX_ARITY(args, 1);
     switch(bel_car(args)->type) {
-    case BEL_SYMBOL: return bel_mksymbol("symbol");  break;
-    case BEL_PAIR:   return bel_mksymbol("pair");    break;
-    case BEL_CHAR:   return bel_mksymbol("char");    break;
-    case BEL_STREAM: return bel_mksymbol("stream");  break;
-    case BEL_NUMBER: return bel_mksymbol("number");  break;
-    default:         return bel_mksymbol("unknown"); break;
+    case BEL_SYMBOL:
+        return bel_mksymbol("symbol");
+        break;
+    case BEL_PAIR:
+        return bel_mksymbol("pair");
+        break;
+    case BEL_CHAR:
+        return bel_mksymbol("char");
+        break;
+    case BEL_STREAM:
+        return bel_mksymbol("stream");
+        break;
+    case BEL_NUMBER:
+        return bel_mksymbol("number");
+        break;
+    default:
+        return bel_mksymbol("unknown");
+        break;
     };
 }
 #+end_src
@@ -3866,7 +3925,8 @@ bel_prim_wrb(Bel *args)
 
     if(!bel_charp(x)) {
         return bel_mkerror(
-            bel_mkstring("The object ~a is not a character."),
+            bel_mkstring("The object ~a is not "
+                         "a character."),
             bel_mkpair(x, bel_g_nil));
     }
 
@@ -3875,7 +3935,8 @@ bel_prim_wrb(Bel *args)
     } else {
         if(!bel_streamp(y)) {
             return bel_mkerror(
-                bel_mkstring("The object ~a must be a stream."),
+                bel_mkstring("The object ~a must be "
+                             "a stream."),
                 bel_mkpair(y, bel_g_nil));
         }
     }
@@ -3898,7 +3959,8 @@ bel_prim_rdb(Bel *args)
     } else {
         if(!bel_streamp(x)) {
             return bel_mkerror(
-                bel_mkstring("The object ~a must be a stream."),
+                bel_mkstring("The object ~a must be "
+                             "a stream."),
                 bel_mkpair(x, bel_g_nil));
         }
     }
@@ -3924,13 +3986,15 @@ bel_prim_ops(Bel *args)
 
     if(!bel_stringp(x)) {
         return bel_mkerror(
-            bel_mkstring("The object ~a is not a string."),
+            bel_mkstring("The object ~a is not "
+                         "a string."),
             bel_mkpair(x, bel_g_nil));
     }
 
     if(!bel_symbolp(y)) {
         return bel_mkerror(
-            bel_mkstring("The object ~a is not a symbol."),
+            bel_mkstring("The object ~a is not "
+                         "a symbol."),
             bel_mkpair(y, bel_g_nil));
     }
 
@@ -3941,8 +4005,8 @@ bel_prim_ops(Bel *args)
     }
 
     return bel_mkerror(
-        bel_mkstring("The object ~a is not one of the "
-                     "symbols `in` and `out`."),
+        bel_mkstring("The object ~a is not one of "
+                     "the symbols `in` and `out`."),
         bel_mkpair(y, bel_g_nil));
 }
 #+end_src
@@ -3959,7 +4023,8 @@ bel_prim_cls(Bel *args)
 
     if(!bel_streamp(stream)) {
         return bel_mkerror(
-            bel_mkstring("The object ~a is not a stream."),
+            bel_mkstring("The object ~a is not "
+                         "a stream."),
             bel_mkpair(stream, bel_g_nil));
     }
 
@@ -3982,7 +4047,8 @@ bel_prim_stat(Bel *args)
     Bel *stream = bel_car(args);
     if(!bel_streamp(stream)) {
         return bel_mkerror(
-            bel_mkstring("The object ~a is not a stream."),
+            bel_mkstring("The object ~a is not "
+                         "a stream."),
             bel_mkpair(stream, bel_g_nil));
     }
 
@@ -3992,8 +4058,8 @@ bel_prim_stat(Bel *args)
     case BEL_STREAM_WRITE:  return bel_mksymbol("out");
     default: // ...wat
         return bel_mkerror(
-            bel_mkstring("The stream ~a has an unknown "
-                         "status."),
+            bel_mkstring("The stream ~a has an "
+                         "unknown status."),
             bel_mkpair(stream, bel_g_nil));
     }
 }
@@ -4246,8 +4312,8 @@ bel_prim_err(Bel *args)
     Bel *string = bel_car(args);
     if(!bel_stringp(string)) {
         return bel_mkerror(
-            bel_mkstring("First argument of `err` must "
-                         "be a string format."),
+            bel_mkstring("First argument of `err` "
+                         "must be a string format."),
             bel_g_nil);
     }
 
