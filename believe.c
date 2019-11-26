@@ -5,6 +5,7 @@
 #include <string.h>
 #include <errno.h>
 #include <math.h>
+#include <stdarg.h>
 
 /* Believe v0.2                                           *
  * A Bel Lisp interpreter.                                *
@@ -130,11 +131,12 @@ Bel *bel_g_scope;
 Bel *bel_g_globe;
 Bel *bel_g_dynae;
 
-Bel *bel_mkerror(Bel *format, Bel *vars);   // Forward declaration
-Bel *bel_mkstring(const char*);             // Forward declaration
-Bel *bel_mksymbol(const char*);             // Forward declaration
-Bel *bel_car(Bel*);                         // Forward declaration
-Bel *bel_cdr(Bel*);                         // Forward declaration
+/* Forward declarations */
+Bel *bel_mkerror(Bel *format, Bel *vars);
+Bel *bel_mkstring(const char*);
+Bel *bel_mksymbol(const char*);
+Bel *bel_car(Bel*);
+Bel *bel_cdr(Bel*);
 
 #define bel_symbolp(x) ((x)->type==BEL_SYMBOL)
 
@@ -425,6 +427,37 @@ bel_length(Bel *list)
         itr = bel_cdr(itr);
     }
     return len;
+}
+
+Bel*
+bel_mklist(int n_elem, ...)
+{
+    if(n_elem <= 0) return bel_g_nil;
+    
+    va_list args;
+    va_start(args, n_elem);
+
+    Bel *list_start = NULL;
+    Bel *list = NULL;
+    
+    int i;
+    for(i = 0; i < n_elem; i++) {
+        Bel *newp =
+            bel_mkpair(va_arg(args, Bel*),
+                       bel_g_nil);
+        if(!list) {
+            list = newp;
+            list_start = list;
+        } else {
+            list->pair->cdr = newp;
+            list = newp;
+        }
+    }
+
+    if(!list_start)
+        return bel_g_nil;
+    
+    return list_start;
 }
 
 Bel*
@@ -781,10 +814,11 @@ bel_mkcomplex(Bel *real, Bel *imag)
     return ret;
 }
 
-Bel *bel_num_add(Bel *x, Bel *y); // Forward declaration
-Bel *bel_num_sub(Bel *x, Bel *y); // Forward declaration
-Bel *bel_num_mul(Bel *x, Bel *y); // Forward declaration
-Bel *bel_num_div(Bel *x, Bel *y); // Forward declaration
+/* Forward declarations */
+Bel *bel_num_add(Bel *x, Bel *y);
+Bel *bel_num_sub(Bel *x, Bel *y);
+Bel *bel_num_mul(Bel *x, Bel *y);
+Bel *bel_num_div(Bel *x, Bel *y);
 
 Bel*
 bel_num_coerce(Bel *number, BEL_NUMBER_TYPE type)
@@ -1201,8 +1235,7 @@ bel_num_div(Bel *x, Bel *y)
             bel_num_add(
                 bel_num_mul(
                     bel_mkinteger(-1),
-                    bel_num_mul(x->number.num_compl.real,
-                                y->number.num_compl.imag)),
+                    bel_num_mul(x->number.num_compl.real, y->number.num_compl.imag)),
                 bel_num_mul(x->number.num_compl.imag,
                             y->number.num_compl.real)));
 
@@ -1269,8 +1302,7 @@ bel_init_ax_chars(void)
     size_t i;
     for(i = 0; i < 255; i++) {        
         // Build a pair which holds the character information
-        Bel *pair = bel_mkpair(bel_mkchar((Bel_char)i),
-                               bel_mkstring(bel_conv_bits(i)));
+        Bel *pair = bel_mkpair(bel_mkchar((Bel_char)i), bel_mkstring(bel_conv_bits(i)));
         // Assign the car of a node to the current pair,
         // set its cdr temporarily to nil
         list[i] = bel_mkpair(pair, bel_g_nil);
@@ -1681,16 +1713,18 @@ bel_print(Bel *obj)
     };
 }
 
-Bel *bel_eval(Bel *exp, Bel *lenv);             // Forward declaration
-Bel *bel_apply(Bel *proc, Bel *args);           // Forward declaration
-Bel *bel_evlist(Bel *elist, Bel *lenv);         // Forward declaration
-Bel *bel_apply_primop(Bel *sym, Bel *args);     // Forward declaration
-Bel *bel_bind(Bel *vars, Bel *vals, Bel *lenv); // Forward declaration
+/* Forward declarations */
+Bel *bel_eval(Bel *exp, Bel *lenv);
+Bel *bel_apply(Bel *proc, Bel *args);
+Bel *bel_evlist(Bel *elist, Bel *lenv);
+Bel *bel_apply_primop(Bel *sym, Bel *args);
+Bel *bel_bind(Bel *vars, Bel *vals, Bel *lenv);
 
-Bel *bel_special_if(Bel *exp, Bel *lenv);       // Forward declaration
-Bel *bel_special_quote(Bel *exp, Bel *lenv);    // Forward declaration
-Bel *bel_special_dyn(Bel *rest, Bel *lenv);     // Forward declaration
-Bel *bel_special_set(Bel *clauses, Bel *lenv);  // Forward declaration
+/* Forward declarations */
+Bel *bel_special_if(Bel *exp, Bel *lenv);
+Bel *bel_special_quote(Bel *exp, Bel *lenv);
+Bel *bel_special_dyn(Bel *rest, Bel *lenv);
+Bel *bel_special_set(Bel *clauses, Bel *lenv);
 
 Bel*
 bel_eval(Bel *exp, Bel *lenv)
@@ -1995,7 +2029,7 @@ bel_evlist(Bel *elist, Bel *lenv)
     return bel_mkpair(eval_result, ev_rest);
 }
 
-// Forward declarations of primitive functions
+/* Forward declarations of primitive functions */
 Bel *bel_prim_id(Bel *args);
 Bel *bel_prim_join(Bel *args);
 Bel *bel_prim_car(Bel *args);
@@ -2013,7 +2047,7 @@ Bel *bel_prim_stat(Bel *args);
 Bel *bel_prim_coin(Bel *args);
 Bel *bel_prim_sys(Bel *args);
 
-// Forward declarations of primitive operators
+/* Forward declarations of primitive operators */
 Bel *bel_prim_add(Bel *args);
 Bel *bel_prim_sub(Bel *args);
 Bel *bel_prim_mul(Bel *args);
@@ -2024,51 +2058,77 @@ Bel *bel_prim_div(Bel *args);
 //Bel *bel_prim_geq(Bel *args);
 //Bel *bel_prim_eq(Bel *args);
 
-//  Forward declarations of other primitives
+/* Forward declarations of other primitives */
 Bel *bel_prim_err(Bel *args);
 
 #define bel_is_prim(sym, lit)                     \
     (bel_idp(sym, bel_mksymbol(lit)))
 
-#define bel_unimplemented(sym)                                  \
-    bel_mkerror(                                                \
-    bel_mkstring("~a is not implemented."),                     \
+#define bel_unimplemented(sym)                    \
+    bel_mkerror(                                  \
+    bel_mkstring("~a is not implemented."),       \
     bel_mkpair(sym, bel_g_nil))
 
 Bel*
 bel_apply_primop(Bel *sym, Bel *args)
 {
     // Primitive functions
-    if(bel_is_prim(sym, "id"))        return bel_prim_id(args);
-    else if(bel_is_prim(sym, "join")) return bel_prim_join(args);
-    else if(bel_is_prim(sym, "car"))  return bel_prim_car(args);
-    else if(bel_is_prim(sym, "cdr"))  return bel_prim_cdr(args);
-    else if(bel_is_prim(sym, "type")) return bel_prim_type(args);
-    else if(bel_is_prim(sym, "xar"))  return bel_prim_xar(args);
-    else if(bel_is_prim(sym, "xdr"))  return bel_prim_xdr(args);
-    else if(bel_is_prim(sym, "sym"))  return bel_prim_sym(args);
-    else if(bel_is_prim(sym, "nom"))  return bel_prim_nom(args);
-    else if(bel_is_prim(sym, "wrb"))  return bel_prim_wrb(args);
-    else if(bel_is_prim(sym, "rdb"))  return bel_prim_rdb(args);
-    else if(bel_is_prim(sym, "ops"))  return bel_prim_ops(args);
-    else if(bel_is_prim(sym, "cls"))  return bel_prim_cls(args);
-    else if(bel_is_prim(sym, "stat")) return bel_prim_stat(args);
-    else if(bel_is_prim(sym, "coin")) return bel_prim_coin(args);
-    else if(bel_is_prim(sym, "sys"))  return bel_prim_sys(args);
+    if(bel_is_prim(sym, "id"))
+        return bel_prim_id(args);
+    else if(bel_is_prim(sym, "join"))
+        return bel_prim_join(args);
+    else if(bel_is_prim(sym, "car"))
+        return bel_prim_car(args);
+    else if(bel_is_prim(sym, "cdr"))
+        return bel_prim_cdr(args);
+    else if(bel_is_prim(sym, "type"))
+        return bel_prim_type(args);
+    else if(bel_is_prim(sym, "xar"))
+        return bel_prim_xar(args);
+    else if(bel_is_prim(sym, "xdr"))
+        return bel_prim_xdr(args);
+    else if(bel_is_prim(sym, "sym"))
+        return bel_prim_sym(args);
+    else if(bel_is_prim(sym, "nom"))
+        return bel_prim_nom(args);
+    else if(bel_is_prim(sym, "wrb"))
+        return bel_prim_wrb(args);
+    else if(bel_is_prim(sym, "rdb"))
+        return bel_prim_rdb(args);
+    else if(bel_is_prim(sym, "ops"))
+        return bel_prim_ops(args);
+    else if(bel_is_prim(sym, "cls"))
+        return bel_prim_cls(args);
+    else if(bel_is_prim(sym, "stat"))
+        return bel_prim_stat(args);
+    else if(bel_is_prim(sym, "coin"))
+        return bel_prim_coin(args);
+    else if(bel_is_prim(sym, "sys"))
+        return bel_prim_sys(args);
 
     // Primitive operators
-    else if(bel_is_prim(sym, "+"))    return bel_prim_add(args);
-    else if(bel_is_prim(sym, "-"))    return bel_prim_sub(args);
-    else if(bel_is_prim(sym, "*"))    return bel_prim_mul(args);
-    else if(bel_is_prim(sym, "/"))    return bel_prim_div(args);
-    else if(bel_is_prim(sym, "<"))    return bel_unimplemented(sym);
-    else if(bel_is_prim(sym, "<="))   return bel_unimplemented(sym);
-    else if(bel_is_prim(sym, ">"))    return bel_unimplemented(sym);
-    else if(bel_is_prim(sym, ">="))   return bel_unimplemented(sym);
-    else if(bel_is_prim(sym, "="))    return bel_unimplemented(sym);
+    else if(bel_is_prim(sym, "+"))
+        return bel_prim_add(args);
+    else if(bel_is_prim(sym, "-"))
+        return bel_prim_sub(args);
+    else if(bel_is_prim(sym, "*"))
+        return bel_prim_mul(args);
+    else if(bel_is_prim(sym, "/"))
+        return bel_prim_div(args);
+    else if(bel_is_prim(sym, "<"))
+        return bel_unimplemented(sym);
+    else if(bel_is_prim(sym, "<="))
+        return bel_unimplemented(sym);
+    else if(bel_is_prim(sym, ">"))
+        return bel_unimplemented(sym);
+    else if(bel_is_prim(sym, ">="))
+        return bel_unimplemented(sym);
+    else if(bel_is_prim(sym, "="))
+        return bel_unimplemented(sym);
     
     // Other primitives
-    else if(bel_is_prim(sym, "err"))  return bel_prim_err(args);
+    else if(bel_is_prim(sym, "err"))
+        return bel_prim_err(args);
 
     // Otherwise, unknown application operation
     else {
@@ -2123,12 +2183,24 @@ bel_prim_type(Bel *args)
 {
     BEL_CHECK_MAX_ARITY(args, 1);
     switch(bel_car(args)->type) {
-    case BEL_SYMBOL: return bel_mksymbol("symbol");  break;
-    case BEL_PAIR:   return bel_mksymbol("pair");    break;
-    case BEL_CHAR:   return bel_mksymbol("char");    break;
-    case BEL_STREAM: return bel_mksymbol("stream");  break;
-    case BEL_NUMBER: return bel_mksymbol("number");  break;
-    default:         return bel_mksymbol("unknown"); break;
+    case BEL_SYMBOL:
+        return bel_mksymbol("symbol");
+        break;
+    case BEL_PAIR:
+        return bel_mksymbol("pair");
+        break;
+    case BEL_CHAR:
+        return bel_mksymbol("char");
+        break;
+    case BEL_STREAM:
+        return bel_mksymbol("stream");
+        break;
+    case BEL_NUMBER:
+        return bel_mksymbol("number");
+        break;
+    default:
+        return bel_mksymbol("unknown");
+        break;
     };
 }
 
@@ -2209,7 +2281,8 @@ bel_prim_wrb(Bel *args)
 
     if(!bel_charp(x)) {
         return bel_mkerror(
-            bel_mkstring("The object ~a is not a character."),
+            bel_mkstring("The object ~a is not "
+                         "a character."),
             bel_mkpair(x, bel_g_nil));
     }
 
@@ -2218,7 +2291,8 @@ bel_prim_wrb(Bel *args)
     } else {
         if(!bel_streamp(y)) {
             return bel_mkerror(
-                bel_mkstring("The object ~a must be a stream."),
+                bel_mkstring("The object ~a must be "
+                             "a stream."),
                 bel_mkpair(y, bel_g_nil));
         }
     }
@@ -2237,7 +2311,8 @@ bel_prim_rdb(Bel *args)
     } else {
         if(!bel_streamp(x)) {
             return bel_mkerror(
-                bel_mkstring("The object ~a must be a stream."),
+                bel_mkstring("The object ~a must be "
+                             "a stream."),
                 bel_mkpair(x, bel_g_nil));
         }
     }
@@ -2254,13 +2329,15 @@ bel_prim_ops(Bel *args)
 
     if(!bel_stringp(x)) {
         return bel_mkerror(
-            bel_mkstring("The object ~a is not a string."),
+            bel_mkstring("The object ~a is not "
+                         "a string."),
             bel_mkpair(x, bel_g_nil));
     }
 
     if(!bel_symbolp(y)) {
         return bel_mkerror(
-            bel_mkstring("The object ~a is not a symbol."),
+            bel_mkstring("The object ~a is not "
+                         "a symbol."),
             bel_mkpair(y, bel_g_nil));
     }
 
@@ -2271,8 +2348,8 @@ bel_prim_ops(Bel *args)
     }
 
     return bel_mkerror(
-        bel_mkstring("The object ~a is not one of the "
-                     "symbols `in` and `out`."),
+        bel_mkstring("The object ~a is not one of "
+                     "the symbols `in` and `out`."),
         bel_mkpair(y, bel_g_nil));
 }
 
@@ -2284,7 +2361,8 @@ bel_prim_cls(Bel *args)
 
     if(!bel_streamp(stream)) {
         return bel_mkerror(
-            bel_mkstring("The object ~a is not a stream."),
+            bel_mkstring("The object ~a is not "
+                         "a stream."),
             bel_mkpair(stream, bel_g_nil));
     }
 
@@ -2302,7 +2380,8 @@ bel_prim_stat(Bel *args)
     Bel *stream = bel_car(args);
     if(!bel_streamp(stream)) {
         return bel_mkerror(
-            bel_mkstring("The object ~a is not a stream."),
+            bel_mkstring("The object ~a is not "
+                         "a stream."),
             bel_mkpair(stream, bel_g_nil));
     }
 
@@ -2312,8 +2391,8 @@ bel_prim_stat(Bel *args)
     case BEL_STREAM_WRITE:  return bel_mksymbol("out");
     default: // ...wat
         return bel_mkerror(
-            bel_mkstring("The stream ~a has an unknown "
-                         "status."),
+            bel_mkstring("The stream ~a has an "
+                         "unknown status."),
             bel_mkpair(stream, bel_g_nil));
     }
 }
@@ -2483,8 +2562,8 @@ bel_prim_err(Bel *args)
     Bel *string = bel_car(args);
     if(!bel_stringp(string)) {
         return bel_mkerror(
-            bel_mkstring("First argument of `err` must "
-                         "be a string format."),
+            bel_mkstring("First argument of `err` "
+                         "must be a string format."),
             bel_g_nil);
     }
 
@@ -2594,6 +2673,16 @@ closure_repr_test()
                                      bel_g_nil)))));
     bel_print(bel);
     putchar(10);
+
+    // (fn (x) (+ 1 x))
+    bel =
+        bel_mklist(3, bel_mksymbol("fn"),
+                   bel_mklist(1, bel_mksymbol("x")),
+                   bel_mklist(3, bel_mksymbol("+"),
+                              bel_mkinteger(1),
+                              bel_mksymbol("x")));
+    bel_print(bel);
+    putchar(10);     
 }
 
 void

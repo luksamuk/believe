@@ -427,7 +427,8 @@ standard integer types. =string.h= provides definitions to handle string
 manipulation on the C side, however Bel is supposed to have its own
 string representation, to be discussed later. =errno.h= is used to fetch
 error strings from streams, for example; and =math.h= is useful for math
-operations.
+operations. Finally, =stdarg.h= is used for creating variadic
+functions.
 
 #+begin_src C
 #include <stdio.h>
@@ -437,6 +438,7 @@ operations.
 #include <string.h>
 #include <errno.h>
 #include <math.h>
+#include <stdarg.h>
 #+end_src
 
 ** Definitions
@@ -1261,6 +1263,51 @@ bel_length(Bel *list)
         itr = bel_cdr(itr);
     }
     return len;
+}
+#+end_src
+
+We can also create a variadic function which implements Bel string
+creation from a number of arguments passed to that string. This is
+useful when creating lists from C.
+
+=bel_mklist= asks for a number of elements and a variadic list of =Bel*=
+objects. Then it attempts to create a single pair for each object, and
+place the object itself in the /car/ of that pair.
+
+When another object is added into the list, yet another pair is
+created and so on, and this pair is set as the /cdr/ of the previous
+pair.
+
+#+begin_src C
+Bel*
+bel_mklist(int n_elem, ...)
+{
+    if(n_elem <= 0) return bel_g_nil;
+    
+    va_list args;
+    va_start(args, n_elem);
+
+    Bel *list_start = NULL;
+    Bel *list = NULL;
+    
+    int i;
+    for(i = 0; i < n_elem; i++) {
+        Bel *newp =
+            bel_mkpair(va_arg(args, Bel*),
+                       bel_g_nil);
+        if(!list) {
+            list = newp;
+            list_start = list;
+        } else {
+            list->pair->cdr = newp;
+            list = newp;
+        }
+    }
+
+    if(!list_start)
+        return bel_g_nil;
+    
+    return list_start;
 }
 #+end_src
 
@@ -4449,6 +4496,9 @@ this is a proper list, representing the internal representation of a
 closure such as =(fn (x) (* x x))=. Expected output is =(lit clo nil (x)
 (* x x))=.
 
+Finally, we also take the oportunity to test =bel_mklist= by creating a
+proper closure =(fn (x) (+ 1 x))=, not in its literal form.
+
 #+begin_src C
 void
 closure_repr_test()
@@ -4473,6 +4523,16 @@ closure_repr_test()
                                      bel_g_nil)))));
     bel_print(bel);
     putchar(10);
+
+    // (fn (x) (+ 1 x))
+    bel =
+        bel_mklist(3, bel_mksymbol("fn"),
+                   bel_mklist(1, bel_mksymbol("x")),
+                   bel_mklist(3, bel_mksymbol("+"),
+                              bel_mkinteger(1),
+                              bel_mksymbol("x")));
+    bel_print(bel);
+    putchar(10);     
 }
 #+end_src
 
