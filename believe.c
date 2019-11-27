@@ -2628,25 +2628,17 @@ void
 list_test()
 {
     Bel*
-    bel = bel_mkpair(
-        bel_mksymbol("The"),
-        bel_mkpair(
-            bel_mksymbol("quick"),
-            bel_mkpair(
-                bel_mksymbol("brown"),
-                bel_mkpair(
-                    bel_mksymbol("fox"),
-                    bel_mkpair(
-                        bel_mksymbol("jumps"),
-                        bel_mkpair(
-                            bel_mksymbol("over"),
-                            bel_mkpair(
-                                bel_mksymbol("the"),
-                                bel_mkpair(
-                                    bel_mksymbol("lazy"),
-                                    bel_mkpair(
-                                        bel_mksymbol("dog"),
-                                        bel_g_nil)))))))));
+    bel =
+        bel_mklist(9,
+                   bel_mksymbol("The"),
+                   bel_mksymbol("quick"),
+                   bel_mksymbol("brown"),
+                   bel_mksymbol("fox"),
+                   bel_mksymbol("jumps"),
+                   bel_mksymbol("over"),
+                   bel_mksymbol("the"),
+                   bel_mksymbol("lazy"),
+                   bel_mksymbol("dog"));
     bel_print(bel);
     putchar(10);
 }
@@ -2654,24 +2646,18 @@ list_test()
 void
 closure_repr_test()
 {
+    // (lit clo nil (x) (* x x))
     Bel*
-    bel = bel_mkpair(bel_mksymbol("lit"),
-                     bel_mkpair(
-                         bel_mksymbol("clo"),
-                         bel_mkpair(
-                             bel_g_nil,
-                             bel_mkpair(
-                                 bel_mkpair(bel_mksymbol("x"),
-                                            bel_g_nil),
-                                 bel_mkpair(
-                                     bel_mkpair(
-                                         bel_mksymbol("*"),
-                                         bel_mkpair(
-                                             bel_mksymbol("x"),
-                                             bel_mkpair(
-                                                 bel_mksymbol("x"),
-                                                 bel_g_nil))),
-                                     bel_g_nil)))));
+    bel = bel_mklist(5,
+                     bel_mksymbol("lit"),
+                     bel_mksymbol("clo"),
+                     bel_g_nil,
+                     bel_mklist(1,
+                                bel_mksymbol("x")),
+                     bel_mklist(3,
+                                bel_mksymbol("*"),
+                                bel_mksymbol("x"),
+                                bel_mksymbol("x")));
     bel_print(bel);
     putchar(10);
 
@@ -2839,10 +2825,12 @@ lexical_environment_test()
     // Assignment
     puts("    -- Assigning new value to `foo`");
     ret =
-        bel_assign(lexenv,
-                   bel_mksymbol("foo"),
-                   bel_mkliteral(bel_mkpair(bel_mksymbol("baz"),
-                                            bel_g_nil)));
+        bel_assign(
+            lexenv,
+            bel_mksymbol("foo"),
+            bel_mkliteral(
+                bel_mkpair(bel_mksymbol("baz"),
+                           bel_g_nil)));
 
     printf("Environment:       ");
     bel_print(lexenv);
@@ -3008,122 +2996,94 @@ eval_test()
     Bel *result;
 
     // (quote foo)
-    form = bel_mkpair(
-        bel_mksymbol("quote"),
-        bel_mkpair(
-            bel_mksymbol("foo"),
-            bel_g_nil));
+    form = bel_mklist(2,
+                      bel_mksymbol("quote"),
+                      bel_mksymbol("foo"));
     BEL_EVAL_DEBRIEF(form, result, bel_g_nil);
     
     // (join (quote foo) (quote bar))
     form =
-        bel_mkpair(
+        bel_mklist(
+            3,
             bel_mksymbol("join"),
-            bel_mkpair(
-                bel_mkpair(
-                    bel_mksymbol("quote"),
-                    bel_mkpair(
-                        bel_mksymbol("foo"),
-                        bel_g_nil)),
-                bel_mkpair(
-                    bel_mkpair(
-                        bel_mksymbol("quote"),
-                        bel_mkpair(
-                            bel_mksymbol("bar"),
-                            bel_g_nil)),
-                    bel_g_nil)));
+            bel_mklist(
+                2,
+                bel_mksymbol("quote"),
+                bel_mksymbol("foo")),
+            bel_mklist(
+                2,
+                bel_mksymbol("quote"),
+                bel_mksymbol("bar")));
     BEL_EVAL_DEBRIEF(form, result, bel_g_nil);
 
 
     // (fn (x) (id x x))
-    form = bel_mkpair(
+    form = bel_mklist(
+        3,
         bel_mksymbol("fn"),
-        bel_mkpair(
-            bel_mkpair(
-                bel_mksymbol("x"),
-                bel_g_nil),
-            bel_mkpair(
-                bel_mkpair(
-                    bel_mksymbol("id"),
-                    bel_mkpair(
-                        bel_mksymbol("x"),
-                        bel_mkpair(
-                            bel_mksymbol("x"),
-                            bel_g_nil))),
-                bel_g_nil)));
+        bel_mklist(1, bel_mksymbol("x")),
+        bel_mklist(
+            3,
+            bel_mksymbol("id"),
+            bel_mksymbol("x"),
+            bel_mksymbol("x")));
     BEL_EVAL_DEBRIEF(form, result, bel_g_nil);
 
     
     // ((fn (x) (id x x)) (quote foo))
-    form =
-        bel_mkpair(
-            form, // Use closure from last example
-            bel_mkpair(
-                bel_mkpair(
-                    bel_mksymbol("quote"),
-                    bel_mkpair(
-                        bel_mksymbol("foo"),
-                        bel_g_nil)),
-                bel_g_nil));
+    form = bel_mklist(
+        2,
+        form, // Use closure from last example
+        bel_mklist(2,
+                   bel_mksymbol("quote"),
+                   bel_mksymbol("foo")));
     BEL_EVAL_DEBRIEF(form, result, bel_g_nil);
 
     
     // (if (id (quote bar) (quote foo)) (quote okay)
     //     (id (quote foo) (quote bar)) (quote okay)
     //                                  (quote nope))
-    form = bel_mkpair(
-        bel_mksymbol("if"),
-        bel_mkpair(
-            bel_mkpair(
+    form =
+        bel_mklist(
+            6,
+            bel_mksymbol("if"),
+            // Clause 1
+            bel_mklist(
+                3,
                 bel_mksymbol("id"),
-                bel_mkpair(
-                    bel_mkpair(
-                        bel_mksymbol("quote"),
-                        bel_mkpair(
-                            bel_mksymbol("bar"),
-                            bel_g_nil)),
-                    bel_mkpair(
-                        bel_mkpair(
-                            bel_mksymbol("quote"),
-                            bel_mkpair(
-                                bel_mksymbol("foo"),
-                                bel_g_nil)),
-                        bel_g_nil))),
-            bel_mkpair(
-                bel_mkpair(
+                bel_mklist(
+                    2,
                     bel_mksymbol("quote"),
-                    bel_mkpair(
-                        bel_mksymbol("okay"),
-                        bel_g_nil)),
-                bel_mkpair(
-                    bel_mkpair(
-                        bel_mksymbol("id"),
-                        bel_mkpair(
-                            bel_mkpair(
-                                bel_mksymbol("quote"),
-                                bel_mkpair(
-                                    bel_mksymbol("foo"),
-                                    bel_g_nil)),
-                            bel_mkpair(
-                                bel_mkpair(
-                                    bel_mksymbol("quote"),
-                                    bel_mkpair(
-                                        bel_mksymbol("bar"),
-                                        bel_g_nil)),
-                                bel_g_nil))),
-                    bel_mkpair(
-                        bel_mkpair(
-                            bel_mksymbol("quote"),
-                            bel_mkpair(
-                                bel_mksymbol("okay"),
-                                bel_g_nil)),
-                        bel_mkpair(
-                            bel_mkpair(
-                                bel_mksymbol("quote"),
-                                bel_mkpair(
-                                    bel_mksymbol("nope"),
-                                    bel_g_nil)),
-                            bel_g_nil))))));
+                    bel_mksymbol("bar")),
+                bel_mklist(
+                    2,
+                    bel_mksymbol("quote"),
+                    bel_mksymbol("foo"))),
+            bel_mklist(
+                2,
+                bel_mksymbol("quote"),
+                bel_mksymbol("okay")),
+            // Clause 2
+            bel_mklist(
+                3,
+                bel_mksymbol("id"),
+                bel_mklist(
+                    2,
+                    bel_mksymbol("quote"),
+                    bel_mksymbol("foo")),
+                bel_mklist(
+                    2,
+                    bel_mksymbol("quote"),
+                    bel_mksymbol("bar"))),
+            bel_mklist(
+                2,
+                bel_mksymbol("quote"),
+                bel_mksymbol("okay")),
+            // Alternative
+            bel_mklist(
+                2,
+                bel_mksymbol("quote"),
+                bel_mksymbol("nope")));
     BEL_EVAL_DEBRIEF(form, result, bel_g_nil);
 
 
@@ -3131,11 +3091,10 @@ eval_test()
     // NOTE: I am commenting out this test since
     //       this function could open some security
     //       holes in systems unadvertedly using it.
-    /* form = bel_mkpair( */
+    /* form = bel_mklist( */
+    /*     2, */
     /*     bel_mksymbol("sys"), */
-    /*     bel_mkpair( */
-    /*         bel_mkstring("echo Hello, world!"), */
-    /*         bel_g_nil)); */
+    /*     bel_mkstring("echo Hello, world!")); */
     /* BEL_EVAL_DEBRIEF(form, result, bel_g_nil); */
 
     
@@ -3178,85 +3137,69 @@ arithmetic_eval_test()
     Bel *result;
 
     // (+ 2 #(c 3+7i) #(f 1/3))
-    exp = bel_mkpair(
+    exp = bel_mklist(
+        4,
         bel_mksymbol("+"),
-        bel_mkpair(
-            bel_mkinteger(2),
-            bel_mkpair(
-                bel_mkcomplex(bel_mkinteger(3),
-                              bel_mkinteger(7)),
-                bel_mkpair(
-                    bel_mkfraction(bel_mkinteger(1),
-                                   bel_mkinteger(3)),
-                    bel_g_nil))));
+        bel_mkinteger(2),
+        bel_mkcomplex(bel_mkinteger(3),
+                      bel_mkinteger(7)),
+        bel_mkfraction(bel_mkinteger(1),
+                       bel_mkinteger(3)));
     BEL_EVAL_DEBRIEF(exp, result, bel_g_nil);
 
     // (id #(c 1+3i) #(c 1+3i))
-    exp = bel_mkpair(
+    exp = bel_mklist(
+        3,
         bel_mksymbol("id"),
-        bel_mkpair(
-            bel_mkcomplex(bel_mkinteger(1),
-                          bel_mkinteger(3)),
-            bel_mkpair(
-                bel_mkcomplex(bel_mkinteger(1),
-                              bel_mkinteger(3)),
-                bel_g_nil)));
+        bel_mkcomplex(bel_mkinteger(1),
+                      bel_mkinteger(3)),
+        bel_mkcomplex(bel_mkinteger(1),
+                      bel_mkinteger(3)));
     BEL_EVAL_DEBRIEF(exp, result, bel_g_nil);
 
     
     //(- #(c 3-8i))
-    exp = bel_mkpair(
+    exp = bel_mklist(
+        2,
         bel_mksymbol("-"),
-        bel_mkpair(
-            bel_mkcomplex(bel_mkinteger(3),
-                          bel_mkinteger(8)),
-            bel_g_nil));
+        bel_mkcomplex(bel_mkinteger(3),
+                      bel_mkinteger(8)));
     BEL_EVAL_DEBRIEF(exp, result, bel_g_nil);
 
     
     // (* 1 2 3 4 5)
-    exp = bel_mkpair(
+    exp = bel_mklist(
+        6,
         bel_mksymbol("*"),
-        bel_mkpair(
-            bel_mkinteger(1),
-            bel_mkpair(
-                bel_mkinteger(2),
-                bel_mkpair(
-                    bel_mkinteger(3),
-                    bel_mkpair(
-                        bel_mkinteger(4),
-                        bel_mkpair(
-                            bel_mkinteger(5),
-                            bel_g_nil))))));
+        bel_mkinteger(1),
+        bel_mkinteger(2),
+        bel_mkinteger(3),
+        bel_mkinteger(4),
+        bel_mkinteger(5));
     BEL_EVAL_DEBRIEF(exp, result, bel_g_nil);
 
-    exp = bel_mkpair(
+    // (/ 45.0)
+    exp = bel_mklist(
+        2,
         bel_mksymbol("/"),
-        bel_mkpair(
-            bel_mkfloat(45.0),
-            bel_g_nil));
+        bel_mkfloat(45.0));
     BEL_EVAL_DEBRIEF(exp, result, bel_g_nil);
 
     
     // Spec conformity tests
     // (-) should return 0
-    exp = bel_mkpair(
-        bel_mksymbol("-"),
-        bel_g_nil);
+    exp = bel_mklist(1, bel_mksymbol("-"));
     BEL_EVAL_DEBRIEF(exp, result, bel_g_nil);
 
     // (/) should return 1
-    exp = bel_mkpair(
-        bel_mksymbol("/"),
-        bel_g_nil);
+    exp = bel_mklist(1, bel_mksymbol("/"));
     BEL_EVAL_DEBRIEF(exp, result, bel_g_nil);
 
     // (/ 5) should return 5
-    exp = bel_mkpair(
+    exp = bel_mklist(
+        2,
         bel_mksymbol("/"),
-        bel_mkpair(
-            bel_mkinteger(5),
-            bel_g_nil));
+        bel_mkinteger(5));
     BEL_EVAL_DEBRIEF(exp, result, bel_g_nil);
 }
 
@@ -3267,21 +3210,15 @@ arity_test()
     Bel *result;
 
     // (id) => t
-    exp = bel_mkpair(
-        bel_mksymbol("id"),
-        bel_g_nil);
+    exp = bel_mklist(1, bel_mksymbol("id"));
     BEL_EVAL_DEBRIEF(exp, result, bel_g_nil);
 
     // (join) => (nil . nil)
-    exp = bel_mkpair(
-        bel_mksymbol("join"),
-        bel_g_nil);
+    exp = bel_mklist(1, bel_mksymbol("join"));
     BEL_EVAL_DEBRIEF(exp, result, bel_g_nil);
 
     // (type) => symbol
-    exp = bel_mkpair(
-        bel_mksymbol("type"),
-        bel_g_nil);
+    exp = bel_mklist(1, bel_mksymbol("type"));
     BEL_EVAL_DEBRIEF(exp, result, bel_g_nil);
 }
 
@@ -3293,27 +3230,20 @@ dynamic_binding_test()
 
     // (dyn x (/ 1 2)
     //   (+ x 1))
-    exp = bel_mkpair(
+    exp = bel_mklist(
+        4,
         bel_mksymbol("dyn"),
-        bel_mkpair(
+        bel_mksymbol("x"),
+        bel_mklist(
+            3,
+            bel_mksymbol("/"),
+            bel_mkinteger(1),
+            bel_mkinteger(2)),
+        bel_mklist(
+            3,
+            bel_mksymbol("+"),
             bel_mksymbol("x"),
-            bel_mkpair(
-                bel_mkpair(
-                    bel_mksymbol("/"),
-                    bel_mkpair(
-                        bel_mkinteger(1),
-                        bel_mkpair(
-                            bel_mkinteger(2),
-                            bel_g_nil))),
-                bel_mkpair(
-                    bel_mkpair(
-                        bel_mksymbol("+"),
-                        bel_mkpair(
-                            bel_mksymbol("x"),
-                            bel_mkpair(
-                                bel_mkinteger(1),
-                                bel_g_nil))),
-                    bel_g_nil))));
+            bel_mkinteger(1)));
     BEL_EVAL_DEBRIEF(exp, result, bel_g_nil);
 }
 
@@ -3325,40 +3255,43 @@ global_binding_test()
 
     // function definition
     // (fn (x) (* x x))
-    exp = bel_mkpair(
-        bel_mksymbol("fn"),
-        bel_mkpair(
-            bel_mkpair(
+    exp =
+        bel_mklist(
+            3,
+            bel_mksymbol("fn"),
+            bel_mklist(1, bel_mksymbol("x")),
+            bel_mklist(
+                3,
+                bel_mksymbol("*"),
                 bel_mksymbol("x"),
-                bel_g_nil),
-            bel_mkpair(
-                bel_mkpair(
-                    bel_mksymbol("*"),
-                    bel_mkpair(
-                        bel_mksymbol("x"),
-                        bel_mkpair(
-                            bel_mksymbol("x"),
-                            bel_g_nil))),
-                bel_g_nil)));
+                bel_mksymbol("x")));
     
     // assignment
     // (set square (fn (x) (* x x)))
-    exp = bel_mkpair(
+    exp = bel_mklist(
+        3,
         bel_mksymbol("set"),
-        bel_mkpair(
-            bel_mksymbol("square"),
-            bel_mkpair(exp, bel_g_nil)));
+        bel_mksymbol("square"),
+        exp); // Reuse defined function
     BEL_EVAL_DEBRIEF(exp, result, bel_g_nil);
 
+    // Type check
+    // (type square)
+    exp = bel_mklist(
+        2,
+        bel_mksymbol("type"),
+        bel_mksymbol("square"));
+    BEL_EVAL_DEBRIEF(exp, result, bel_g_nil);
     
     // (square #(f 1/2))
-    exp = bel_mkpair(
+    exp = bel_mklist(
+        2,
         bel_mksymbol("square"),
-        bel_mkpair(
-            bel_mkfraction(bel_mkinteger(1),
-                           bel_mkinteger(2)),
-            bel_g_nil));
+        bel_mkfraction(bel_mkinteger(1),
+                       bel_mkinteger(2)));
     BEL_EVAL_DEBRIEF(exp, result, bel_g_nil);
+
+    // TODO: Unintern symbol?
 }
 
 Bel*
