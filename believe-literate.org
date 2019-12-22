@@ -365,7 +365,7 @@ Believe.
 
 #+begin_src makefile :tangle Makefile
 CC     = clang
-CFLAGS = --std=c11 -g -O2 -Wall -DBEL_DEBUG
+CFLAGS = -std=c11 -g -O2 -Wall -DBEL_DEBUG
 CLIBS  = -lgc -lm
 BIN    = believe
 OBJ    = believe.o
@@ -2038,6 +2038,9 @@ bel_num_mksametype(Bel *x, Bel *y)
         break;
     default: break;
     }
+
+    // Satisfy the compiler on event of no coercion
+    return bel_mkpair(x, y);
 }
 #+end_src
 

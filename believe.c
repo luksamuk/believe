@@ -1035,6 +1035,9 @@ bel_num_mksametype(Bel *x, Bel *y)
         break;
     default: break;
     }
+
+    // Satisfy the compiler on event of no coercion
+    return bel_mkpair(x, y);
 }
 
 #define BEL_NUM_SAMETYPE(x, y)                  \
