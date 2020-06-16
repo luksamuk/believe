@@ -1,196 +1,118 @@
-#+TITLE:    Believe
-#+SUBTITLE: A Bel interpreter built in C
-#+AUTHOR:   Lucas S. Vieira
-#+EMAIL:    lucasvieira@protonmail.com
-# #+DATE:     2019
-#+PROPERTY: header-args:C :eval no :main no :tangle believe.c
-#+STARTUP:  content
-#+OPTIONS:  title:nil toc:nil
+% Created 2020-06-16 ter 12:54
+% Intended LaTeX compiler: pdflatex
+\documentclass[openright,a4paper,twoside,12pt]{memoir}
+\usepackage[mathletters]{ucs}
+\usepackage[utf8x]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{grffile}
+\usepackage{longtable}
+\usepackage{wrapfig}
+\usepackage{rotating}
+\usepackage[normalem]{ulem}
+\usepackage{amsmath}
+\usepackage{textcomp}
+\usepackage{amssymb}
+\usepackage{capt-of}
+\usepackage{hyperref}
+\usepackage{minted}
+\usepackage[brazil, english]{babel}
+\usepackage{times}
+\usepackage[utf8x]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{color}
+\usepackage{microtype}
+\usepackage{titlesec}
+\usepackage[english, hyperpageref]{backref}
+\usepackage{hyperref}
+\usepackage[alf,abnt-emphasize=bf,abnt-doi=link]{abntex2cite}
+\usepackage{indentfirst}
+\usepackage{listings}
+\usepackage{graphicx}
+\usepackage{amssymb}
+\usepackage{amsmath}
+\usepackage{geometry}
+\usepackage{tikz}
+\usepackage{draftwatermark}
+\usepackage{fancyhdr}
+\usepackage{titling}
+\usepackage{lettrine}
+\usepackage{leading}
+\leading{13pt}
+\pagestyle{fancy}
+\chapterstyle{veelo}
+\makepagestyle{abntbookchapfirst}
+\makeoddhead{abntbookchapfirst}{}{}{}
+\definecolor{blue}{RGB}{41,5,195}
+\makeatletter
+\hypersetup{
+colorlinks=true,
+linkcolor=black,
+citecolor=black,
+filecolor=black,
+urlcolor=blue,
+bookmarksdepth=4
+}
+\makeatother
+\SetWatermarkLightness{0.85}
+\usepackage{minted}
+\usemintedstyle{perldoc}
+\definecolor{perldocbg}{HTML}{ffffcc}
+\setminted{bgcolor=perldocbg}
+\setminted{linenos=true}
+\setminted{fontsize=\small, baselinestretch=1}
+\setminted{breaklines=true}
+\setminted{obeytabs}
+\author{Lucas S. Vieira}
+\date{\today}
+\title{Believe\\\medskip
+\large A Bel interpreter built in C}
+\begin{document}
 
-:HTML_PROPERTIES:
-# When exporting to HTML, use the ReadTheOrg template
-# by Fabrice Niessen (github.com/fniessen)
 
-#+HTML_HEAD: <link rel="stylesheet" type="text/css" href="https://fniessen.github.io/org-html-themes/styles/readtheorg/css/htmlize.css"/>
-#+HTML_HEAD: <link rel="stylesheet" type="text/css" href="https://fniessen.github.io/org-html-themes/styles/readtheorg/css/readtheorg.css"/>
+\frenchspacing
 
-#+HTML_HEAD: <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
-#+HTML_HEAD: <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
-#+HTML_HEAD: <script type="text/javascript" src="https://fniessen.github.io/org-html-themes/styles/lib/js/jquery.stickytableheaders.min.js"></script>
-#+HTML_HEAD: <script type="text/javascript" src="https://fniessen.github.io/org-html-themes/styles/readtheorg/js/readtheorg.js"></script>
 
-# Enable title and table of contents if exporting to HTML.
-# #+OPTIONS: title:t toc:t
-:END:
+\frontmatter
 
-:LATEX_PROPERTIES:
-# Evaluate this block to use a book which starts with chapters instead
-# of parts.
+\makeatletter
+\begin{titlingpage}
+\phantom{xxx}
+\vspace{0.5cm}
+\huge
+\raggedright
+\@author\\
+\vspace{2.5cm}
+\huge
+{\raggedleft
 
-#+NAME: setclass
-#+begin_src emacs-lisp :tangle no :eval yes :results silent :exports none
-(add-to-list 'org-latex-classes
-             '("book-noparts"
-               "\\documentclass{memoir}"
-               ("\\chapter{%s}" . "\\chapter*{%s}")
-               ("\\section{%s}" . "\\section*{%s}")
-               ("\\subsection{%s}" . "\\subsection*{%s}")
-               ("\\subsubsection{%s}" . "\\subsubsection*{%s}")
-               ("\\paragraph{%s}" . "\\paragraph*{%s}")
-               ("\\subparagraph{%s}" . "\\subparagraph*{%s}")))
+\textbf{\HUGE\textcolor{blue}{\@title}}\\
+{\large Version 0.2}\\[1cm]
+}
+\centering
+\vfill
+\Large
+\vfill
+\@date
+\end{titlingpage}
+\makeatother
 
-(setq org-latex-listings 'minted)
+\setcounter{secnumdepth}{5}
+\setcounter{tocdepth}{5}
+\pdfbookmark[0]{\contentsname}{toc}
+\tableofcontents*
+\cleardoublepage
 
-nil ;; prevent output
-#+end_src
+\mainmatter
 
-#+CALL: setclass()
-
-# Preamble
-# #+LATEX_CLASS: article
-
-#+LATEX_CLASS: book-noparts
-#+LATEX_CLASS_OPTIONS: [openright,a4paper,twoside,12pt]
-
-#+LATEX_HEADER: \usepackage[brazil]{babel}
-#+LATEX_HEADER: \usepackage{times}
-#+LATEX_HEADER: \usepackage[utf8x]{inputenc}
-#+LATEX_HEADER: \usepackage[T1]{fontenc}
-#+LATEX_HEADER: \usepackage{color}
-#+LATEX_HEADER: \usepackage{microtype}
-#+LATEX_HEADER: \usepackage{titlesec}
-#+LATEX_HEADER: \usepackage[english, hyperpageref]{backref}
-#+LATEX_HEADER: \usepackage{hyperref}
-#+LATEX_HEADER: \usepackage[alf,abnt-emphasize=bf,abnt-doi=link]{abntex2cite}
-#+LATEX_HEADER: \usepackage{indentfirst}
-#+LATEX_HEADER: \usepackage{listings}
-#+LATEX_HEADER: \usepackage{graphicx}
-#+LATEX_HEADER: \usepackage{amssymb}
-#+LATEX_HEADER: \usepackage{amsmath}
-#+LATEX_HEADER: \usepackage{geometry}
-#+LATEX_HEADER: \usepackage{tikz}
-#+LATEX_HEADER: \usepackage{draftwatermark}
-#+LATEX_HEADER: \usepackage{fancyhdr}
-#+LATEX_HEADER: \usepackage{titling}
-#+LATEX_HEADER: \usepackage{lettrine}
-#+LATEX_HEADER: \usepackage{leading}
-
-# # Extra package property
-#+LATEX_HEADER: \leading{13pt}
-#+LATEX_HEADER: \pagestyle{fancy}
-#+LATEX_HEADER: \chapterstyle{veelo}
-
-# # Chater start header
-#+LATEX_HEADER: \makepagestyle{abntbookchapfirst}
-#+LATEX_HEADER: \makeoddhead{abntbookchapfirst}{}{}{}
-
-# Remove colorization of links
-#+LATEX_HEADER: \definecolor{blue}{RGB}{41,5,195}
-#+LATEX_HEADER: \makeatletter
-#+LATEX_HEADER: \hypersetup{
-# #+LATEX_HEADER:     pdftitle={%t},
-# #+LATEX_HEADER:     pdfauthor={%a},
-# #+LATEX_HEADER:     pdfkeywords={%k},
-# #+LATEX_HEADER:     pdfsubject={%d},
-# #+LATEX_HEADER:     pdfcreator={%c},
-#+LATEX_HEADER:     colorlinks=true,
-#+LATEX_HEADER:     linkcolor=black,
-#+LATEX_HEADER:     citecolor=black,
-#+LATEX_HEADER:     filecolor=black,
-#+LATEX_HEADER:     urlcolor=blue,
-#+LATEX_HEADER:     bookmarksdepth=4
-#+LATEX_HEADER: }
-#+LATEX_HEADER: \makeatother
-#+BIND: org-latex-hyperref-template ""
-
-# Make watermark softer
-#+LATEX_HEADER: \SetWatermarkLightness{0.85}
-
-# Spacing
-#+LATEX: \frenchspacing
-:END:
-
-:CODE_BLOCK_STYLE:
-#+LATEX_HEADER: \usepackage{minted}
-
-# List of styles: https://help.farbox.com/pygments.html
-
-# Monokai style
-# #+LATEX_HEADER: \usemintedstyle{monokai}
-# #+LATEX_HEADER: \definecolor{monokaibg}{HTML}{383838}
-# #+LATEX_HEADER: \setminted{bgcolor=monokaibg}
-
-# Perldoc style
-#+LATEX_HEADER: \usemintedstyle{perldoc}
-#+LATEX_HEADER: \definecolor{perldocbg}{HTML}{ffffcc}
-#+LATEX_HEADER: \setminted{bgcolor=perldocbg}
-
-# Manni style
-# #+LATEX_HEADER: \usemintedstyle{manni}
-# #+LATEX_HEADER: \definecolor{lightgrey}{HTML}{efefef}
-# #+LATEX_HEADER: \setminted{bgcolor=lightgrey}
-
-# Line numbers
-#+LATEX_HEADER: \setminted{linenos=true}
-
-# Font size
-#+LATEX_HEADER: \setminted{fontsize=\small, baselinestretch=1}
-
-# Line breaking
-#+LATEX_HEADER: \setminted{breaklines=true}
-
-# Tabs
-#+LATEX_HEADER: \setminted{obeytabs}
-:END:
-
-#+LATEX: \frontmatter
-
-:COVER:
-#+LATEX: \makeatletter
-#+LATEX: \begin{titlingpage}
-#+LATEX: \phantom{xxx}
-#+LATEX: \vspace{0.5cm}
-#+LATEX: \huge
-#+LATEX: \raggedright
-#+LATEX: \@author\\
-#+LATEX: \vspace{2.5cm}
-#+LATEX: \huge 
-#+LATEX: {\raggedleft
-# #+LATEX: \includegraphics[scale=0.9]{logo.pdf}\\[1cm]
-#+LATEX: \textbf{\HUGE\textcolor{blue}{\@title}}\\
-#+LATEX: {\large Version 0.2}\\[1cm]
-#+LATEX: }
-#+LATEX: \centering 
-#+LATEX:
-#+LATEX: \vfill
-#+LATEX: \Large
-#+LATEX:
-#+LATEX: \vfill
-#+LATEX: \@date
-#+LATEX: \end{titlingpage}
-#+LATEX: \makeatother
-:END:
-
-:TABLE_OF_CONTENTS:
-#+LATEX: \setcounter{secnumdepth}{5}
-#+LATEX: \setcounter{tocdepth}{5}
-#+LATEX: \pdfbookmark[0]{\contentsname}{toc}
-#+LATEX: \tableofcontents*
-#+LATEX: \cleardoublepage
-:END:
-
-#+LATEX: \mainmatter
-
-* Acknowledgements
-:PROPERTIES:
-:UNNUMBERED: t
-:END:
-#+LATEX: \addcontentsline{toc}{chapter}{Acknowledgements}
+\chapter*{Acknowledgements}
+\label{sec:org962a682}
+\addcontentsline{toc}{chapter}{Acknowledgements}
 
 This is an open-source project which anyone can contribute to. I'd
 like to thank the people who helped me so far with this project.
 
-Many thanks to Carl Mäsak ([[https://github.com/masak][github.com/masak]]) not only for contributing
+Many thanks to Carl Mäsak (\href{https://github.com/masak}{github.com/masak}) not only for contributing
 with code, but also for highlighting a lot of important aspects in the
 Bel specification, and also for taking time to discuss other
 implementation aspects of the interpreter. This kind of contribution
@@ -198,7 +120,8 @@ is priceless, since it is easy to overlook important details on
 technical documents. An extra pair of eyes on that regard is always
 welcome.
 
-* Introduction
+\chapter{Introduction}
+\label{sec:org1f49d6b}
 
 The goal of this project is to provide a fully-functioning
 implementation of the Bel language, proposed by Paul Graham. The main
@@ -212,25 +135,27 @@ the perfect didatic resource to do so.
 
 Here are some useful links with language resources:
 
-- [[http://paulgraham.com/bel.html][Paul Graham's Bel release website]]
-- [[https://sep.yimg.com/ty/cdn/paulgraham/bellanguage.txt?t=1570993483&][Language Guide]]
-- [[https://sep.yimg.com/ty/cdn/paulgraham/bel.bel?t=1570993483&][Language Source Code, written in Bel itself]]
-- [[https://sep.yimg.com/ty/cdn/paulgraham/belexamples.txt?t=1570993483&][Bel examples]]
+\begin{itemize}
+\item \href{http://paulgraham.com/bel.html}{Paul Graham's Bel release website}
+\item \href{https://sep.yimg.com/ty/cdn/paulgraham/bellanguage.txt?t=1570993483\&}{Language Guide}
+\item \href{https://sep.yimg.com/ty/cdn/paulgraham/bel.bel?t=1570993483\&}{Language Source Code, written in Bel itself}
+\item \href{https://sep.yimg.com/ty/cdn/paulgraham/belexamples.txt?t=1570993483\&}{Bel examples}
+\end{itemize}
 
-Note that *this software is still a work-in-progress. Do not expect it to work
-fully yet.*
+Note that \textbf{this software is still a work-in-progress. Do not expect it to work
+fully yet.}
 
-** About literate programming
+\section{About literate programming}
+\label{sec:org180bc0c}
 
-#+TODO: Lacks references! Use Org-ref for that!
-This interpreter is built using [[https://orgmode.org/][Org with Org-mode in Emacs]]. Its
+This interpreter is built using \href{https://orgmode.org/}{Org with Org-mode in Emacs}. Its
 website specifies that Org is "a format for keeping notes, maintaining
 TODO lists, planning projects, and authoring documents with a fast and
 effective plain-text system".
 
 All the code here appears in the order it is written on the actual
-code files. By using [[http://www.literateprogramming.com/knuthweb.pdf][Donald Knuth's concept of literate programming]],
-the relevant code blocks are /tangled/ and written in their specified
+code files. By using \href{http://www.literateprogramming.com/knuthweb.pdf}{Donald Knuth's concept of literate programming},
+the relevant code blocks are \emph{tangled} and written in their specified
 code files, and then the application can be compiled.
 
 By using this approach, I hope to maintain an application where the
@@ -238,46 +163,58 @@ understanding of what is being written comes before the code itself,
 so that the reader is able to take and analyse parts of said code
 based on the prose that accompanies it.
 
-** Licensing
+\section{Licensing}
+\label{sec:org0237520}
 
 The Believe project is composed of two relevant documents: one being
-the /textbook/, which contains all the prose parts plus the code blocks
-in relevant places; and another being the /code/, which is composed
-solely of the code blocks contained in this /textbook/, and can be
-understood both as the /code/ blocks of the /textbook/ or as a separate,
-/tangled/ file containing the relevant discussed code.
+the \emph{textbook}, which contains all the prose parts plus the code blocks
+in relevant places; and another being the \emph{code}, which is composed
+solely of the code blocks contained in this \emph{textbook}, and can be
+understood both as the \emph{code} blocks of the \emph{textbook} or as a separate,
+\emph{tangled} file containing the relevant discussed code.
 
-When redistributing the /textbook/, one should take the /textbook/ license
-into consideration. But anyone using the /code/ parts of the /textbook/ or
-the /tangled/ code file included in the project's repository, for /any/
-purpose, should take the /code/ license into consideration as well.
+When redistributing the \emph{textbook}, one should take the \emph{textbook} license
+into consideration. But anyone using the \emph{code} parts of the \emph{textbook} or
+the \emph{tangled} code file included in the project's repository, for \emph{any}
+purpose, should take the \emph{code} license into consideration as well.
 
-*** Textbook license
+\subsection{Textbook license}
+\label{sec:org713d141}
 
 This work is licensed under a Creative Commons Attribution-ShareAlike
 4.0 International License. This means that you are free to:
 
-- *Share*: copy and redistribute the material in any medium or format
-- *Adapt*: remix, transform, and build upon the material for any
-  purpose, even commercially.
+\begin{itemize}
+\item \textbf{Share}: copy and redistribute the material in any medium or format
+\item \textbf{Adapt}: remix, transform, and build upon the material for any
+purpose, even commercially.
+\end{itemize}
 
 But only if you follow the terms below:
 
-- *Attribution*: You must give appropriate credit[fn:1], provide a link to the
-  license, and indicate if changes were made[fn:2]. You may do so in any
-  reasonable manner, but not in any way that suggests the licensor
-  endorses you or your use.
-- *ShareAlike*: If you remix, transform, or build upon the material, you
-  must distribute your contributions under the same license[fn:3] as the
-  original.
+\begin{itemize}
+\item \textbf{Attribution}: You must give appropriate credit\footnote{You must provide the name of the creator and attribution
+parties, a copyright notice, a license notice, a disclaimer notice,
+and a link to the original material.}, provide a link to the
+license, and indicate if changes were made\footnote{You must indicate if you modified the material and retain an
+indication of previous modifications.}. You may do so in any
+reasonable manner, but not in any way that suggests the licensor
+endorses you or your use.
+\item \textbf{ShareAlike}: If you remix, transform, or build upon the material, you
+must distribute your contributions under the same license\footnote{You can see a list of compatible licenses at
+\url{https://creativecommons.org/compatible-licenses}.} as the
+original.
+\end{itemize}
 
 
-See the CC-BY-SA 4.0[fn:6] link for more information.
+See the CC-BY-SA 4.0\footnote{\url{https://creativecommons.org/licenses/by-sa/4.0/}} link for more information.
 
-#+ATTR_LATEX: :width .2\textwidth
-[[file:images/cc-by-sa.png]]
+\begin{center}
+\includegraphics[width=.2\textwidth]{images/cc-by-sa.png}
+\end{center}
 
-*** Code license
+\subsection{Code license}
+\label{sec:orgecd0d94}
 
 This software's code is distributed under the MIT License, Copyright
 (c) 2019 Lucas S. Vieira.
@@ -302,79 +239,179 @@ ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-** Contribution guidelines
+\section{Contribution guidelines}
+\label{sec:orgeeca4a1}
 
-# We delegate this to an external file.
-#+INCLUDE: CONTRIBUTING.org :only-contents t
+Below are described a few guidelines to contribute to this project. It
+is important to follow them to avoid confusion when contributing.
 
-* COMMENT Backlog
-** Roadmap
-- [x] Data types
-  - [x] Symbols
-  - [x] Pairs
-    - [x] Lists
-  - [x] Characters
-  - [x] Strings
-  - [x] Numbers (opaque; general type only)
-    - [x] Integers
-    - [x] Float
-    - [x] Fractions
-    - [x] Complex
-- [x] Literals
-  - [x] Primitives (representation)
-- [x] Environments
-  - [x] Environment hierarchy (dyn > lex > glo) [implemented on
-    lookup]
-  - [x] Dynamic binding (visible everywhere for short time)
-  - [x] Hierarchical lookup (=bel_lookup=)
-- [x] Functions
-  - [x] Lexical bindings
-- [ ] Evaluation [wip]
-  - [x] Eval [wip]
-    - [ ] Special forms [wip]
-      - [x] =quote=
-      - [x] =lit=
-        - [x] =fn=   => literal closure
-      - [x] =if=
-      - [ ] =apply=
-      - [x] =join=
-      - [ ] =where=  => not so straightforward
-      - [x] =dyn=
-      - [ ] =after=
-      - [ ] =ccc=    => Later?
-      - [ ] =thread= => Later?
-      - [x] =set=    => global binding
-  - [x] Apply
-  
-** On-the-fly checklist
-- [x] Environment functions
-- [x] Global environment object =globe=
-- [x] Various necessary predicates
-  - [x] =stringp= predicate
-- [x] Error object
-- [x] String printing
-- [x] Test for errors on core functions
-- [x] Dynamic environment
-- [x] Assignments/Unassignments
-- [x] =err= primitive function, basic error handling
-- [x] Use =BEL_DEBUG= flag everywhere!
-- [x] Move debug printing functions to actual printing behaviour
-- [x] Prototype evaluator
-- [ ] Proper error propagation
-- [ ] Add proper references with Org-ref and bibtex
-- [ ] Lexical environment object =scope=, shadowable, not unique (is it
-  necessary?)
-- [ ] Prevent circular printing. Particularly useful for environments
-  and closures
+\subsection{Code contribution guidelines}
+\label{sec:orgd499f56}
 
-* Tools and scripts
-** Makefile
+\begin{enumerate}
+\item \emph{This is a literate program.}\\
+The meaning of this statement is that the software is primarily
+written as a prose with code blocks. So the way to make an addition
+to Believe is to open a section on the relevant part and add a code
+block with a proper code explanation in prose.
+\item \emph{The code is written as a C code file.}\\
+Any new code should be added in a proper C code block. In the end,
+all C code blocks can be tangled into a single \texttt{believe.c} file.
+\item \emph{The code uses indentation similar to K\&R.}\\
+Therefore we put types one line above the rest of the function
+declaration (except for prototypes), and we put the function
+declaration braces on \emph{the next line}. As for code inside function
+scopes, the braces should be in front of the block declaration,
+separated by a single space.
+\item \emph{Use \texttt{snake\_case} and respect naming conventions.}\\
+All definitions use snake case with lowercase names (e.g. \texttt{bel\_car}),
+except for \emph{enumerations} (where the name of the \texttt{enum} and its
+definitions must be uppercase -- e.g. \texttt{BEL\_SYMBOL}) and \emph{structs} (the
+default \texttt{struct} definition must be uppercase, while a typedef for
+the \texttt{struct} must be lowercase with the first letter in uppercase --
+e.g. \texttt{Bel\_pair}).
+\item \emph{Indentation must be done with spaces, and each indentation level
+takes four spaces.}\\
+Though this is mostly arbitrary, this is the way most of the
+software was written. This rule is invalid for \emph{Makefiles} only,
+where the use of \emph{tabs} is relevant.
+\item \emph{Do not change the code file directly.}\\
+Files such as \texttt{believe.c} are automatically generated by tangling the
+code blocks in this file. When creating \emph{pull requests}, it is also
+desired that the \texttt{believe.c} file is not commited with the rest of
+the changes.
+\item \emph{Code without a relevant prose explaining the rationale of what was
+programmed will not be accepted as contribution.}\\
+The rationale behind this project is partly related to providing
+a didatic implementation of a Lisp interpreter, which can be read
+as a book and implemented by anyone.
+\end{enumerate}
 
-This software was primarily developed on Void Linux x86_64, using the
+These contribution guidelines are subject to change at any time during
+the software development, as any necessity to clear up confusion
+appears.
+
+\subsection{Project communication guidelines}
+\label{sec:org6f82c61}
+
+This project does not have a code of conduct. Instead, we rely on the
+spirit of joyful creation of the participants and on the understanding
+and cordiality of the people taking part on the project.
+
+By contributing, you understand that the project maintainers are in no
+way responsible for the misconduct of any participants outside of the
+scope of this project. In addition, any contributions will be
+discussed in the light of good faith, not taking into consideration
+personal aspects such as race, skin color, gender, political views, or
+any other aspect which is unrelated to the produced code
+itself. Having said that, any harrassment will not be tolerated, as it
+is out of the scope of the project; the maintainers of the project
+will handle the situation in the best possible manner they can.
+
+The maintainers may also remove any other \emph{off-topic} discussions which
+are completely unrelated to the subject, to avoid pollution on issues,
+pull requests and such.
+
+It is also important to state that, by contributing, you will also be
+relying on the good faith and sensibility of the project maintainers
+to handle the topics above described; again, these are stated merely
+as a general mentality of moderation, and not as fixed rules which
+could be circumvented.
+
+To increment this general mentality, we also follow the GNU Kind
+Communication Guidelines\footnote{\url{https://www.gnu.org/philosophy/kind-communication.html}}, which are not a code of conduct nor a
+list of rules as well, but more of a reference on how one could
+approach the discussions and contributions on this software. These
+guidelines are reproduced below in an adapted fashion, with a few
+changes to accomodate to this project.
+
+\begin{enumerate}
+\item Please assume other participants are posting in good faith, even if
+you disagree with what they say. When people present code or text
+as their own work, please accept it as their work. Please do not
+criticize people for wrongs that you only speculate they may have
+done; stick to what they actually say and actually do.
+\item Please think about how to treat other participants with respect,
+especially when you disagree with them. For instance, call them by
+the names they use, and honor their preferences about their gender
+identity\footnote{Please see the GNU Kind Communication Guidelines for more
+information on better usage of pronouns and such. Maintainers will not
+be \emph{enforcing} the usage of particular pronouns, but any misuse of
+language for blatant purpose of offense will not be tolerated, as it
+can easily take a discussion to an \emph{off-topic} argument. Finally, always
+assume that any confusion about pronoun usage from the participants
+was commited with no offending intention as well, and let the
+maintainers handle the situation if necessary.}.
+\item Please do not take a harsh tone towards other participants, and
+especially don't make personal attacks against them. Go out of your
+way to show that you are criticizing a statement, not a person.
+\item Please recognize that criticism of your statements is not a personal
+attack on you. If you feel that someone has attacked you, or
+offended your personal dignity, please don't “hit back” with another
+personal attack. That tends to start a vicious circle of escalating
+verbal aggression. A private response, politely stating your
+feelings as feelings, and asking for peace, may calm things
+down. Write it, set it aside for hours or a day, revise it to remove
+the anger, and only then send it.
+\item Please avoid statements about the presumed typical desires,
+capabilities or actions of some demographic group. They can offend
+people in that group, and they are always off-topic in Believe
+discussions.
+\item Please be especially kind to other contributors when saying they
+made a mistake. Programming means making lots of mistakes, and we
+all do so —- this is why regression tests are useful. Conscientious
+programmers make mistakes, and then fix them. It is helpful to show
+contributors that being imperfect is normal, so we don't hold it
+against them, and that we appreciate their imperfect contributions
+though we hope they follow through by fixing any problems in them.
+\item Likewise, be kind when pointing out to other contributors that they
+should stop using certain software. We welcome their contributions
+to our software even if they don't do that. So these reminders
+should be gentle and not too frequent —- don't nag.
+\item Please respond to what people actually said, not to exaggerations of
+their views. Your criticism will not be constructive if it is aimed
+at a target other than their real views.
+\item If in a discussion someone brings up a tangent to the topic at hand,
+please keep the discussion on track by focusing on the current topic
+rather than the tangent. This is not to say that the tangent is bad,
+or not interesting to discuss —- only that it shouldn't interfere
+with discussion of the issue at hand. In most cases, it is also
+off-topic, so those interested ought to discuss it somewhere else.\\
+If you think the tangent is an important and pertinent issue, please
+bring it up as a separate discussion, if it applies to Believe
+development.
+\item Rather than trying to have the last word, look for the times when
+there is no need to reply, perhaps because you already made the
+relevant point clear enough. If you know something about the game of
+Go, this analogy might clarify that: when the other player's move is
+not strong enough to require a direct response, it is advantageous
+to give it none and instead move elsewhere.
+\item Please don't argue unceasingly for your preferred course of action
+when a decision for some other course has already been made. That
+tends to block the activity's progress.
+\item If other participants complain about the way you express your ideas,
+please make an effort to cater to them. You can find ways to express
+the same points while making others more comfortable. You are more
+likely to persuade others if you don't arouse ire about secondary
+things.
+\item Please don't raise \emph{any} political issues in Believe discussions,
+because they are off-topic.
+\end{enumerate}
+
+These communication guidelines are subject to change at any time
+during the software development, as any necessity to clear up
+confusion appears.
+
+\chapter{Tools and scripts}
+\label{sec:org16bd2eb}
+\section{Makefile}
+\label{sec:org0da4857}
+
+This software was primarily developed on Void Linux x86\textsubscript{64}, using the
 Clang compiler. The following Makefile is the one used for building
 Believe.
 
-#+begin_src makefile :tangle Makefile
+\begin{minted}[]{makefile}
 CC     = clang
 CFLAGS = -std=c17 -g -O2 -Wall -DBEL_DEBUG
 CLIBS  = -lgc -lm
@@ -391,18 +428,20 @@ $(BIN): $(OBJ)
 
 clean:
 	rm -rf *.o $(BIN)
-#+end_src
+\end{minted}
 
-** Memory leak testing
+\section{Memory leak testing}
+\label{sec:org9e6cde1}
 
 This script generates a log file with memory leak information using
-Valgrind. Valgrind's output is stored in =believe.log=.
+Valgrind. Valgrind's output is stored in \texttt{believe.log}.
 
-#+begin_src bash :results silent :tangle no
+\begin{minted}[]{bash}
 valgrind --check_leaks=full --log-file="believe.log" -v ./believe
-#+end_src
+\end{minted}
 
-** Tangling
+\section{Tangling}
+\label{sec:org38be14b}
 
 The following snippet can be run from Emacs to enable tangling on save
 for this file only.
@@ -413,35 +452,33 @@ the Makefile will be written in its own file; and so on. Notice that
 some blocks (like this one) is not written anywhere, and is meant to
 be evaluated from inside Emacs.
 
-#+begin_src emacs-lisp :tangle no :exports none :results silent
-(setq lexical-binding t)
-(add-hook 'after-save-hook 'org-babel-tangle)
-#+end_src
-
-** Running the program
+\section{Running the program}
+\label{sec:org12b1e47}
 
 This script attempts to build and run the Bel interpreter. It will
 also enable verbose output for the garbage collector.
 
-#+begin_src bash :tangle run.sh :eval no :cache yes :results silent :exports code
+\begin{minted}[]{bash}
 make
 export GC_PRINT_STATS=1
 ./believe
-#+end_src
+\end{minted}
 
-* Libraries and headers
+\chapter{Libraries and headers}
+\label{sec:orgf5a5671}
 
-** Default headers
+\section{Default headers}
+\label{sec:orgf5672c7}
 
-We'll be using =stdio.h= for default console I/O, plus =stdint.h= for some
-standard integer types. =string.h= provides definitions to handle string
+We'll be using \texttt{stdio.h} for default console I/O, plus \texttt{stdint.h} for some
+standard integer types. \texttt{string.h} provides definitions to handle string
 manipulation on the C side, however Bel is supposed to have its own
-string representation, to be discussed later. =errno.h= is used to fetch
-error strings from streams, for example; and =math.h= is useful for math
-operations. Finally, =stdarg.h= is used for creating variadic
+string representation, to be discussed later. \texttt{errno.h} is used to fetch
+error strings from streams, for example; and \texttt{math.h} is useful for math
+operations. Finally, \texttt{stdarg.h} is used for creating variadic
 functions.
 
-#+begin_src C
+\begin{minted}[]{c}
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -450,12 +487,13 @@ functions.
 #include <errno.h>
 #include <math.h>
 #include <stdarg.h>
-#+end_src
+\end{minted}
 
-** Definitions
+\section{Definitions}
+\label{sec:orge24adac}
 
 We'll use a flag for debug which influences the building
-process. Let's call this flag =BEL_DEBUG=.
+process. Let's call this flag \texttt{BEL\_DEBUG}.
 
 When building, if you pass this flag to Clang (see the Makefile), some
 debug outputs will be available.
@@ -464,64 +502,66 @@ By default we'll leave it on, at least for now.
 
 Let's also add a modest copyright notice to the program's header.
 
-#+begin_src C
+\begin{minted}[]{c}
 /* Believe v0.2                                           *
- ,* A Bel Lisp interpreter.                                *
- ,* Copyright (c) 2019 Lucas Vieira.                       *
- ,* This program is distributed under the MIT License. See *
- ,* the LICENSE file for details.                          *
- ,*                                                        *
- ,* Development information can also be consulted on the   *
- ,* book which accompanies this software, which was        * 
- ,* written in literate programming form. For more         *
- ,* information, see https://github.com/luksamuk/believe.  */
-#+end_src
+ * A Bel Lisp interpreter.                                *
+ * Copyright (c) 2019 Lucas Vieira.                       *
+ * This program is distributed under the MIT License. See *
+ * the LICENSE file for details.                          *
+ *                                                        *
+ * Development information can also be consulted on the   *
+ * book which accompanies this software, which was        * 
+ * written in literate programming form. For more         *
+ * information, see https://github.com/luksamuk/believe.  */
+\end{minted}
 
-** Boehm-Demers-Weiser Garbage Collector
+\section{Boehm-Demers-Weiser Garbage Collector}
+\label{sec:org33668bd}
 
 We also use Boehm-Demers-Weiser GC for garbage collection, instead of
-programming our own. The =GC_DEBUG= flag helps on debugging. See that we
-use =-lgc= on the Makefile to link the relevant library to the
+programming our own. The \texttt{GC\_DEBUG} flag helps on debugging. See that we
+use \texttt{-lgc} on the Makefile to link the relevant library to the
 application.
 
-#+begin_src C
+\begin{minted}[]{c}
 #ifdef BEL_DEBUG
 #define GC_DEBUG
 #endif
 
 #include <gc.h>
-#+end_src
+\end{minted}
 
-Plus, [[https://www.hboehm.info/gc/04tutorial.pdf][one could check the Boehm-Demers-Weiser GC tutorial slides]] by
+Plus, \href{https://www.hboehm.info/gc/04tutorial.pdf}{one could check the Boehm-Demers-Weiser GC tutorial slides} by
 Hans-J. Boehm, for a quick overview of this library.
 
-#+TODO: Use GC_REGISTER_FINALIZER for streams... if convenient.
-
-** Software-related definitions
+\section{Software-related definitions}
+\label{sec:org5cc80d3}
 
 These definitions relate to program metadata which is going to be
 displayed on its startup.
 
-#+begin_src C
+\begin{minted}[]{c}
 #define BELIEVE_VERSION   "0.2"
 #define BELIEVE_COPYRIGHT "2019 Lucas Vieira"
 #define BELIEVE_LICENSE   "MIT"
-#+end_src
+\end{minted}
 
-* Fundamental data types
+\chapter{Fundamental data types}
+\label{sec:orge74411f}
 
 The first thing to do is specify how the data is going to be handled
 by the interpreter. Here, we define each of these kinds of data. Any
 procedure for data manipulation will be defined afterwards.
 
-** Enumerating Bel types
+\section{Enumerating Bel types}
+\label{sec:orge7e2240}
 
 We begin by specifying all data types, which Bel has four: symbols,
 pairs, characters and streams. We also add a number type, which is
 non-standard, but will be useful; this decision will be explained in
 its section.
 
-#+begin_src C
+\begin{minted}[]{c}
 typedef enum
 {
     BEL_SYMBOL,
@@ -530,16 +570,17 @@ typedef enum
     BEL_STREAM,
     BEL_NUMBER
 } BEL_TYPE;
-#+end_src
+\end{minted}
 
-** Pair
+\section{Pair}
+\label{sec:orgd96d3da}
 
 A pair can have two things, which can in return be one of the four
 data types themselves. Since this is sort of a recursive definition,
-we need to make a forward declaration of the general =Bel= type, which
+we need to make a forward declaration of the general \texttt{Bel} type, which
 encloses all four data types.
 
-#+begin_src C
+\begin{minted}[]{c}
 typedef struct BEL Bel; // Forward declaration
 
 typedef struct
@@ -547,9 +588,10 @@ typedef struct
     Bel *car;
     Bel *cdr;
 } Bel_pair;
-#+end_src
+\end{minted}
 
-** Character
+\section{Character}
+\label{sec:orgd617e50}
 
 A character is nothing but an integer in standard C. For now we'll
 support only ASCII, so there is no actual need to instantiate the
@@ -558,24 +600,26 @@ proposed table of characters -- this might change in the future.
 We say that a character is nothing but a signed 8-bit integer. Should
 be enough for now.
 
-#+begin_src C
+\begin{minted}[]{c}
 typedef int8_t Bel_char;
-#+end_src
+\end{minted}
 
-** Symbol
+\section{Symbol}
+\label{sec:org49cd79d}
 
 A symbol is nothing but a specific index on the symbol table, so
 that's how we'll define it.
 
-#+begin_src C
+\begin{minted}[]{c}
 typedef uint64_t Bel_sym;
-#+end_src
+\end{minted}
 
-** Stream
+\section{Stream}
+\label{sec:org0c9c62f}
 
 The stream type is somewhat implementation-dependent. In C, a standard
-way to refer to streams is to use a =FILE= pointer, since =stdout= and
-=stdin= themselves are of such type. So we just wrap these pointers in
+way to refer to streams is to use a \texttt{FILE} pointer, since \texttt{stdout} and
+\texttt{stdin} themselves are of such type. So we just wrap these pointers in
 a stream type.
 
 Plus, as per Bel's specification, a stream has three statuses: closed,
@@ -587,17 +631,17 @@ cache the currently filled byte inside the structure, from left to
 right, dumping each byte as it is filled. Upon closing, the stream
 shall write the cache at the end of the file, plus the incomplete
 remaining bits. A "new" (not written and not dumped) cache is a single
-byte, and is guaranteed to be filled with zero =(\0 \0 \0 \0 \0 \0 \0
-\0)=.
+byte, and is guaranteed to be filled with zero \texttt{(\textbackslash{}0 \textbackslash{}0 \textbackslash{}0 \textbackslash{}0 \textbackslash{}0 \textbackslash{}0 \textbackslash{}0
+\textbackslash{}0)}.
 
 When dealing with reading from a stream, since Bel also reads bit by
 bit only, we take the same advantage of the cache, however as the
 opposite approach: we read a single byte from stream and keep the
-cache full. As we read each bit, we convert it to a Bel character (=\0=
-or =\1=). Once all bits of the cache have been read, another byte is
+cache full. As we read each bit, we convert it to a Bel character (\texttt{\textbackslash{}0}
+or \texttt{\textbackslash{}1}). Once all bits of the cache have been read, another byte is
 fetched, stored on cache, and so on.
 
-#+begin_src C
+\begin{minted}[]{c}
 typedef enum BEL_STREAM_STATUS
 {
     BEL_STREAM_CLOSED,
@@ -612,24 +656,25 @@ typedef struct
     uint8_t            cache;
     uint8_t            cache_used;
 } Bel_stream;
-#+end_src
+\end{minted}
 
-** Number
+\section{Number}
+\label{sec:org6b06b22}
 
 Bel does not specify any numeric types in its standard. In fact,
 numbers could be reproduced in Bel by using Church numerals, for
 example. However, this approach has a huge impact on performance,
 enough to make us want actual numeric types in our interpreter.
 
-A /number/ in Believe is a union of many number subtypes. The /number/ can
+A \emph{number} in Believe is a union of many number subtypes. The \emph{number} can
 be an integer, a float, a fraction or even a complex number in its
 constitution, but this coercion happens away from the eyes of the Bel
-programmer; from his standpoint, there is only an opaque /number/ type.
+programmer; from his standpoint, there is only an opaque \emph{number} type.
 
 Let's start by defining the enumeration of types. Integers are C
-/64-bit signed ints/, and floats are, in fact, C /doubles/.
+\emph{64-bit signed ints}, and floats are, in fact, C \emph{doubles}.
 
-#+begin_src C
+\begin{minted}[]{c}
 typedef enum {
     BEL_NUMBER_INT,
     BEL_NUMBER_FLOAT,
@@ -639,20 +684,20 @@ typedef enum {
 
 typedef int64_t Bel_longint;
 typedef double  Bel_float;
-#+end_src
+\end{minted}
 
-We forward declare the =Bel_number= structure as a /typedef/ for a =struct
-BEL_NUMBER=.
+We forward declare the \texttt{Bel\_number} structure as a \emph{typedef} for a \texttt{struct
+BEL\_NUMBER}.
 
-#+begin_src C
+\begin{minted}[]{c}
 typedef struct BEL_NUMBER Bel_number; // Forward declaration
-#+end_src
+\end{minted}
 
-Now we define our /fraction/ and /complex/ subtypes. Notice that they use
-=Bel_number= in their constitution. This is on purpose, as it allows us
+Now we define our \emph{fraction} and \emph{complex} subtypes. Notice that they use
+\texttt{Bel\_number} in their constitution. This is on purpose, as it allows us
 to create recursive definitions of numbers.
 
-#+begin_src C
+\begin{minted}[]{c}
 typedef struct {
     Bel *numer;
     Bel *denom;
@@ -662,11 +707,11 @@ typedef struct {
     Bel *real;
     Bel *imag;
 } Bel_complex;
-#+end_src
+\end{minted}
 
-All that is left is to define our =Bel_number= formally.
+All that is left is to define our \texttt{Bel\_number} formally.
 
-#+begin_src C
+\begin{minted}[]{c}
 struct BEL_NUMBER {
     BEL_NUMBER_TYPE type;
     union {
@@ -676,14 +721,15 @@ struct BEL_NUMBER {
         Bel_complex  num_compl;
     };
 };
-#+end_src
+\end{minted}
 
-** The =Bel= structure
+\section{The \texttt{Bel} structure}
+\label{sec:org57ca657}
 
-The remaining thing to do is join all the types into the =Bel= type,
+The remaining thing to do is join all the types into the \texttt{Bel} type,
 which will serve as our generic way of dealing with things.
 
-#+begin_src C
+\begin{minted}[]{c}
 // Aliased as 'Bel' before
 struct BEL
 {
@@ -696,39 +742,39 @@ struct BEL
         Bel_number  number;
     };
 };
-#+end_src
+\end{minted}
 
-* Essential structures and manipulation of data
-** Basic definitions
+\chapter{Essential structures and manipulation of data}
+\label{sec:org0291d4d}
+\section{Basic definitions}
+\label{sec:org6f7a68d}
 
 These definitions relate to essential symbols of the Bel global
 environment. They also encode the symbols' position on the global
 symbol table, to be defined later.
 
-#+begin_src C
+\begin{minted}[]{c}
 #define BEL_NIL   ((Bel_sym)0)
 #define BEL_T     ((Bel_sym)1)
 #define BEL_O     ((Bel_sym)2)
 #define BEL_APPLY ((Bel_sym)3)
-#+end_src
+\end{minted}
 
 The following symbols are axioms which are global to the program. One
 is expected to use them instead of creating new symbols, though it is
 not strictly necessary.
 
-#+begin_src C
+\begin{minted}[]{c}
 Bel *bel_g_nil;
 Bel *bel_g_t;
 Bel *bel_g_o;
 Bel *bel_g_apply;
-#+end_src
+\end{minted}
 
 These other variables are responsible for holding other axioms on the
 system. More on then will be specified later.
 
-#+TODO: Add `errs` as an error stream?
-
-#+begin_src C
+\begin{minted}[]{c}
 Bel *bel_g_chars;
 Bel *bel_g_ins_sys;
 Bel *bel_g_outs_sys;
@@ -736,28 +782,27 @@ Bel *bel_g_ins;
 Bel *bel_g_outs;
 Bel *bel_g_prim;
 Bel *bel_g_clo;
-#+end_src
+\end{minted}
 
 We may also define temporary variables for the global, lexical and
 dynamic environments.
 
-#+begin_src C
+\begin{minted}[]{c}
 Bel *bel_g_scope;
 Bel *bel_g_globe;
 Bel *bel_g_dynae;
-#+end_src
+\end{minted}
 
-*** Forward declarations
+\subsection{Forward declarations}
+\label{sec:org36be05d}
 
 We need to forward declare a few functions which will be useful for
 certain operations. For example, it is important that we make a
-forward declaration of =bel_mkerror=, since the primitives should depend
-on it; also, providing =bel_mkstring= ensures that the error format can
+forward declaration of \texttt{bel\_mkerror}, since the primitives should depend
+on it; also, providing \texttt{bel\_mkstring} ensures that the error format can
 be easily created, and so on.
 
-#+TODO: Is this even correct? Test whether bel_mkerror creates an infinite loop!
-
-#+begin_src C
+\begin{minted}[]{c}
 /* Forward declarations */
 Bel *bel_mkerror(Bel *format, Bel *vars);
 Bel *bel_mkstring(const char*);
@@ -765,80 +810,89 @@ Bel *bel_mksymbol(const char*);
 Bel *bel_car(Bel*);
 Bel *bel_cdr(Bel*);
 Bel *bel_mklist(int, ...);
-#+end_src
+\end{minted}
 
-** Predicates
+\section{Predicates}
+\label{sec:orgb16c9ba}
 
 It is important to have a few predicates which will help us check for
 errors. These predicates do not check for argument nullability
 (e.g. unmanaged pointers), so use it wisely and only on initialized
 data!
 
-*** =symbolp=
+\subsection{\texttt{symbolp}}
+\label{sec:org72ffe76}
 
-=bel_symbolp= tests whether the element is a symbol.
+\texttt{bel\_symbolp} tests whether the element is a symbol.
 
-#+begin_src C
+\begin{minted}[]{c}
 #define bel_symbolp(x) ((x)->type==BEL_SYMBOL)
-#+end_src
+\end{minted}
 
-*** =nilp=
+\subsection{\texttt{nilp}}
+\label{sec:orge24d6e1}
 
-=bel_nilp= tests whether the element is the /symbol/ =nil=.
+\texttt{bel\_nilp} tests whether the element is the \emph{symbol} \texttt{nil}.
 
-#+begin_src C
+\begin{minted}[]{c}
 #define bel_nilp(x)                             \
     (bel_symbolp(x) && ((x)->sym==BEL_NIL))
-#+end_src
+\end{minted}
 
-*** =pairp=
+\subsection{\texttt{pairp}}
+\label{sec:orgf2d3391}
 
-=bel_pairp= tests whether the element is a /pair/.
+\texttt{bel\_pairp} tests whether the element is a \emph{pair}.
 
-#+begin_src C
+\begin{minted}[]{c}
 #define bel_pairp(x) ((x)->type==BEL_PAIR)
-#+end_src
+\end{minted}
 
-*** =atomp=
+\subsection{\texttt{atomp}}
+\label{sec:orgd64a583}
 
-=bel_atomp= tests whether an element is not a /pair/ -- that is, if it is
+\texttt{bel\_atomp} tests whether an element is not a \emph{pair} -- that is, if it is
 not "divisible".
 
-#+begin_src C
+\begin{minted}[]{c}
 #define bel_atomp(x) (!bel_pairp(x))
-#+end_src
+\end{minted}
 
-*** =charp=
+\subsection{\texttt{charp}}
+\label{sec:orgf707b3b}
 
-=bel_charp= tests whether the object is a character.
+\texttt{bel\_charp} tests whether the object is a character.
 
-#+begin_src C
+\begin{minted}[]{c}
 #define bel_charp(x)                            \
     (((x)->type==BEL_CHAR))
-#+end_src
+\end{minted}
 
-*** =streamp=
+\subsection{\texttt{streamp}}
+\label{sec:org2513880}
 
-=bel_streamp= tests whether the object is a stream.
+\texttt{bel\_streamp} tests whether the object is a stream.
 
-#+begin_src C
+\begin{minted}[]{c}
 #define bel_streamp(x)                          \
     (((x)->type==BEL_STREAM))
-#+end_src
+\end{minted}
 
-*** =numberp=
+\subsection{\texttt{numberp}}
+\label{sec:org0d935c3}
 
-=bel_numberp= determines whether =x= is a number or not. Notice that
+\texttt{bel\_numberp} determines whether \texttt{x} is a number or not. Notice that
 numbers are non-standard to Bel's definition.
 
-#+begin_src C
+\begin{minted}[]{c}
 #define bel_numberp(x)                          \
     ((x)->type==BEL_NUMBER)
-#+end_src
+\end{minted}
 
-*** =idp=
+\subsection{\texttt{idp}}
+\label{sec:org2eddbdc}
 
-=bel_idp= tests whether an object is identical to another.
+\texttt{bel\_idp} tests whether an object is identical to another.
 According to the Bel specification, identity is stricter than
 equality: there is only one of each symbol and character. Pairs and
 streams are compared by their references, so they are identical if and
@@ -848,11 +902,11 @@ This is the first predicate that is implemented as a proper C
 function, and it is used only internally; therefore, it outputs a C
 integer value for truth and falsity.
 
-#+begin_src C
+\begin{minted}[]{c}
 int bel_idp_nums(Bel *x, Bel *y); // Forward declaration
-#+end_src
+\end{minted}
 
-#+begin_src C
+\begin{minted}[]{c}
 int
 bel_idp(Bel *x, Bel *y)
 {
@@ -869,15 +923,15 @@ bel_idp(Bel *x, Bel *y)
     // pointer aliasing
     return (x == y);
 }
-#+end_src
+\end{minted}
 
 Numbers are non-standard, so we develop our own identity test for
-them: if two /numbers/ have the same /subtype/ (integer, float, fraction,
-complex) and the same /value/, they are identical. In the case of
+them: if two \emph{numbers} have the same \emph{subtype} (integer, float, fraction,
+complex) and the same \emph{value}, they are identical. In the case of
 numbers with components (fraction, complex) we recursively test for
-component identity instead of comparing /values/ directly.
+component identity instead of comparing \emph{values} directly.
 
-#+begin_src C
+\begin{minted}[]{c}
 int
 bel_idp_nums(Bel *x, Bel *y)
 {
@@ -909,14 +963,15 @@ bel_idp_nums(Bel *x, Bel *y)
     }
     return 0;
 }
-#+end_src
+\end{minted}
 
-*** =errorp=
+\subsection{\texttt{errorp}}
+\label{sec:org912b23d}
 
-=bel_errorp= tests whether a specific object is a list in the format
-=(lit err . rest)=.
+\texttt{bel\_errorp} tests whether a specific object is a list in the format
+\texttt{(lit err . rest)}.
 
-#+begin_src C
+\begin{minted}[]{c}
 int
 bel_errorp(Bel *x)
 {
@@ -928,25 +983,28 @@ bel_errorp(Bel *x)
         return 0;
     return 1;
 }
-#+end_src
+\end{minted}
 
-*** =proper-list-p=
+\subsection{\texttt{proper-list-p}}
+\label{sec:org4dc0dc2}
 
-A proper list is any list which ends in an appropriate =nil= symbol. So
-for example, =(1 2 3)= is a proper list, but =(1 2 3 . 4)= is not. Compare
+A proper list is any list which ends in an appropriate \texttt{nil} symbol. So
+for example, \texttt{(1 2 3)} is a proper list, but \texttt{(1 2 3 . 4)} is not. Compare
 how these lists can be expressed by using dot notation:
 
-- =(1 . (2 . (3 . nil)))=
-- =(1 . (2 . (3 . 4)))=
+\begin{itemize}
+\item \texttt{(1 . (2 . (3 . nil)))}
+\item \texttt{(1 . (2 . (3 . 4)))}
+\end{itemize}
 
 An empty list is considered a proper list as well.
 
-=bel_proper_list_p= checks whether a list is indeed a proper list. We do
-that by traversing the list, pair by pair. If the /cdr/ is =nil=, it is
-proper; if it is a pair, it proceeds with the traversal. But if the /cdr/
+\texttt{bel\_proper\_list\_p} checks whether a list is indeed a proper list. We do
+that by traversing the list, pair by pair. If the \emph{cdr} is \texttt{nil}, it is
+proper; if it is a pair, it proceeds with the traversal. But if the \emph{cdr}
 is anything else, then it is not a proper list.
 
-#+begin_src C
+\begin{minted}[]{c}
 int
 bel_proper_list_p(Bel *x)
 {
@@ -962,22 +1020,25 @@ bel_proper_list_p(Bel *x)
 
     return 1;
 }
-#+end_src
+\end{minted}
 
-*** =stringp=
+\subsection{\texttt{stringp}}
+\label{sec:orgc3d50e0}
 
 An object is a string if and only if:
 
-- it is a proper list;
-- it contains characters only.
+\begin{itemize}
+\item it is a proper list;
+\item it contains characters only.
+\end{itemize}
 
-=bel_stringp= tests for this. However, this first implementation is a
+\texttt{bel\_stringp} tests for this. However, this first implementation is a
 little naïve, since it performs a proper list check, which involves
 traversing an entire list, and then it traverses the list again,
-checking for characters in the /car/. This overhead can be reduced in
+checking for characters in the \emph{car}. This overhead can be reduced in
 the future.
 
-#+begin_src C
+\begin{minted}[]{c}
 int
 bel_stringp(Bel *x)
 {
@@ -997,14 +1058,15 @@ bel_stringp(Bel *x)
 
     return 1;
 }
-#+end_src
+\end{minted}
 
-*** =literalp=
+\subsection{\texttt{literalp}}
+\label{sec:orgd0cea73}
 
-=bel_literalp= takes a proper list and tells whether the list is a
-literal, that is, if the first element of the list is the symbol =lit=.
+\texttt{bel\_literalp} takes a proper list and tells whether the list is a
+literal, that is, if the first element of the list is the symbol \texttt{lit}.
 
-#+begin_src C
+\begin{minted}[]{c}
 int
 bel_literalp(Bel *x)
 {
@@ -1014,14 +1076,15 @@ bel_literalp(Bel *x)
     return bel_idp(bel_car(x),
                    bel_mksymbol("lit"));
 }
-#+end_src
+\end{minted}
 
-*** =primitivep=
+\subsection{\texttt{primitivep}}
+\label{sec:org04397e9}
 
-=bel_primitivep= takes a literal and tests whether it is a primitive,
-that is, if the second element of the list is the symbol =prim=.
+\texttt{bel\_primitivep} takes a literal and tests whether it is a primitive,
+that is, if the second element of the list is the symbol \texttt{prim}.
 
-#+begin_src C
+\begin{minted}[]{c}
 int
 bel_primitivep(Bel *x)
 {
@@ -1029,14 +1092,15 @@ bel_primitivep(Bel *x)
         && bel_idp(bel_car(bel_cdr(x)),
                    bel_mksymbol("prim"));
 }
-#+end_src
+\end{minted}
 
-*** =closurep=
+\subsection{\texttt{closurep}}
+\label{sec:orge2ffccc}
 
-=bel_closurep= takes a literal and tests whether it is a closure, that
-is, if the second element of the list is the symbol =clo=.
+\texttt{bel\_closurep} takes a literal and tests whether it is a closure, that
+is, if the second element of the list is the symbol \texttt{clo}.
 
-#+begin_src C
+\begin{minted}[]{c}
 int
 bel_closurep(Bel *x)
 {
@@ -1044,14 +1108,15 @@ bel_closurep(Bel *x)
         && bel_idp(bel_car(bel_cdr(x)),
                    bel_mksymbol("clo"));
 }
-#+end_src
+\end{minted}
 
-*** =quotep=
+\subsection{\texttt{quotep}}
+\label{sec:org82872c5}
 
-=bel_quotep= takes a proper list and determines whether it is a quoted
+\texttt{bel\_quotep} takes a proper list and determines whether it is a quoted
 form.
 
-#+begin_src C
+\begin{minted}[]{c}
 int
 bel_quotep(Bel *x)
 {
@@ -1061,13 +1126,14 @@ bel_quotep(Bel *x)
     return bel_idp(bel_car(x),
                    bel_mksymbol("quote"));
 }
-#+end_src
+\end{minted}
 
-*** =number-list-p=
+\subsection{\texttt{number-list-p}}
+\label{sec:org1afafee}
 
-=bel_number_list_p= determines whether =x= is a proper list of numbers.
+\texttt{bel\_number\_list\_p} determines whether \texttt{x} is a proper list of numbers.
 
-#+begin_src C
+\begin{minted}[]{c}
 int
 bel_number_list_p(Bel *x)
 {
@@ -1087,17 +1153,18 @@ bel_number_list_p(Bel *x)
 
     return 1;
 }
-#+end_src
+\end{minted}
 
-** Symbol Table and Symbols
+\section{Symbol Table and Symbols}
+\label{sec:orgc8d2105}
 
 The symbol table is an array that grows as necessary, doubling in
 size, but never shrinks on the program's lifetime. Each element of the
-table is a =const= C string.
+table is a \texttt{const} C string.
 
 We begin by defining such structure and a global symbol table.
 
-#+begin_src C
+\begin{minted}[]{c}
 typedef struct {
     const char **tbl;
     uint64_t     n_syms;
@@ -1105,14 +1172,14 @@ typedef struct {
 } _Bel_sym_table;
 
 _Bel_sym_table g_sym_table;
-#+end_src
+\end{minted}
 
 To initialize the symbol table, we give it an initial size of four,
-just enough to enclose Bel's four fundamental symbols: =nil=, =t=, =o= and
-=apply=. Notice that the order of these symbols relate to their
+just enough to enclose Bel's four fundamental symbols: \texttt{nil}, \texttt{t}, \texttt{o} and
+\texttt{apply}. Notice that the order of these symbols relate to their
 predefined macros, so any failure here is unexpected.
 
-#+begin_src C
+\begin{minted}[]{c}
 void
 bel_sym_table_init(void)
 {
@@ -1126,18 +1193,18 @@ bel_sym_table_init(void)
     g_sym_table.tbl[BEL_O]     = "o";
     g_sym_table.tbl[BEL_APPLY] = "apply";
 }
-#+end_src
+\end{minted}
 
-The lookup function =bel_sym_table_find= does a linear search for the
+The lookup function \texttt{bel\_sym\_table\_find} does a linear search for the
 presented literal on the symbol table. However, if it doesn't find the
-symbol, it implicitly calls =bel_sym_table_add=, which appends the
+symbol, it implicitly calls \texttt{bel\_sym\_table\_add}, which appends the
 symbol to the table.
 
 This is obviously not a very wise approach as it opens up for some
 exploits on interning symbols, but should be enough as long as these
-symbols are only really interned on =lit= or =quote= scopes.
+symbols are only really interned on \texttt{lit} or \texttt{quote} scopes.
 
-#+begin_src C
+\begin{minted}[]{c}
 Bel_sym bel_sym_table_add(const char*); // Forward declaration
 
 Bel_sym
@@ -1165,7 +1232,7 @@ bel_sym_table_add(const char *sym_literal)
     g_sym_table.tbl[g_sym_table.n_syms++] = sym_literal;
     return (g_sym_table.n_syms - 1);
 }
-#+end_src
+\end{minted}
 
 Eventually we'll also need to take a symbol and find its character
 counterpart. Since the table is immutable, we can do that
@@ -1173,19 +1240,19 @@ instantaneously by taking the character string at the symbol's
 position on the table. Notice that we do not check whether the given
 argument is a symbol, since it is also an internal function.
 
-#+begin_src C
+\begin{minted}[]{c}
 const char*
 bel_sym_find_name(Bel *sym)
 {
     return g_sym_table.tbl[sym->sym];
 }
-#+end_src
+\end{minted}
 
 Last but not least, we create a proper tool to build a symbol. Just
 give it your desired symbol as a string literal and the runtime takes
 care of the rest.
 
-#+begin_src C
+\begin{minted}[]{c}
 Bel*
 bel_mksymbol(const char *str)
 {
@@ -1194,18 +1261,19 @@ bel_mksymbol(const char *str)
     ret->sym  = bel_sym_table_find(str);
     return ret;
 }
-#+end_src
+\end{minted}
 
-** Pairs
+\section{Pairs}
+\label{sec:org226203d}
 
 Pairs are the kernel of every Lisp, so we need tools to manipulate
 them.
 
 We begin by specifying the function which builds pairs. Notice that
 the function itself takes two references to values, so pairs cannot
-exist without their /car/ and /cdr/.
+exist without their \emph{car} and \emph{cdr}.
 
-#+begin_src C
+\begin{minted}[]{c}
 Bel*
 bel_mkpair(Bel *car, Bel *cdr)
 {
@@ -1216,12 +1284,12 @@ bel_mkpair(Bel *car, Bel *cdr)
     ret->pair->cdr = cdr;
     return ret;
 }
-#+end_src
+\end{minted}
 
-Now we may easily extract information from pairs, using the /car/ and
-/cdr/ operations.
+Now we may easily extract information from pairs, using the \emph{car} and
+\emph{cdr} operations.
 
-#+begin_src C
+\begin{minted}[]{c}
 Bel*
 bel_car(Bel *p)
 {
@@ -1236,9 +1304,9 @@ bel_car(Bel *p)
     
     return p->pair->car;
 }
-#+end_src
+\end{minted}
 
-#+begin_src C
+\begin{minted}[]{c}
 Bel*
 bel_cdr(Bel *p)
 {
@@ -1253,18 +1321,18 @@ bel_cdr(Bel *p)
     
     return p->pair->cdr;
 }
-#+end_src
+\end{minted}
 
 Let's also build a utility to return the size of a list. This is a
-=O(n)= operation which takes a well-formed list and iterates over
+\texttt{O(n)} operation which takes a well-formed list and iterates over
 it.
 
-Note that *calculating the length of something that is not a /proper
-list/ makes no sense and will crash this operation*. So before calling
-=bel_length=, it is probably a good idea to check for a valid proper
-list using =bel_proper_list_p= or a similar procedure.
+Note that \textbf{calculating the length of something that is not a \emph{proper
+list} makes no sense and will crash this operation}. So before calling
+\texttt{bel\_length}, it is probably a good idea to check for a valid proper
+list using \texttt{bel\_proper\_list\_p} or a similar procedure.
 
-#+begin_src C
+\begin{minted}[]{c}
 uint64_t
 bel_length(Bel *list)
 {
@@ -1276,21 +1344,21 @@ bel_length(Bel *list)
     }
     return len;
 }
-#+end_src
+\end{minted}
 
 We can also create a variadic function which implements Bel string
 creation from a number of arguments passed to that string. This is
 useful when creating lists from C.
 
-=bel_mklist= asks for a number of elements and a variadic list of =Bel*=
+\texttt{bel\_mklist} asks for a number of elements and a variadic list of \texttt{Bel*}
 objects. Then it attempts to create a single pair for each object, and
-place the object itself in the /car/ of that pair.
+place the object itself in the \emph{car} of that pair.
 
 When another object is added into the list, yet another pair is
-created and so on, and this pair is set as the /cdr/ of the previous
+created and so on, and this pair is set as the \emph{cdr} of the previous
 pair.
 
-#+begin_src C
+\begin{minted}[]{c}
 Bel*
 bel_mklist(int n_elem, ...)
 {
@@ -1321,14 +1389,15 @@ bel_mklist(int n_elem, ...)
     
     return list_start;
 }
-#+end_src
+\end{minted}
 
-** Characters and Strings
+\section{Characters and Strings}
+\label{sec:orgf2024ea}
 
 Let's begin by adding a small function to wrap a character in a Bel
 object.
 
-#+begin_src C
+\begin{minted}[]{c}
 Bel*
 bel_mkchar(Bel_char c)
 {
@@ -1337,14 +1406,13 @@ bel_mkchar(Bel_char c)
     ret->chr  = c;
     return ret;
 }
-#+end_src
+\end{minted}
 
-#+TODO: This needs to change if unicode support is enabled
 Characters have the size of one byte, so if we take a single list of 8
-=\1= and =\0= characters, we should be able to generate a bitmask of the
+\texttt{\textbackslash{}1} and \texttt{\textbackslash{}0} characters, we should be able to generate a bitmask of the
 corresponding character in question.
 
-#+begin_src C
+\begin{minted}[]{c}
 Bel*
 bel_char_from_binary(Bel *list)
 {
@@ -1405,13 +1473,13 @@ bel_char_from_binary(Bel *list)
     }
     return bel_mkchar(mask);
 }
-#+end_src
+\end{minted}
 
 Strings on the Bel environment are nothing more than a list of
 characters, therefore we need a way to convert C strings to proper Bel
 lists.
 
-#+begin_src C
+\begin{minted}[]{c}
 Bel*
 bel_mkstring(const char *str)
 {
@@ -1438,7 +1506,7 @@ bel_mkstring(const char *str)
 
     return pairs[0];
 }
-#+end_src
+\end{minted}
 
 We also add a utility to take back a Bel string and turn it into a
 garbage-collected C string.
@@ -1448,7 +1516,7 @@ and we return a null pointer; proper manipulation of this function is
 a responsibility of the programmer, since this is an internal
 function.
 
-#+begin_src C
+\begin{minted}[]{c}
 char*
 bel_cstring(Bel *belstr)
 {
@@ -1480,15 +1548,15 @@ bel_cstring(Bel *belstr)
     str[i] = '\0';
     return str;
 }
-#+end_src
+\end{minted}
 
-** Streams
+\section{Streams}
+\label{sec:org2ac11e1}
 
-#+TODO: Enclose stderr on Bel object
 We start by creating tools to manipulate streams. First, we create a
 raw stream from a file.
 
-#+begin_src C
+\begin{minted}[]{c}
 Bel*
 bel_mkstream(const char* name, BEL_STREAM_STATUS status)
 {
@@ -1524,7 +1592,7 @@ bel_mkstream(const char* name, BEL_STREAM_STATUS status)
     ret->stream.cache_used = 0u;
     return ret;
 }
-#+end_src
+\end{minted}
 
 One important thing to have is a function which inputs a single bit in
 a file. We use the previously defined cache system for that; by
@@ -1534,12 +1602,12 @@ bit.
 First we define the function which dumps and resets the cache of a
 specific stream when the cache is full; this should come in handy when
 closing the stream as well. After that, we do the actual bit
-writing. And of course, writing a bit returns =t= or =nil= for success and
+writing. And of course, writing a bit returns \texttt{t} or \texttt{nil} for success and
 failure; this will most likely not be external to the Bel environment
 itself, since a failure in writing must signal an error. But that is
 not the job for this primitive.
 
-#+begin_src C
+\begin{minted}[]{c}
 Bel*
 bel_stream_dump_cache(Bel_stream *stream)
 {
@@ -1579,16 +1647,13 @@ bel_stream_write_bit(Bel_stream *stream, Bel_char bit)
     
     return bel_mkchar(bit);
 }
-#+end_src
+\end{minted}
 
 We can take advantage of the same variables to read single bits from a
 file, as described before too. Keep the cache full, read single bits
 as Bel characters, fill the cache when the read bits are exhausted.
 
-#+TODO: "Being unable to read a bit" signals an error.
-#+TODO: "No bit is currently available" returns nil -- but how should I do it?
-
-#+begin_src C
+\begin{minted}[]{c}
 Bel*
 bel_stream_fill_cache(Bel_stream *stream)
 {
@@ -1624,17 +1689,14 @@ bel_stream_read_bit(Bel_stream *stream)
     stream->cache_used--;
     return ret;
 }
-#+end_src
-
-#+TODO: Byte input/output -- unecessary?
-#+TODO: Text input/output, specifically for ins/outs -- unecessary?
+\end{minted}
 
 We'll also need a tool to close a certain stream. Here we're being a
 little more careful, since streams are managed more directly, by using
 the C API. And of course, if we're dealing with output, dump the
 stream cache before closing the file.
 
-#+begin_src C
+\begin{minted}[]{c}
 Bel*
 bel_stream_close(Bel *obj)
 {
@@ -1668,13 +1730,13 @@ bel_stream_close(Bel *obj)
             bel_mkstring(strerror(errno)),
             bel_g_nil));
 }
-#+end_src
+\end{minted}
 
 The default input and output streams are enclosed in Bel objects here,
-however they relate to =stdin= and =stdout= respectively. To the system,
-by default they have =nil= value.
+however they relate to \texttt{stdin} and \texttt{stdout} respectively. To the system,
+by default they have \texttt{nil} value.
 
-#+begin_src C
+\begin{minted}[]{c}
 void
 bel_init_streams(void)
 {
@@ -1683,9 +1745,10 @@ bel_init_streams(void)
     bel_g_ins_sys  = bel_mkstream("ins",  BEL_STREAM_READ);
     bel_g_outs_sys = bel_mkstream("outs", BEL_STREAM_WRITE);
 }
-#+end_src
+\end{minted}
 
-*** Stream manipulation safety
+\subsection{Stream manipulation safety}
+\label{sec:org4ffba3f}
 
 Since streams are defined taking advantage of the C API for
 manipulating files, unfortunately these demand careful usage on Bel
@@ -1695,7 +1758,8 @@ unfortunately it is not possible for now to call a finalizer which
 automatically closes the stream when the stream object is garbage
 collected.
 
-** Numbers
+\section{Numbers}
+\label{sec:org511b0f5}
 
 As stated before, numbers are not described in Bel specification,
 however we're implementing it for minimal ease and performance for
@@ -1704,12 +1768,13 @@ arithmetic manipulation.
 We've built a resilient and recursive model for constituting numbers,
 so we begin by arranging tools to create them.
 
-*** Number generation
+\subsection{Number generation}
+\label{sec:org5145d30}
 
-/Integers/ are pretty straightforward: we just allocate a proper space
+\emph{Integers} are pretty straightforward: we just allocate a proper space
 and store them.
 
-#+begin_src C
+\begin{minted}[]{c}
 Bel*
 bel_mkinteger(int64_t num)
 {
@@ -1719,11 +1784,11 @@ bel_mkinteger(int64_t num)
     ret->number.num_int = num;
     return ret;
 }
-#+end_src
+\end{minted}
 
-The same goes for the /float/ type (which is actually a C double).
+The same goes for the \emph{float} type (which is actually a C double).
 
-#+begin_src C
+\begin{minted}[]{c}
 Bel*
 bel_mkfloat(double num)
 {
@@ -1733,15 +1798,15 @@ bel_mkfloat(double num)
     ret->number.num_float = num;
     return ret;
 }
-#+end_src
+\end{minted}
 
 A fraction has a layer of complexity, though. We take a numerator and
-a denominator as /numbers/, but we need to make sure they are
+a denominator as \emph{numbers}, but we need to make sure they are
 numbers. Plus, even if they were, we need to make sure that the
-denominator /is not zero/. However, the only checks we perform here are
-related to the /numberness/ of numerator and denominator.
+denominator \emph{is not zero}. However, the only checks we perform here are
+related to the \emph{numberness} of numerator and denominator.
 
-#+begin_src C
+\begin{minted}[]{c}
 Bel*
 bel_mkfraction(Bel *numer, Bel *denom)
 {
@@ -1766,12 +1831,12 @@ bel_mkfraction(Bel *numer, Bel *denom)
     ret->number.num_frac.denom = denom;
     return ret;
 }
-#+end_src
+\end{minted}
 
-We follow the same principle for a complex number: /real/ and /imaginary/
+We follow the same principle for a complex number: \emph{real} and \emph{imaginary}
 parts need to be a number themselves.
 
-#+begin_src C
+\begin{minted}[]{c}
 Bel*
 bel_mkcomplex(Bel *real, Bel *imag)
 {
@@ -1796,37 +1861,41 @@ bel_mkcomplex(Bel *real, Bel *imag)
     ret->number.num_compl.imag = imag;
     return ret;
 }
-#+end_src
+\end{minted}
 
-*** Number arithmetic
+\subsection{Number arithmetic}
+\label{sec:orgf552c24}
 
 The following operations always happen between two numbers. We make
 sure they are of compatible types to perform these operations, and
 then we return numbers of a proper subtype afterwards.
 
-**** Forward declarations
+\begin{enumerate}
+\item Forward declarations
+\label{sec:org93b19a7}
 
-#+begin_src C
+\begin{minted}[]{c}
 /* Forward declarations */
 Bel *bel_num_add(Bel *x, Bel *y);
 Bel *bel_num_sub(Bel *x, Bel *y);
 Bel *bel_num_mul(Bel *x, Bel *y);
 Bel *bel_num_div(Bel *x, Bel *y);
-#+end_src
+\end{minted}
 
-**** Coercion
+\item Coercion
+\label{sec:org1ad5565}
 
 Let's start with subtype coercion. Given a number and a number type
 flag, we coerce that number to a new number of that subtype. Returns a
 new number, and does not modify the old one.
 
 Coercing a float to a fraction uses a naïve approach: we multiply the
-number by =10= until it has no significant digits on the decimal
-part. We count the =i= multiplications we've made, and then we build a
+number by \texttt{10} until it has no significant digits on the decimal
+part. We count the \texttt{i} multiplications we've made, and then we build a
 fraction where the numerator is a truncated, converted to integer
-result, and the denominator is exactly ten to the power of =i=.
+result, and the denominator is exactly ten to the power of \texttt{i}.
 
-#+begin_src C
+\begin{minted}[]{c}
 Bel*
 bel_num_coerce(Bel *number, BEL_NUMBER_TYPE type)
 {
@@ -1943,15 +2012,16 @@ bel_num_coerce(Bel *number, BEL_NUMBER_TYPE type)
 
     return number;
 }
-#+end_src
+\end{minted}
 
-**** Force same type
+\item Force same type
+\label{sec:orgc256847}
 
 The following function takes two numbers, and makes sure they both
 have a subtype where both retain full information. Returns a pair
 containing both numbers.
 
-#+begin_src C
+\begin{minted}[]{c}
 Bel*
 bel_num_mksametype(Bel *x, Bel *y)
 {
@@ -2053,24 +2123,28 @@ bel_num_mksametype(Bel *x, Bel *y)
     // Satisfy the compiler on event of no coercion
     return bel_mkpair(x, y);
 }
-#+end_src
+\end{minted}
 
-***** Helper macro for functions
+\begin{enumerate}
+\item Helper macro for functions
+\label{sec:org0b36d4f}
 
-The following macro does an inline conversion of =Bel= pointers to same
-number subtype. Only the locals =x= and =y= will be affected; the original
+The following macro does an inline conversion of \texttt{Bel} pointers to same
+number subtype. Only the locals \texttt{x} and \texttt{y} will be affected; the original
 pointed objects won't be modified.
 
-#+begin_src C
+\begin{minted}[]{c}
 #define BEL_NUM_SAMETYPE(x, y)                  \
     {                                           \
     Bel *p = bel_num_mksametype(x, y);          \
     x = bel_car(p);                             \
     y = bel_cdr(p);                             \
     }
-#+end_src
+\end{minted}
+\end{enumerate}
 
-**** Checking for zero
+\item Checking for zero
+\label{sec:orge063f57}
 
 This function checks whether the argument is zero.
 
@@ -2078,7 +2152,7 @@ Comparing directly for zero on a double is not a really good
 idea. We're doing a naïve approach here, but it is not completely
 guaranteed.
 
-#+begin_src C
+\begin{minted}[]{c}
 int
 bel_num_zerop(Bel *x)
 {
@@ -2101,13 +2175,14 @@ bel_num_zerop(Bel *x)
     // This should not be reached...
     return 0;
 }
-#+end_src
+\end{minted}
 
-**** Addition
+\item Addition
+\label{sec:org4df71e7}
 
 The following function adds two arbitrary numbers.
 
-#+begin_src C
+\begin{minted}[]{c}
 Bel*
 bel_num_add(Bel *x, Bel *y)
 {
@@ -2149,14 +2224,15 @@ bel_num_add(Bel *x, Bel *y)
         bel_mkstring("Error while adding ~a and ~a."),
         bel_mkpair(x, bel_mkpair(y, bel_g_nil)));
 }
-#+end_src
+\end{minted}
 
-**** Subtraction
+\item Subtraction
+\label{sec:orgc986b18}
 
-This function is identical to =bel_num_add=, however it subtracts two
+This function is identical to \texttt{bel\_num\_add}, however it subtracts two
 numbers.
 
-#+begin_src C
+\begin{minted}[]{c}
 Bel*
 bel_num_sub(Bel *x, Bel *y)
 {
@@ -2199,13 +2275,14 @@ bel_num_sub(Bel *x, Bel *y)
                      "and ~a."),
         bel_mkpair(x, bel_mkpair(y, bel_g_nil)));
 }
-#+end_src
+\end{minted}
 
-**** Multiplication
+\item Multiplication
+\label{sec:org4091156}
 
 This function multiplies two arbitrary numbers.
 
-#+begin_src C
+\begin{minted}[]{c}
 Bel*
 bel_num_mul(Bel *x, Bel *y)
 {
@@ -2250,14 +2327,15 @@ bel_num_mul(Bel *x, Bel *y)
                      "~a and ~a."),
         bel_mkpair(x, bel_mkpair(y, bel_g_nil)));
 }
-#+end_src
+\end{minted}
 
-**** Division
+\item Division
+\label{sec:org50a1d9d}
 
 This function divides two arbitrary numbers.
 Notice that we check whether the second argument is zero.
 
-#+begin_src C
+\begin{minted}[]{c}
 Bel*
 bel_num_div(Bel *x, Bel *y)
 {
@@ -2317,43 +2395,45 @@ bel_num_div(Bel *x, Bel *y)
                      "~a and ~a."),
         bel_mkpair(x, bel_mkpair(y, bel_g_nil)));
 }
-#+end_src
+\end{minted}
+\end{enumerate}
 
-** Errors
+\section{Errors}
+\label{sec:orgdf4377d}
 
 Bel does not have a formal specification on errors in primitives,
-other than saying that there might be an =err= function which throws an
+other than saying that there might be an \texttt{err} function which throws an
 error in the system.
 
 I will therefore specify that, in Believe, an error is a literal (much
-like closures and primitives) which obeys the pattern...
+like closures and primitives) which obeys the pattern\ldots{}
 
-=(lit err format . args)=
+\texttt{(lit err format . args)}
 
-...where =lit= is the expected symbol for something that evaluates to
-itself, =err= is the symbol which specifies that the object is an error,
-=format= is a Bel string which contains a format for the given
-arguments, and =args= is a list of arguments which should be parsed
+\ldots{}where \texttt{lit} is the expected symbol for something that evaluates to
+itself, \texttt{err} is the symbol which specifies that the object is an error,
+\texttt{format} is a Bel string which contains a format for the given
+arguments, and \texttt{args} is a list of arguments which should be parsed
 within the format.
 
 For a first implementation, I intend to make the format specification
-follow loosely the conventions of the =format= macro in Common Lisp,
-having =~a= as the format for any object and =~%= as the format for a new
+follow loosely the conventions of the \texttt{format} macro in Common Lisp,
+having \texttt{\textasciitilde{}a} as the format for any object and \texttt{\textasciitilde{}\%} as the format for a new
 line, for example.
 
 Here's how it could look like:
 
-#+begin_example
+\begin{verbatim}
 > (err "Cannot use ~a on ~a.~%" '(1 2 3) square)
 Error: Cannot use (1 2 3) on (lit clo nil (x) (* x x)).
 
-#+end_example
+\end{verbatim}
 
 However, since this is a detail which can be implemented in Bel
 itself, we'll just go ahead and say that there is a string format and
 a list of arguments.
 
-#+begin_src C
+\begin{minted}[]{c}
 Bel*
 bel_mkerror(Bel *format, Bel *arglist)
 {
@@ -2363,19 +2443,21 @@ bel_mkerror(Bel *format, Bel *arglist)
             bel_mksymbol("err"),
             bel_mkpair(format, arglist)));
 }
-#+end_src
+\end{minted}
 
-* Axioms
+\chapter{Axioms}
+\label{sec:org630a63e}
 
 To save memory, some of the following things will be globally defined.
 
-** Variables and constants
+\section{Variables and constants}
+\label{sec:org6e667a0}
 
 Define global symbols which can be used across the program. These
 symbols should be used repeatedly, and that's why they were already
-declared. See the =bel_init= function to refer to their initialization.
+declared. See the \texttt{bel\_init} function to refer to their initialization.
 
-#+begin_src C
+\begin{minted}[]{c}
 void
 bel_init_ax_vars(void)
 {
@@ -2387,17 +2469,18 @@ bel_init_ax_vars(void)
     bel_g_prim  = bel_mksymbol("prim");
     bel_g_clo   = bel_mksymbol("clo");
 }
-#+end_src
+\end{minted}
 
-=bel_g_prim= is not part of the axiom variables, but we'll define it
+\texttt{bel\_g\_prim} is not part of the axiom variables, but we'll define it
 here since we'll need this symbol for generating primitives later.
 
-** List of all characters
+\section{List of all characters}
+\label{sec:org1085ac0}
 
 First, we build an auxiliary function which converts an 8-bit number
 into a string, where each character represents a bit.
 
-#+begin_src C
+\begin{minted}[]{c}
 char*
 bel_conv_bits(uint8_t num)
 {
@@ -2412,28 +2495,28 @@ bel_conv_bits(uint8_t num)
     
     return str;
 }
-#+end_src
+\end{minted}
 
 We build a list of all characters so that the specification gets
-happy. It will be stored in the previously defined =bel_g_chars= global
+happy. It will be stored in the previously defined \texttt{bel\_g\_chars} global
 variable. This might seem unecessary in the future, though.
 
 The list is supposed to be built out of pairs, therefore we start by
-creating 255 =Bel= instances, representing list nodes; every node is
-supposed to hold the pointer to a =Bel_pair=. These pairs will be linked
-to one another: the /cdr/ of the first =Bel_pair= (again, contained inside
-a =Bel= instance) points to the second =Bel=; the /cdr/ of the second
-=Bel_pair= (also contained on its =Bel= instance) points to the third =Bel=,
-and so on. The last /cdr/ of the last =Bel_pair=, also enclosed on a =Bel=
-instance, contains the symbol =nil=.
+creating 255 \texttt{Bel} instances, representing list nodes; every node is
+supposed to hold the pointer to a \texttt{Bel\_pair}. These pairs will be linked
+to one another: the \emph{cdr} of the first \texttt{Bel\_pair} (again, contained inside
+a \texttt{Bel} instance) points to the second \texttt{Bel}; the \emph{cdr} of the second
+\texttt{Bel\_pair} (also contained on its \texttt{Bel} instance) points to the third \texttt{Bel},
+and so on. The last \emph{cdr} of the last \texttt{Bel\_pair}, also enclosed on a \texttt{Bel}
+instance, contains the symbol \texttt{nil}.
 
-Now, we discuss what should be held in the /car/ of each of these
+Now, we discuss what should be held in the \emph{car} of each of these
 pairs. And that would be other pairs, which will hold the actual
 information we desire. Each of these secondary pairs is comprised of a
-character at its /car/, and a Bel string representing the bits of the
-character as its /cdr/.
+character at its \emph{car}, and a Bel string representing the bits of the
+character as its \emph{cdr}.
 
-#+begin_src C
+\begin{minted}[]{c}
 void
 bel_init_ax_chars(void)
 {
@@ -2458,25 +2541,26 @@ bel_init_ax_chars(void)
     // Hold reference to first element only
     bel_g_chars = list[0];
 }
-#+end_src
+\end{minted}
 
-** Environment
+\section{Environment}
+\label{sec:orgba21940}
 
-Any environment is nothing but a list of pairs, where each pair =(var
-. val)= represents the binding of a specific symbol =var= to the value
-=val=.
+Any environment is nothing but a list of pairs, where each pair \texttt{(var
+. val)} represents the binding of a specific symbol \texttt{var} to the value
+\texttt{val}.
 
 We begin by creating a function which pushes, non-destructively, a new
 pair to any environment. The result is the new environment.
 
-#+begin_src C
+\begin{minted}[]{c}
 Bel*
 bel_env_push(Bel *env, Bel *var, Bel *val)
 {
     Bel *new_pair = bel_mkpair(var, val);
     return bel_mkpair(new_pair, env);
 }
-#+end_src
+\end{minted}
 
 Notice that this non-destructive approach is important, since a
 lexical enviroment is supposed to extend the enviroment it is called
@@ -2488,22 +2572,22 @@ global environment.
 Now we register all our axioms to our global environment. This way, a
 lookup operation on the global scope will yield proper values.
 
-First, we define a macro which uses =bel_env_push= to modify the =globe=
-environment variable. This macro just takes a =SYMSTR=, turns it into a
+First, we define a macro which uses \texttt{bel\_env\_push} to modify the \texttt{globe}
+environment variable. This macro just takes a \texttt{SYMSTR}, turns it into a
 symbol, and generates a new environment, which is then assigned to the
 global environment.
 
-#+begin_src C
+\begin{minted}[]{c}
 #define BEL_ENV_GLOBAL_PUSH(SYMSTR, VAL)           \
     (bel_g_globe =                                 \
      bel_env_push(bel_g_globe,                     \
                   bel_mksymbol(SYMSTR), VAL))
-#+end_src
+\end{minted}
 
 Initializing the global environment involves pushing certain values to
-it. But the dynamic and lexical environments are initialized to =nil=.
+it. But the dynamic and lexical environments are initialized to \texttt{nil}.
 
-#+begin_src C
+\begin{minted}[]{c}
 void
 bel_init_ax_env(void)
 {
@@ -2515,13 +2599,13 @@ bel_init_ax_env(void)
     BEL_ENV_GLOBAL_PUSH("ins",   bel_g_ins);
     BEL_ENV_GLOBAL_PUSH("outs",  bel_g_outs);
 }
-#+end_src
+\end{minted}
 
 Then, we create a lookup function. This function traverses an
 environment in linear time, so it is not fast, but it does its job. A
-lookup process either returns the associated value or returns =nil=.
+lookup process either returns the associated value or returns \texttt{nil}.
 
-#+begin_src C
+\begin{minted}[]{c}
 Bel*
 bel_env_lookup(Bel *env, Bel *sym)
 {
@@ -2548,14 +2632,14 @@ bel_env_lookup(Bel *env, Bel *sym)
     }
     return bel_g_nil;
 }
-#+end_src
+\end{minted}
 
 We also implement a proper lookup function which takes a lexical
 environment and a symbol. The function traverses all environments in
 order (dynamic, lexical, global) to find the associated value of the
 given symbol. If the symbol is not found, returns an error.
 
-#+begin_src C
+\begin{minted}[]{c}
 Bel*
 bel_lookup(Bel *lenv, Bel *sym)
 {
@@ -2583,16 +2667,16 @@ bel_lookup(Bel *lenv, Bel *sym)
 
     return value;
 }
-#+end_src
+\end{minted}
 
 Another thing to do is enable assignment. We begin by creating a
 function which finds a specific symbol on a specific environment and
 replaces its value by the given one. On success, it returns the
-symbol; on failure, it returns =nil=. If the environment is empty, we
-also return =nil=. Oh, we also don't check if the given symbol is really
+symbol; on failure, it returns \texttt{nil}. If the environment is empty, we
+also return \texttt{nil}. Oh, we also don't check if the given symbol is really
 a symbol, since this is an internal function.
 
-#+begin_src C
+\begin{minted}[]{c}
 Bel*
 bel_env_replace_val(Bel *env, Bel *sym, Bel *new_val)
 {
@@ -2611,10 +2695,10 @@ bel_env_replace_val(Bel *env, Bel *sym, Bel *new_val)
     }
     return bel_g_nil;
 }
-#+end_src
+\end{minted}
 
 We also need a function which takes the reference to an environment
-and a symbol, and /unbinds/ that symbol from the value in the
+and a symbol, and \emph{unbinds} that symbol from the value in the
 environment. This can be achieved by simply iterating over the list
 and "unlinking" the relevant pair. We also don't perform all the
 checks on this internal function.
@@ -2624,7 +2708,7 @@ argument. We only return a non-nil answer (which is the same
 environment, but modified) if and only if the unbinding was
 successful.
 
-#+begin_src C
+\begin{minted}[]{c}
 Bel*
 bel_env_unbind(Bel **env, Bel *sym)
 {
@@ -2635,7 +2719,7 @@ bel_env_unbind(Bel **env, Bel *sym)
     // If first element is a match, return
     // cdr of environment
     if(bel_idp(bel_car(bel_car(*env)), sym)) {
-        ,*env = bel_cdr(*env);
+        *env = bel_cdr(*env);
         return bel_g_t;
     }
 
@@ -2656,16 +2740,16 @@ bel_env_unbind(Bel **env, Bel *sym)
     // On no substitution, return nil
     return bel_g_nil;
 }
-#+end_src
+\end{minted}
 
 The assignment operation itself respects the hierarchy of
 environments, to be described in the next subsection. We attempt to
 make an assignment on the three kinds of environment (lexical -- given
 as argument --, dynamic and global). If the assignment fails in any of
-these, the symbol is bound to the given new value, on the /global/
+these, the symbol is bound to the given new value, on the \emph{global}
 environment.
 
-#+begin_src C
+\begin{minted}[]{c}
 Bel*
 bel_assign(Bel *lenv, Bel *sym, Bel *new_val)
 {
@@ -2687,14 +2771,14 @@ bel_assign(Bel *lenv, Bel *sym, Bel *new_val)
     bel_g_globe = bel_env_push(bel_g_globe, sym, new_val);
     return sym;
 }
-#+end_src
+\end{minted}
 
 We proceed by the same principle for the actual unbinding function: we
-respect the hierarchy of environments. Like =bel_env_unbind=, this
+respect the hierarchy of environments. Like \texttt{bel\_env\_unbind}, this
 function might modify the passed environment, and that is why we take
 a reference to it.
 
-#+begin_src C
+\begin{minted}[]{c}
 Bel*
 bel_unbind(Bel **lenv, Bel *sym)
 {
@@ -2721,102 +2805,105 @@ bel_unbind(Bel **lenv, Bel *sym)
     // On no unbinding, return nil
     return bel_g_nil;
 }
-#+end_src
+\end{minted}
 
-*** Types and hierarchy of environments
+\subsection{Types and hierarchy of environments}
+\label{sec:org19a2d41}
 
 There are three kinds of environments in Bel: Global, Lexical and
-Dynamic. The global environment (=bel_g_globe=, =globe=) contains symbols
+Dynamic. The global environment (\texttt{bel\_g\_globe}, \texttt{globe}) contains symbols
 which are always visible from all scopes. This environment lives for
 the lifetime of the interpreter.
 
-The lexical environment (=bel_g_scope=, =scope=) contains symbols which
+The lexical environment (\texttt{bel\_g\_scope}, \texttt{scope}) contains symbols which
 are visible only inside the current scope, and lives for a short
 period of time, linked to its scope. It is the environment captured by
 closures, and also the environment created when a closure is applied
 (as a specific symbol is bound to evaluate a closure's body).
 
-The dynamic environment (=bel_g_dynae=) is like the global environment
+The dynamic environment (\texttt{bel\_g\_dynae}) is like the global environment
 on its regards to access (symbols are visible to the whole
 application). However, the dynamic environment lives for a short
 period of time, linked to the scope it is used.
 
 In Bel, any symbol lookup is performed by traversing the environments
-in the following order: /Dynamic/, /Lexical/, /Global/.
+in the following order: \emph{Dynamic}, \emph{Lexical}, \emph{Global}.
 
-*** Environment extension and capturing
+\subsection{Environment extension and capturing}
+\label{sec:org5896f56}
 
 Being a sequential list of pairs, where the values are pushed to their
 top, environments (such as the lexical) can share symbols. For
-example, suppose the following closure called =orig-fun=.
+example, suppose the following closure called \texttt{orig-fun}.
 
-#+begin_example lisp
+\begin{verbatim}
 (def orig-fun (x y)
   (join (new-fun x) y))
-#+end_example
+\end{verbatim}
 
-Suppose further that this closure is applied to the symbols =foo= and
-=bar=. They are then bound respectively to =x= and =y=. The closure's
+Suppose further that this closure is applied to the symbols \texttt{foo} and
+\texttt{bar}. They are then bound respectively to \texttt{x} and \texttt{y}. The closure's
 lexical environment during application would look like this:
 
-#+begin_example lisp
+\begin{verbatim}
 ((y . bar)  (x . foo))
-#+end_example
+\end{verbatim}
 
-Suppose also that the closure =new-fun= is defined like this:
+Suppose also that the closure \texttt{new-fun} is defined like this:
 
-#+begin_example lisp
+\begin{verbatim}
 (def new-fun (x)
   (id x 'foo))
-#+end_example
+\end{verbatim}
 
-When =new-fun= is applied inside =orig-fun=, it captures =orig-fun='s
-lexical environment. Additionally, =new-fun= binds =foo= (associated with
-the original =x= symbol) to a new =x= symbol. So =new-fun='s lexical
+When \texttt{new-fun} is applied inside \texttt{orig-fun}, it captures \texttt{orig-fun}'s
+lexical environment. Additionally, \texttt{new-fun} binds \texttt{foo} (associated with
+the original \texttt{x} symbol) to a new \texttt{x} symbol. So \texttt{new-fun}'s lexical
 environment looks like this:
 
-#+begin_example lisp
+\begin{verbatim}
 ((x . foo)  (y . bar)  (x . foo))
-#+end_example
+\end{verbatim}
 
 Since the environment stacks up definitions, a lookup process begins
 at top (here displayed as the leftmost pair) and finds the first
-binding of the requested symbol that it can find. So in =new-fun=, the
-value associated to the symbol =x= can only be the first pair
-represented above; however, after the evaluation of =new-fun=, back at
-=orig-fun=, the associated value of =x= would be the last pair.
+binding of the requested symbol that it can find. So in \texttt{new-fun}, the
+value associated to the symbol \texttt{x} can only be the first pair
+represented above; however, after the evaluation of \texttt{new-fun}, back at
+\texttt{orig-fun}, the associated value of \texttt{x} would be the last pair.
 
-Another interesting fact is that, if =new-fun= were to make a blind
-assignment to =y= after being called inside =orig-fun=, =y='s associated
-value would be changed in =orig-fun='s lexical environment, so the
-new value of =y= would be seen not only at =new-fun=; it would still be
-different when we returned to =orig-fun=.
+Another interesting fact is that, if \texttt{new-fun} were to make a blind
+assignment to \texttt{y} after being called inside \texttt{orig-fun}, \texttt{y}'s associated
+value would be changed in \texttt{orig-fun}'s lexical environment, so the
+new value of \texttt{y} would be seen not only at \texttt{new-fun}; it would still be
+different when we returned to \texttt{orig-fun}.
 
-If =new-fun= were called from outside =orig-fun= (more specifically, at
-top level), such assignment to =y= would create a new binding on the
+If \texttt{new-fun} were called from outside \texttt{orig-fun} (more specifically, at
+top level), such assignment to \texttt{y} would create a new binding on the
 global environment, effectively creating a new global variable.
 
-** Literals
+\section{Literals}
+\label{sec:org578e991}
 
 Although literals have already been seen on error implementation, but
 here we reuse the concept to generate literals that should exist on
 the global environment.
 
-A /literal/ is a list, where the first element is the symbol
-=lit=. Literals are described like persistent quotes, since evaluating a
-quoted form strips away the quoting. A /literal/ is what should be used
+A \emph{literal} is a list, where the first element is the symbol
+\texttt{lit}. Literals are described like persistent quotes, since evaluating a
+quoted form strips away the quoting. A \emph{literal} is what should be used
 to describe things that evaluate to themselves.
 
-Literals follow the form =(lit . rest)=, where =lit= is a symbol, and =rest=
+Literals follow the form \texttt{(lit . rest)}, where \texttt{lit} is a symbol, and \texttt{rest}
 is a proper list of things that should be treated as a literal.
 
-Primitives and functions are internally described as /literals/.
+Primitives and functions are internally described as \emph{literals}.
 
 The first thing to do is create a tool for generating a literal; in
-general, what it does is create a pair, where the /car/ is the symbol
-=lit=, and the /cdr/ is anything that should be treated as a literal.
+general, what it does is create a pair, where the \emph{car} is the symbol
+\texttt{lit}, and the \emph{cdr} is anything that should be treated as a literal.
 
-#+begin_src C
+\begin{minted}[]{c}
 Bel*
 bel_mkliteral(Bel *rest)
 {
@@ -2831,9 +2918,10 @@ bel_mkliteral(Bel *rest)
     return bel_mkpair(bel_mksymbol("lit"),
                       rest);
 }
-#+end_src
+\end{minted}
 
-*** Primitives
+\subsection{Primitives}
+\label{sec:org838b47e}
 
 As stated above, primitives are represented as literals, since they
 evaluate to themselves. We start by defining a tool to create a
@@ -2841,10 +2929,10 @@ certain primitive; it should be noted that, since primitives are
 internal to the Bel implementation, this function does not check for
 errors.
 
-A primitive has the form =(lit prim name)=, where =lit= and =prim= are
-constant symbols, and =name= is a symbol for the primitive name.
+A primitive has the form \texttt{(lit prim name)}, where \texttt{lit} and \texttt{prim} are
+constant symbols, and \texttt{name} is a symbol for the primitive name.
 
-#+begin_src C
+\begin{minted}[]{c}
 Bel*
 bel_mkprim(Bel *sym)
 {
@@ -2852,27 +2940,27 @@ bel_mkprim(Bel *sym)
         bel_mkpair(bel_g_prim,
                    bel_mkpair(sym, bel_g_nil)));
 }
-#+end_src
+\end{minted}
 
-The next definition is a macro where, given an environment =env= and a
-C string literal =x=, it generates a primitive for =x= and pushes it to
-the enviroment =env=.
+The next definition is a macro where, given an environment \texttt{env} and a
+C string literal \texttt{x}, it generates a primitive for \texttt{x} and pushes it to
+the enviroment \texttt{env}.
 
-#+begin_src C
+\begin{minted}[]{c}
 #define BEL_REGISTER_PRIM(env, x)               \
     {                                           \
     Bel *sym = bel_mksymbol(x);                 \
     env = bel_env_push(env, sym,                \
                        bel_mkprim(sym));        \
     }
-#+end_src
+\end{minted}
 
-Then we create a function where, given an environment =env=, it
+Then we create a function where, given an environment \texttt{env}, it
 registers all Bel primitives on it, creating a new environment which
 is returned. Notice that this new environment is in fact making use of
 the original one.
 
-#+begin_src C
+\begin{minted}[]{c}
 Bel*
 bel_gen_primitives(Bel *env)
 {
@@ -2910,26 +2998,27 @@ bel_gen_primitives(Bel *env)
     
     return env;
 }
-#+end_src
+\end{minted}
 
 The last step is to have a function which pushes these primitives
-automatically to the =globe= environment.
+automatically to the \texttt{globe} environment.
 
-#+begin_src C
+\begin{minted}[]{c}
 void
 bel_init_ax_primitives()
 {
     bel_g_globe = bel_gen_primitives(bel_g_globe);
 }
-#+end_src
+\end{minted}
 
-*** Closures
+\subsection{Closures}
+\label{sec:org9e0a8e6}
 
 Creating a closure is very straightforward. We take an environment and
 a list. Such list must have two elements, where the first is a lambda
 list, and the second is the body of the function.
 
-#+begin_src C
+\begin{minted}[]{c}
 Bel*
 bel_mkclosure(Bel *lenv, Bel *rest)
 {
@@ -2937,31 +3026,32 @@ bel_mkclosure(Bel *lenv, Bel *rest)
         bel_mkpair(bel_g_clo,
                    bel_mkpair(lenv, rest)));
 }
-#+end_src
+\end{minted}
 
-* Printing
+\chapter{Printing}
+\label{sec:orgf4a41dd}
 
 The following functions are used to print a certain object on standard
 output.
 
-#+TODO: Print to Bel streams?
+\section{Forward declarations}
+\label{sec:org95b0ff9}
 
-** Forward declarations
-
-We forward declare the =bel_print= function since printing pairs calls
+We forward declare the \texttt{bel\_print} function since printing pairs calls
 it for the pairs' parts.
 
-#+begin_src C
+\begin{minted}[]{c}
 void bel_print(Bel*); // Forward declaration
-#+end_src
+\end{minted}
 
-** Printing pairs
+\section{Printing pairs}
+\label{sec:org967c7b4}
 
 The first function is a specialization for printing pairs in
 general. This function should also handle the printing of lists
 gracefully.
 
-#+begin_src C
+\begin{minted}[]{c}
 void
 bel_print_pair(Bel *obj)
 {
@@ -2990,16 +3080,17 @@ bel_print_pair(Bel *obj)
     }
     putchar(')');
 }
-#+end_src
+\end{minted}
 
-** Printing strings
+\section{Printing strings}
+\label{sec:org5099831}
 
 A string is a very specific type of list: it is a proper list
 comprised only of characters. However, this function is not supposed
 to test for the object's type; instead, it must be called when we are
 certain that the object in question is a string.
 
-#+begin_src C
+\begin{minted}[]{c}
 void
 bel_print_string(Bel *obj)
 {
@@ -3017,16 +3108,17 @@ bel_print_string(Bel *obj)
     }
     putchar('\"');
 }
-#+end_src
+\end{minted}
 
-** Printing streams
+\section{Printing streams}
+\label{sec:orge740d9f}
 
 Printing a stream involves printing something that cannot be read back
 in, so it can be considered merely aestethic. I made an option of
 either printing that it is closed, or printing its status along with
 the raw pointer.
 
-#+begin_src C
+\begin{minted}[]{c}
 void
 bel_print_stream(Bel *obj)
 {
@@ -3042,38 +3134,39 @@ bel_print_stream(Bel *obj)
         printf("{0x%08lx}>", (uint64_t)obj->stream.raw_stream);
     }
 }
-#+end_src
+\end{minted}
 
-** Printing numbers
+\section{Printing numbers}
+\label{sec:org03d4b7d}
 
 We develop a function to print an arbitrary number. The function takes
 the number itself and a parameter which tells whether the sign should
 be explicit (the reason for that will be evident soon).
 
-To print an /integer/, the only thing to do is to print a =long int=. We
+To print an \emph{integer}, the only thing to do is to print a \texttt{long int}. We
 prepend it with a plus if the number is positive and the explicit sign
 flag is on.
 
-To print a /float/, we print a =double= with reduced notation. If the
-number is round, we append =.0= to it. We also follow the same rule of
-/integers/ when prepending the plus sign.
+To print a \emph{float}, we print a \texttt{double} with reduced notation. If the
+number is round, we append \texttt{.0} to it. We also follow the same rule of
+\emph{integers} when prepending the plus sign.
 
-A /fraction/ is a pair of two numbers. We just enclose them in a textual
-representation like =#(f number)=, where =number= is the numerator and
+A \emph{fraction} is a pair of two numbers. We just enclose them in a textual
+representation like \texttt{\#(f number)}, where \texttt{number} is the numerator and
 the denominator separated by a slash. These two components can also be
 numbers of any kind, so we print them recursively, without forcing the
 plus sign.
 
-A /complex/ is also a pair of two numbers of any kind, where the first
-number is the /real/ part and the second number is the /imaginary/ part,
-which multiplies =i=. So we enclose it in a textual representation like
-=#(c number)=, where =number= is a complex number in the form =R+Ai=. In
-this form, =R= is the real part, printed as any Bel number; =A= is the
+A \emph{complex} is also a pair of two numbers of any kind, where the first
+number is the \emph{real} part and the second number is the \emph{imaginary} part,
+which multiplies \texttt{i}. So we enclose it in a textual representation like
+\texttt{\#(c number)}, where \texttt{number} is a complex number in the form \texttt{R+Ai}. In
+this form, \texttt{R} is the real part, printed as any Bel number; \texttt{A} is the
 imaginary part, but we force it to print its sign on screen, and then
-we prepend it with an =i=. To force =A='s sign to appear, we call this
-function recursively, with the =force_sign= flag active.
+we prepend it with an \texttt{i}. To force \texttt{A}'s sign to appear, we call this
+function recursively, with the \texttt{force\_sign} flag active.
 
-#+begin_src C
+\begin{minted}[]{c}
 void
 bel_print_number(Bel *num, int force_sign)
 {
@@ -3111,14 +3204,15 @@ bel_print_number(Bel *num, int force_sign)
         break;
     }
 }
-#+end_src
+\end{minted}
 
-** Generic printing
+\section{Generic printing}
+\label{sec:org00d3bc5}
 
 The next function handles the printing of any data type. Notice that
 it does not automatically print a newline character.
 
-#+begin_src C
+\begin{minted}[]{c}
 void
 bel_print(Bel *obj)
 {
@@ -3149,46 +3243,49 @@ bel_print(Bel *obj)
         break;
     };
 }
-#+end_src
+\end{minted}
 
-* Evaluator
+\chapter{Evaluator}
+\label{sec:org87f8a1a}
 
 The evaluator is the most crucial part of the Bel system. We follow
-the pattern of the /metacircular evaluator/: by having two functions,
-=eval= and =apply=, we make them call themselves mutually, equipping
+the pattern of the \emph{metacircular evaluator}: by having two functions,
+\texttt{eval} and \texttt{apply}, we make them call themselves mutually, equipping
 them with auxiliary functions and special forms to produce a working
 interpreter for a Lisp language.
 
-** Forward declarations
+\section{Forward declarations}
+\label{sec:org2ae9257}
 
 These declarations specify the most crucial functions of the
 interpreter. Forward declarations are important for the mutual calling
 part.
 
-#+begin_src C
+\begin{minted}[]{c}
 /* Forward declarations */
 Bel *bel_eval(Bel *exp, Bel *lenv);
 Bel *bel_apply(Bel *proc, Bel *args);
 Bel *bel_evlist(Bel *elist, Bel *lenv);
 Bel *bel_apply_primop(Bel *sym, Bel *args);
 Bel *bel_bind(Bel *vars, Bel *vals, Bel *lenv);
-#+end_src
+\end{minted}
 
-The following forward declarations are related to /special forms/ on the
-evaluator. These special forms are handled outside of the /eval/
+The following forward declarations are related to \emph{special forms} on the
+evaluator. These special forms are handled outside of the \emph{eval}
 function to make it more succinct.
 
-#+begin_src C
+\begin{minted}[]{c}
 /* Forward declarations */
 Bel *bel_special_if(Bel *exp, Bel *lenv);
 Bel *bel_special_quote(Bel *exp, Bel *lenv);
 Bel *bel_special_dyn(Bel *rest, Bel *lenv);
 Bel *bel_special_set(Bel *clauses, Bel *lenv);
-#+end_src
+\end{minted}
 
-** The /eval/ function
+\section{The \emph{eval} function}
+\label{sec:org6e715b6}
 
-=bel_eval= is the /evaluation/ function. The objective is to take a
+\texttt{bel\_eval} is the \emph{evaluation} function. The objective is to take a
 particular expression, identify what it is (whether it is a special
 form or a simple function application), and dispatch it
 accordingly.
@@ -3196,14 +3293,14 @@ accordingly.
 When a simple application is performed, we take a list and consider
 that the first element is the symbol that the function is bound to. So
 we evaluate every element of the list, including the function, and
-then we /apply/ the closure (produced by evaluation of the function) to
+then we \emph{apply} the closure (produced by evaluation of the function) to
 the rest of the evaluated elements, which will be passed as
 arguments.
 
 It is also important to notice that the closure captures the lexical
 environment where it is evaluated.
 
-#+begin_src C
+\begin{minted}[]{c}
 Bel*
 bel_eval(Bel *exp, Bel *lenv)
 {
@@ -3279,19 +3376,20 @@ bel_eval(Bel *exp, Bel *lenv)
                      "a function."),
         bel_mkpair(exp, bel_g_nil));
 }
-#+end_src
+\end{minted}
 
-** The /apply/ function
+\section{The \emph{apply} function}
+\label{sec:org0a3023d}
 
-=bel_apply= is the /application/ function. It takes a certain /function/ and
-applies to the /list of evaluated arguments/. A function can be a
-primitive, but can also be a /literal closure/.
+\texttt{bel\_apply} is the \emph{application} function. It takes a certain \emph{function} and
+applies to the \emph{list of evaluated arguments}. A function can be a
+primitive, but can also be a \emph{literal closure}.
 
-To apply a /closure/, we bind all arguments to the closure's formal
+To apply a \emph{closure}, we bind all arguments to the closure's formal
 parameters, creating an extended lexical environment; then we proceed
 to evaluate the closure's body under that new lexical environment.
 
-#+begin_src C
+\begin{minted}[]{c}
 Bel*
 bel_apply(Bel *fun, Bel *args)
 {
@@ -3349,26 +3447,30 @@ bel_apply(Bel *fun, Bel *args)
             bel_mkpair(fun, bel_g_nil));
     }
 }
-#+end_src
+\end{minted}
 
-** Auxiliary functions
+\section{Auxiliary functions}
+\label{sec:orgedcdf22}
 
 The following functions are also essential to the evaluator, but have
 a more secondary role, such as handling special forms, applying
 primitive operators, and other kinds of things.
 
-*** Evaluating special forms
+\subsection{Evaluating special forms}
+\label{sec:org9e4cc92}
 
 Some special forms require greater attention, and so it is a little
 better to give them their own function.
 
-**** =(quote x)=
+\begin{enumerate}
+\item \texttt{(quote x)}
+\label{sec:org63a1b75}
 
-In Lisp languages, quoting an atom, like the expression ='a=, translates
-to an expression such as =(quote a)=, which will then be evaluated by
-returning only the symbol =a=.
+In Lisp languages, quoting an atom, like the expression \texttt{'a}, translates
+to an expression such as \texttt{(quote a)}, which will then be evaluated by
+returning only the symbol \texttt{a}.
 
-#+begin_src C
+\begin{minted}[]{c}
 Bel*
 bel_special_quote(Bel *exp, Bel *lenv)
 {
@@ -3382,40 +3484,41 @@ bel_special_quote(Bel *exp, Bel *lenv)
 
     return bel_car(bel_cdr(exp));
 }
-#+end_src
+\end{minted}
 
-**** =(if . clauses)=
+\item \texttt{(if . clauses)}
+\label{sec:org4eef6fb}
 
-The conditional =if= takes any number of clauses (at least two), and
+The conditional \texttt{if} takes any number of clauses (at least two), and
 does their evaluation in pairs of clauses (not to be confused with the
 pair data type).
 
 Suppose that we have a conditional such as
 
-#+begin_example lisp
+\begin{verbatim}
 (if cond1 pred1 cond2 pred2)
-#+end_example
+\end{verbatim}
 
-We evaluate =cond1=. If its result is not =nil=, we return the evaluation
-of =pred1=.
+We evaluate \texttt{cond1}. If its result is not \texttt{nil}, we return the evaluation
+of \texttt{pred1}.
 
-If evaluation of =cond1= is =nil=, however, we don't evaluate =pred1=; we
-proceed to test the evaluation of =cond2=. If =cond2= yields a non-=nil=
-result, however, we return the evaluation of =pred2=.
+If evaluation of \texttt{cond1} is \texttt{nil}, however, we don't evaluate \texttt{pred1}; we
+proceed to test the evaluation of \texttt{cond2}. If \texttt{cond2} yields a non-\texttt{nil}
+result, however, we return the evaluation of \texttt{pred2}.
 
 There can also be a different scenario, where the number of clauses is
 odd, like
 
-#+begin_example lisp
+\begin{verbatim}
 (if cond1 pred1 cond2 pred2 altern)
-#+end_example
+\end{verbatim}
 
-If, during evaluation, =cond2= did not yield a non-=nil= result, then
-=pred2= would be skipped; however, as there are no more pairs, but only
-the a single =altern= clause, it will be evaluated and its results will
+If, during evaluation, \texttt{cond2} did not yield a non-\texttt{nil} result, then
+\texttt{pred2} would be skipped; however, as there are no more pairs, but only
+the a single \texttt{altern} clause, it will be evaluated and its results will
 be returned, as an alternative.
 
-#+begin_src C
+\begin{minted}[]{c}
 Bel*
 bel_special_if(Bel *exp, Bel *lenv)
 {
@@ -3450,21 +3553,20 @@ bel_special_if(Bel *exp, Bel *lenv)
             
     return bel_g_nil;
 }
-#+end_src
+\end{minted}
 
-**** =(dyn v x y)=
+\item \texttt{(dyn v x y)}
+\label{sec:org338a49b}
 
-The special form =dyn= evaluates =x= and /dynamically/ binds it to symbol
-=v=. After this dynamic binding, it then evaluates =y=, and finally
-unbinds =x=.
+The special form \texttt{dyn} evaluates \texttt{x} and \emph{dynamically} binds it to symbol
+\texttt{v}. After this dynamic binding, it then evaluates \texttt{y}, and finally
+unbinds \texttt{x}.
 
-This implementation of =dyn= is not thread-happy yet, since every thread
+This implementation of \texttt{dyn} is not thread-happy yet, since every thread
 is supposed to have its dynamic bindings, which are not shared. This,
 however, is something that will be solved later.
 
-#+TODO: Make dynamic bindings thread-happy.
-
-#+begin_src C
+\begin{minted}[]{c}
 Bel*
 bel_special_dyn(Bel *rest, Bel *lenv)
 {
@@ -3512,12 +3614,13 @@ bel_special_dyn(Bel *rest, Bel *lenv)
     
     return ret;
 }
-#+end_src
+\end{minted}
 
-**** =(set . rest)=
+\item \texttt{(set . rest)}
+\label{sec:org4594eb0}
 
-This form works with pairs in an expression like =(set s1 v1 s2
-v2...)= in such a way that =vn= is evaluated and globally bound to =sn=.
+This form works with pairs in an expression like \texttt{(set s1 v1 s2
+v2...)} in such a way that \texttt{vn} is evaluated and globally bound to \texttt{sn}.
 
 This is the form behind definitions of functions, for example.
 
@@ -3525,9 +3628,9 @@ For the global assignments to happen properly, we evaluate all
 expressions before binding. This does not prevent side effects on the
 evaluation of values being assigned, but the values will only be
 assigned if no evaluation error happened. Plus, assignment can only be
-done to non =nil= symbols.
+done to non \texttt{nil} symbols.
 
-#+begin_src C
+\begin{minted}[]{c}
 Bel*
 bel_special_set(Bel *clauses, Bel *lenv)
 {
@@ -3575,14 +3678,16 @@ bel_special_set(Bel *clauses, Bel *lenv)
 
     return bel_g_nil;
 }
-#+end_src
+\end{minted}
+\end{enumerate}
 
-*** Evaluate a list of values
+\subsection{Evaluate a list of values}
+\label{sec:org3a0f05a}
 
-=bel_evlist= evaluates a list of expressions under the given lexical
+\texttt{bel\_evlist} evaluates a list of expressions under the given lexical
 environment. This function should only be called for a proper list.
 
-#+begin_src C
+\begin{minted}[]{c}
 Bel*
 bel_evlist(Bel *elist, Bel *lenv)
 {
@@ -3606,22 +3711,25 @@ bel_evlist(Bel *elist, Bel *lenv)
 
     return bel_mkpair(eval_result, ev_rest);
 }
-#+end_src
+\end{minted}
 
-*** Apply a primitive operator to a list
+\subsection{Apply a primitive operator to a list}
+\label{sec:org915cdc4}
 
 Applying a primitive to a list involves checking for the symbol which
 specifies it and dispatching the arguments to a specific function
 which checks arity and performs the job.
 
-**** Forward declarations
+\begin{enumerate}
+\item Forward declarations
+\label{sec:org4c323e2}
 
 These forward declarations are related to the actual implementation of
 primitive functions in the Bel environment. We forward-declare them so
 that we can define a function which redirects to each one of them, and
 after that we give their proper definitions.
 
-#+begin_src C
+\begin{minted}[]{c}
 /* Forward declarations of primitive functions */
 Bel *bel_prim_id(Bel *args);
 Bel *bel_prim_join(Bel *args);
@@ -3653,44 +3761,45 @@ Bel *bel_prim_div(Bel *args);
 
 /* Forward declarations of other primitives */
 Bel *bel_prim_err(Bel *args);
-#+end_src
+\end{minted}
 
-**** Applying primitive operations
+\item Applying primitive operations
+\label{sec:org30bac10}
 
-The =bel_apply_primop= function is the function which applies a
+The \texttt{bel\_apply\_primop} function is the function which applies a
 primitive operation, identified as a symbol, to a list of evaluated
 values. It is important to know that this function does not usually do
 the job; instead, we just dispatch the arguments to a function which
 will perform as needed.
 
-The macro =bel_is_prim= compares whether =sym= is the symbol which
-represents the literal =lit=.
+The macro \texttt{bel\_is\_prim} compares whether \texttt{sym} is the symbol which
+represents the literal \texttt{lit}.
 
-#+begin_src C
+\begin{minted}[]{c}
 #define bel_is_prim(sym, lit)                     \
     (bel_idp(sym, bel_mksymbol(lit)))
-#+end_src
+\end{minted}
 
-The macro =bel_unimplemented= takes the symbol =sym= for a primitive
+The macro \texttt{bel\_unimplemented} takes the symbol \texttt{sym} for a primitive
 function and generates an error, stating that the function has not
 been implemented. This is important while the interpreter is under
 development.
 
-#+begin_src C
+\begin{minted}[]{c}
 #define bel_unimplemented(sym)                    \
     bel_mkerror(                                  \
     bel_mkstring("~a is not implemented."),       \
     bel_mkpair(sym, bel_g_nil))
-#+end_src
+\end{minted}
 
-=bel_apply_primop= is the crucial function for the operations described
+\texttt{bel\_apply\_primop} is the crucial function for the operations described
 above. It enumerates the core functions and dispatches the arguments
 accordingly.
 
 Notice that an attempt to apply a primitive operation which does not
 exist results in error.
 
-#+begin_src C
+\begin{minted}[]{c}
 Bel*
 bel_apply_primop(Bel *sym, Bel *args)
 {
@@ -3759,9 +3868,10 @@ bel_apply_primop(Bel *sym, Bel *args)
             bel_mkpair(sym, bel_g_nil));
     }
 }
-#+end_src
+\end{minted}
 
-**** Maximum arity check
+\item Maximum arity check
+\label{sec:orgf7a0375}
 
 The following macro is a helper for checking the arity of a specific
 function. Passing the arguments list and the number of desired
@@ -3769,16 +3879,16 @@ arguments performs such a check. If the arity is greater than the
 given number, it returns an error complaining about it.
 
 Notice that this macro expects two things: to be called inside a
-function that returns a =Bel*= type, and that the arguments themselves
-are a /proper list/.
+function that returns a \texttt{Bel*} type, and that the arguments themselves
+are a \emph{proper list}.
 
 It is also important to notice that Bel specifies that, when handling
-primitives, missing arguments default to =nil=, therefore passing less
+primitives, missing arguments default to \texttt{nil}, therefore passing less
 arguments than expected is not considered an error; since collecting
-arguments is handled by =bel_car= and =bel_cdr=, the missing arguments are
-guaranteed to be =nil= when retrieval is attempted.
+arguments is handled by \texttt{bel\_car} and \texttt{bel\_cdr}, the missing arguments are
+guaranteed to be \texttt{nil} when retrieval is attempted.
 
-#+begin_src C
+\begin{minted}[]{c}
 #define BEL_CHECK_MAX_ARITY(args, num)                  \
     {                                                   \
     uint64_t length = bel_length(args);                 \
@@ -3787,19 +3897,22 @@ guaranteed to be =nil= when retrieval is attempted.
         bel_mkstring("Arity error"), bel_g_nil);        \
     }                                                   \
     }
-#+end_src
+\end{minted}
 
-**** Primitive functions
+\item Primitive functions
+\label{sec:orgabc2775}
 
 The next functions implement primitive functions for the environment.
 
-***** =(id x y)=
+\begin{enumerate}
+\item \texttt{(id x y)}
+\label{sec:org8c1a674}
 
-=id= checks whether =x= and =y= are identical. This is stricter than
+\texttt{id} checks whether \texttt{x} and \texttt{y} are identical. This is stricter than
 equality, since identity can only be tested for things that are always
 the same -- namely, characters and symbols.
 
-#+begin_src C
+\begin{minted}[]{c}
 Bel*
 bel_prim_id(Bel *args)
 {
@@ -3808,13 +3921,14 @@ bel_prim_id(Bel *args)
                     bel_car(bel_cdr(args)))
             ? bel_g_t : bel_g_nil);
 }
-#+end_src
+\end{minted}
 
-***** =(join x y)=
+\item \texttt{(join x y)}
+\label{sec:org9e78a50}
 
-=join= creates a pair with =x= as its /car/ and =y= as its /cdr/.
+\texttt{join} creates a pair with \texttt{x} as its \emph{car} and \texttt{y} as its \emph{cdr}.
 
-#+begin_src C
+\begin{minted}[]{c}
 Bel*
 bel_prim_join(Bel *args)
 {
@@ -3822,38 +3936,40 @@ bel_prim_join(Bel *args)
     return bel_mkpair(bel_car(args),
                       bel_car(bel_cdr(args)));
 }
-#+end_src
+\end{minted}
 
-***** =(car x)= and =(cdr x)=
+\item \texttt{(car x)} and \texttt{(cdr x)}
+\label{sec:org9299ee3}
 
-=car= returns the first element of a pair =x=.
+\texttt{car} returns the first element of a pair \texttt{x}.
 
-#+begin_src C
+\begin{minted}[]{c}
 Bel*
 bel_prim_car(Bel *args)
 {
     BEL_CHECK_MAX_ARITY(args, 1);
     return bel_car(bel_car(args));
 }
-#+end_src
+\end{minted}
 
-=cdr= returns the second element of a pair =x=.
+\texttt{cdr} returns the second element of a pair \texttt{x}.
 
-#+begin_src C
+\begin{minted}[]{c}
 Bel*
 bel_prim_cdr(Bel *args)
 {
     BEL_CHECK_MAX_ARITY(args, 1);
     return bel_cdr(bel_car(args));
 }
-#+end_src
+\end{minted}
 
-***** =(type x)=
+\item \texttt{(type x)}
+\label{sec:orgfdf3772}
 
-=type= returns a symbol which specifies the type of =x=. The returning
-values can be =symbol=, =pair=, =char=, =stream= or =number=.
+\texttt{type} returns a symbol which specifies the type of \texttt{x}. The returning
+values can be \texttt{symbol}, \texttt{pair}, \texttt{char}, \texttt{stream} or \texttt{number}.
 
-#+begin_src C
+\begin{minted}[]{c}
 Bel*
 bel_prim_type(Bel *args)
 {
@@ -3879,13 +3995,14 @@ bel_prim_type(Bel *args)
         break;
     };
 }
-#+end_src
+\end{minted}
 
-***** =(xar x y)= and =(xdr x y)=
+\item \texttt{(xar x y)} and \texttt{(xdr x y)}
+\label{sec:org9f16a26}
 
-=xar= replaces the /car/ of a pair =x= with the given value =y=.
+\texttt{xar} replaces the \emph{car} of a pair \texttt{x} with the given value \texttt{y}.
 
-#+begin_src C
+\begin{minted}[]{c}
 Bel*
 bel_prim_xar(Bel *args)
 {
@@ -3901,11 +4018,11 @@ bel_prim_xar(Bel *args)
     pair->pair->car = val;
     return val;
 }
-#+end_src
+\end{minted}
 
-=xdr= replaces the /cdr/ of a pair =x= with the given value =y=.
+\texttt{xdr} replaces the \emph{cdr} of a pair \texttt{x} with the given value \texttt{y}.
 
-#+begin_src C
+\begin{minted}[]{c}
 Bel*
 bel_prim_xdr(Bel *args)
 {
@@ -3921,13 +4038,14 @@ bel_prim_xdr(Bel *args)
     pair->pair->cdr = val;
     return val;
 }
-#+end_src
+\end{minted}
 
-***** =(sym x)= and =(nom x)=
+\item \texttt{(sym x)} and \texttt{(nom x)}
+\label{sec:orge4cb681}
 
-=sym= takes a Bel string and converts it into a symbol.
+\texttt{sym} takes a Bel string and converts it into a symbol.
 
-#+begin_src C
+\begin{minted}[]{c}
 Bel*
 bel_prim_sym(Bel *args)
 {
@@ -3948,11 +4066,11 @@ bel_prim_sym(Bel *args)
 
     return bel_mksymbol(cstr);
 }
-#+end_src
+\end{minted}
 
-=nom= takes a symbol and discovers its name as a Bel string.
+\texttt{nom} takes a symbol and discovers its name as a Bel string.
 
-#+begin_src C
+\begin{minted}[]{c}
 Bel*
 bel_prim_nom(Bel *args)
 {
@@ -3967,17 +4085,18 @@ bel_prim_nom(Bel *args)
     return bel_mkstring(
         bel_sym_find_name(sym));
 }
-#+end_src
+\end{minted}
 
-***** =(wrb x y)= and =(rdb x)=
+\item \texttt{(wrb x y)} and \texttt{(rdb x)}
+\label{sec:org718dd01}
 
-=wrb= and =rdb= are functions responsible for input and output on a
+\texttt{wrb} and \texttt{rdb} are functions responsible for input and output on a
 stream.
 
-=wrb= takes a bit =x= and a stream =y=, and writes that bit to the
-stream. If the stream is =nil=, it writes instead to =outs=.
+\texttt{wrb} takes a bit \texttt{x} and a stream \texttt{y}, and writes that bit to the
+stream. If the stream is \texttt{nil}, it writes instead to \texttt{outs}.
 
-#+begin_src C
+\begin{minted}[]{c}
 Bel*
 bel_prim_wrb(Bel *args)
 {
@@ -4005,11 +4124,11 @@ bel_prim_wrb(Bel *args)
 
     return bel_stream_write_bit(&y->stream, y->chr);
 }
-#+end_src
+\end{minted}
 
-=rdb= simply reads a bit from the stream =x=.
+\texttt{rdb} simply reads a bit from the stream \texttt{x}.
 
-#+begin_src C
+\begin{minted}[]{c}
 Bel*
 bel_prim_rdb(Bel *args)
 {
@@ -4029,16 +4148,17 @@ bel_prim_rdb(Bel *args)
 
     return bel_stream_read_bit(&x->stream);
 }
-#+end_src
+\end{minted}
 
-***** =(ops x y)=, =(cls x)= and =(stat x)=
+\item \texttt{(ops x y)}, \texttt{(cls x)} and \texttt{(stat x)}
+\label{sec:org7b55abd}
 
-=ops=, =cls= and =stat= are functions related to the status of a stream.
+\texttt{ops}, \texttt{cls} and \texttt{stat} are functions related to the status of a stream.
 
-=ops= opens a stream to the file =x=, depending on the direction specified
-by symbol =y=, which can be either =in= or =out=.
+\texttt{ops} opens a stream to the file \texttt{x}, depending on the direction specified
+by symbol \texttt{y}, which can be either \texttt{in} or \texttt{out}.
 
-#+begin_src C
+\begin{minted}[]{c}
 Bel*
 bel_prim_ops(Bel *args)
 {
@@ -4071,12 +4191,12 @@ bel_prim_ops(Bel *args)
                      "the symbols `in` and `out`."),
         bel_mkpair(y, bel_g_nil));
 }
-#+end_src
+\end{minted}
 
-=cls= closes a stream =x=, as long as it is open. If it was closed,
-returns =t=; if it is already closed, returns =nil=.
+\texttt{cls} closes a stream \texttt{x}, as long as it is open. If it was closed,
+returns \texttt{t}; if it is already closed, returns \texttt{nil}.
 
-#+begin_src C
+\begin{minted}[]{c}
 Bel*
 bel_prim_cls(Bel *args)
 {
@@ -4096,12 +4216,12 @@ bel_prim_cls(Bel *args)
 
     return bel_stream_close(stream);
 }
-#+end_src
+\end{minted}
 
-=stat= takes a stream =x= and gives back symbols =closed=, =in= or =out=,
+\texttt{stat} takes a stream \texttt{x} and gives back symbols \texttt{closed}, \texttt{in} or \texttt{out},
 depending on stream status.
 
-#+begin_src C
+\begin{minted}[]{c}
 Bel*
 bel_prim_stat(Bel *args)
 {
@@ -4125,36 +4245,38 @@ bel_prim_stat(Bel *args)
             bel_mkpair(stream, bel_g_nil));
     }
 }
-#+end_src
+\end{minted}
 
-***** =(coin)=
+\item \texttt{(coin)}
+\label{sec:org2b1343c}
 
-=coin= returns symbols =t= and =nil= at random.
+\texttt{coin} returns symbols \texttt{t} and \texttt{nil} at random.
 
-#+begin_src C
+\begin{minted}[]{c}
 Bel*
 bel_prim_coin(Bel *args)
 {
     BEL_CHECK_MAX_ARITY(args, 0);
     return (rand() % 2) ? bel_g_t : bel_g_nil;
 }
-#+end_src
+\end{minted}
 
-***** =(sys x)=
+\item \texttt{(sys x)}
+\label{sec:orga725956}
 
-=sys= takes a string =x= and sends it to the operational system, as a
+\texttt{sys} takes a string \texttt{x} and sends it to the operational system, as a
 console command, and returns the command's value as a proper Bel
 number.
 
 Number types are non-standard to the Bel language, however Bel does
-not specify the return value of =sys=, therefore we have a degree of
-freedom to specify that the return of =sys= is a number.
+not specify the return value of \texttt{sys}, therefore we have a degree of
+freedom to specify that the return of \texttt{sys} is a number.
 
 This function specifically is somewhat a matter of concern, because it
 opens up for the execution of an arbitrary command on the operational
 system.
 
-#+begin_src C
+\begin{minted}[]{c}
 Bel*
 bel_prim_sys(Bel *args)
 {
@@ -4175,20 +4297,24 @@ bel_prim_sys(Bel *args)
 
     return bel_mkinteger(ret);
 }
-#+end_src
+\end{minted}
+\end{enumerate}
 
-**** Primitive operators
+\item Primitive operators
+\label{sec:org0709f38}
 
 These primitive operations take an arbitrary number of arguments and
 does the desired operation across the given values.
 
-***** Addition
+\begin{enumerate}
+\item Addition
+\label{sec:org43e0ddd}
 
 Adds all given values on the list, reducing them to a single
-number. If not argument is given, returns =0=. If called with a single
+number. If not argument is given, returns \texttt{0}. If called with a single
 argument, it returns that single argument (identity).
 
-#+begin_src C
+\begin{minted}[]{c}
 Bel*
 bel_prim_add(Bel *args)
 {
@@ -4218,15 +4344,16 @@ bel_prim_add(Bel *args)
 
     return ret;
 }
-#+end_src
+\end{minted}
 
-***** Subtraction
+\item Subtraction
+\label{sec:orgcb24f7d}
 
 Subtracts all given values on the list, reducing them to a single
 number. If no argument is given, returns zero. If called with a
-single argument, inverts that argument, multiplying it by =-1=.
+single argument, inverts that argument, multiplying it by \texttt{-1}.
 
-#+begin_src C
+\begin{minted}[]{c}
 Bel*
 bel_prim_sub(Bel *args)
 {
@@ -4258,17 +4385,16 @@ bel_prim_sub(Bel *args)
 
     return ret;
 }
-#+end_src
+\end{minted}
 
-***** Multiplication
+\item Multiplication
+\label{sec:orgdd88fca}
 
 Multiplies all given values on the list, reducing them to a single
-number. If no argument is given, returns =1=. If called with a single
+number. If no argument is given, returns \texttt{1}. If called with a single
 argument, returns that single argument (identity).
 
-#+TODO: Maybe return the signal, like APL?
-
-#+begin_src C
+\begin{minted}[]{c}
 Bel*
 bel_prim_mul(Bel *args)
 {
@@ -4299,18 +4425,19 @@ bel_prim_mul(Bel *args)
 
     return ret;
 }
-#+end_src
+\end{minted}
 
-***** Division
+\item Division
+\label{sec:orgb8bc636}
 
 Divides all given arguments on the given list, reducing them to a
-single number. If no argument is given, returns =1=. If called
+single number. If no argument is given, returns \texttt{1}. If called
 with a single argument, returns the given number.
 
 If any division yields an error (e.g. a division by zero), returns
 that error immediately.
 
-#+begin_src C
+\begin{minted}[]{c}
 Bel*
 bel_prim_div(Bel *args)
 {
@@ -4348,26 +4475,26 @@ bel_prim_div(Bel *args)
 
     return ret;
 }
-#+end_src
+\end{minted}
+\end{enumerate}
 
-***** COMMENT Equality
-
-***** COMMENT Comparison
-
-**** Other primitives
+\item Other primitives
+\label{sec:orga0ab05f}
 
 These primitives are not specified in the Bel language, but are useful.
 
-***** =(err x . rest)=
+\begin{enumerate}
+\item \texttt{(err x . rest)}
+\label{sec:org229d44a}
 
-=err= creates an error using =x= as a format string, and appends the =rest=
+\texttt{err} creates an error using \texttt{x} as a format string, and appends the \texttt{rest}
 to the error as format arguments.
 
-There is no arity check in =err=, though we do verify whether the first
+There is no arity check in \texttt{err}, though we do verify whether the first
 argument is a string. Problems with the arguments should appear when
 printing the error.
 
-#+begin_src C
+\begin{minted}[]{c}
 Bel*
 bel_prim_err(Bel *args)
 {
@@ -4382,15 +4509,18 @@ bel_prim_err(Bel *args)
     // TODO: Maybe quote?
     return bel_mkerror(string, bel_cdr(args));
 }
-#+end_src
+\end{minted}
+\end{enumerate}
+\end{enumerate}
 
-*** Bind a list of variables to values
+\subsection{Bind a list of variables to values}
+\label{sec:org224f26b}
 
-=bel_bind= binds each variable to an associated value. If the binding
+\texttt{bel\_bind} binds each variable to an associated value. If the binding
 fails at any point, an error is returned; if not, a new environment
 with the bindings is returned.
 
-#+begin_src C
+\begin{minted}[]{c}
 Bel*
 bel_bind(Bel *vars, Bel *vals, Bel *lenv)
 {
@@ -4418,22 +4548,23 @@ bel_bind(Bel *vars, Bel *vals, Bel *lenv)
                     bel_cdr(vals),
                     bel_mkpair(binding, lenv));
 }
-#+end_src
+\end{minted}
 
-* COMMENT Parser
-* COMMENT Interpreter
-* Debug
+\chapter{Debug}
+\label{sec:org4b1be94}
 
 The following definitions are related to testing what we have so
 far.
 
-** Tests
-*** String manipulation and printing
+\section{Tests}
+\label{sec:org4ceb870}
+\subsection{String manipulation and printing}
+\label{sec:orgfff120a}
 
 A string test which shows the conversion between C strings and Bel
 strings, and vice-versa.
 
-#+begin_src C
+\begin{minted}[]{c}
 void
 string_test()
 {
@@ -4445,18 +4576,19 @@ string_test()
     bel_print(bel);
     putchar(10);
 }
-#+end_src
+\end{minted}
 
-*** List/pair/dotted list notation
+\subsection{List/pair/dotted list notation}
+\label{sec:orgae3aad8}
 
 The following notation tests the printing capabilities of the list
 printing algorithm. Should be able to handle printing lists and
 dot-notation when necessary.
 
-The data input reads as =((foo . bar) . (baz . quux))=, but the expected
-output is =((foo . bar) baz . quux)=.
+The data input reads as \texttt{((foo . bar) . (baz . quux))}, but the expected
+output is \texttt{((foo . bar) baz . quux)}.
 
-#+begin_src C
+\begin{minted}[]{c}
 void
 notation_test()
 {
@@ -4468,14 +4600,15 @@ notation_test()
     bel_print(bel);
     putchar(10);
 }
-#+end_src
+\end{minted}
 
-*** Proper list notation
+\subsection{Proper list notation}
+\label{sec:orgc8d46fd}
 
-This next test outputs the list =(The quick brown fox jumps over the
-lazy dog)=, which is a proper list of symbols.
+This next test outputs the list \texttt{(The quick brown fox jumps over the
+lazy dog)}, which is a proper list of symbols.
 
-#+begin_src C
+\begin{minted}[]{c}
 void
 list_test()
 {
@@ -4494,20 +4627,21 @@ list_test()
     bel_print(bel);
     putchar(10);
 }
-#+end_src
+\end{minted}
 
-*** Closure representation
+\subsection{Closure representation}
+\label{sec:org385ade5}
 
 This test is also a list of symbols, but with nested lists also. Plus,
 this is a proper list, representing the internal representation of a
-closure such as =(fn (x) (* x x))=, but in its expected output form,
-which is =(lit clo nil (x) (* x x))=. Plus, we try to represent another
-closure in its original syntax as =(fn (x) (+ 1 x))=.
+closure such as \texttt{(fn (x) (* x x))}, but in its expected output form,
+which is \texttt{(lit clo nil (x) (* x x))}. Plus, we try to represent another
+closure in its original syntax as \texttt{(fn (x) (+ 1 x))}.
 
-We also take the oportunity to test =bel_mklist= by creating a proper
+We also take the oportunity to test \texttt{bel\_mklist} by creating a proper
 closure not in its literal form.
 
-#+begin_src C
+\begin{minted}[]{c}
 void
 closure_repr_test()
 {
@@ -4536,19 +4670,20 @@ closure_repr_test()
     bel_print(bel);
     putchar(10);     
 }
-#+end_src
+\end{minted}
 
-*** Character list printing and environment lookup
+\subsection{Character list printing and environment lookup}
+\label{sec:orgfe84f5e}
 
-This next test prints the first ten characters in the global =chars=,
-which is a list of pairs, each pair =(c . d)= containing a character =c=,
-and its string representation in binary =d=.
+This next test prints the first ten characters in the global \texttt{chars},
+which is a list of pairs, each pair \texttt{(c . d)} containing a character \texttt{c},
+and its string representation in binary \texttt{d}.
 
-It is also interesting to notice that the =chars= global is obtained by
+It is also interesting to notice that the \texttt{chars} global is obtained by
 a lookup operation on the environment, rather than using the global
 variable directly.
 
-#+begin_src C
+\begin{minted}[]{c}
 void
 character_list_test()
 {
@@ -4579,9 +4714,10 @@ character_list_test()
         i++;
     }
 }
-#+end_src
+\end{minted}
 
-*** Read file bit by bit
+\subsection{Read file bit by bit}
+\label{sec:orgd0c046b}
 
 This test opens up the Believe C source code file as a read stream,
 using Bel's stream structure, then proceeds to read ten bytes from it
@@ -4590,10 +4726,10 @@ a Bel list and then converted to a proper Bel character, which will be
 displayed on screen along with its bits.
 
 It is interesting to notice that, since the bit-reading operation
-itself returns characters =\0= or =\1=, the bit list composing a character
+itself returns characters \texttt{\textbackslash{}0} or \texttt{\textbackslash{}1}, the bit list composing a character
 is always a Bel string.
 
-#+begin_src C
+\begin{minted}[]{c}
 void
 read_file_test()
 {
@@ -4640,14 +4776,15 @@ read_file_test()
 
     bel_stream_close(file);
 }
-#+end_src
+\end{minted}
 
-*** Display errors
+\subsection{Display errors}
+\label{sec:org1a1a98b}
 
 We generate a few errors and grab them, then we print these errors on
 screen to show their literal structure.
 
-#+begin_src C
+\begin{minted}[]{c}
 void
 show_errors_test()
 {
@@ -4675,14 +4812,15 @@ show_errors_test()
     /* err = bel_char_from_binary(str); */
     /* bel_print(err); putchar(10); */
 }
-#+end_src
+\end{minted}
 
-*** Lookup primitives
+\subsection{Lookup primitives}
+\label{sec:org88d5ef4}
 
 We look up a few registered primitives in the global environment, and
 print them in their literal form.
 
-#+begin_src C
+\begin{minted}[]{c}
 void
 lookup_primitives_test()
 {
@@ -4709,14 +4847,15 @@ lookup_primitives_test()
     bel_print(bel);
     putchar(10);
 }
-#+end_src
+\end{minted}
 
-*** Environment tests
+\subsection{Environment tests}
+\label{sec:orge9705dc}
 
 The first test involves creating a temporary lexical environment,
 pushing a few literals, assigning values, unbinding values too.
 
-#+begin_src C
+\begin{minted}[]{c}
 void
 lexical_environment_test()
 {
@@ -4764,13 +4903,13 @@ lexical_environment_test()
     bel_print(bel_lookup(lexenv, bel_mksymbol("foo")));
     putchar(10);
 }
-#+end_src
+\end{minted}
 
 Second test is creating a global variable through assignment, creating
 a variable bound to the same symbol on a lexical environment,
 unbinding both, then performing a last invalid unbinding.
 
-#+begin_src C
+\begin{minted}[]{c}
 void
 global_assignment_test()
 {
@@ -4818,14 +4957,15 @@ global_assignment_test()
     }
     putchar(10);
 }
-#+end_src
+\end{minted}
 
-*** Number test
+\subsection{Number test}
+\label{sec:orgd5f97ad}
 
 This test performs raw arithmetic on the four subtypes of numbers:
 integers, floats, complexes and fractions.
 
-#+begin_src C
+\begin{minted}[]{c}
 void
 number_test()
 {
@@ -4903,13 +5043,14 @@ number_test()
     bel_print(bel_num_div(a, b));
     putchar(10);
 }
-#+end_src
+\end{minted}
 
-*** Debriefing macro
+\subsection{Debriefing macro}
+\label{sec:org188d72c}
 
 This macro is a helper for debriefing results of evaluation tests.
 
-#+begin_src C
+\begin{minted}[]{c}
 #define BEL_EVAL_DEBRIEF(exp, res, env) \
     {                                   \
     printf("Expression: ");             \
@@ -4919,16 +5060,15 @@ This macro is a helper for debriefing results of evaluation tests.
     bel_print(res); putchar(10);        \
     putchar(10);                        \
     }
-#+end_src
+\end{minted}
 
-*** Evaluator test
+\subsection{Evaluator test}
+\label{sec:orgdee2fea}
 
 This test performs the evaluation of a few forms so that we can check
 if the evaluator runs properly.
 
-#+TODO: Too long! Replace this!
-
-#+begin_src C
+\begin{minted}[]{c}
 void
 eval_test()
 {
@@ -5069,14 +5209,15 @@ eval_test()
                          bel_mkfloat(3.4));
     BEL_EVAL_DEBRIEF(form, result, bel_g_nil);
 }
-#+end_src
+\end{minted}
 
-*** Arithmetic evaluation test
+\subsection{Arithmetic evaluation test}
+\label{sec:orgeaa9c00}
 
 This next test tests the evaluation of arithmetic on some numbers,
 from calls to the evaluator itself.
 
-#+begin_src C
+\begin{minted}[]{c}
 void
 arithmetic_eval_test()
 {
@@ -5149,15 +5290,16 @@ arithmetic_eval_test()
         bel_mkinteger(5));
     BEL_EVAL_DEBRIEF(exp, result, bel_g_nil);
 }
-#+end_src
+\end{minted}
 
-*** Arity tests
+\subsection{Arity tests}
+\label{sec:orgd377682}
 
 The following tests check for the arity of primitive functions. By
 default, a small number of arguments is not a bug, and the missing
-arguments are traded for =nil=.
+arguments are traded for \texttt{nil}.
 
-#+begin_src C
+\begin{minted}[]{c}
 void
 arity_test()
 {
@@ -5176,15 +5318,16 @@ arity_test()
     exp = bel_mklist(1, bel_mksymbol("type"));
     BEL_EVAL_DEBRIEF(exp, result, bel_g_nil);
 }
-#+end_src
+\end{minted}
 
-*** Dynamic binding test
+\subsection{Dynamic binding test}
+\label{sec:org5eb6394}
 
-This test attempts to bind the result of the division between =1= and =2=
-to a dynamic variable =x=, then proceeds to perform an operation with
+This test attempts to bind the result of the division between \texttt{1} and \texttt{2}
+to a dynamic variable \texttt{x}, then proceeds to perform an operation with
 it.
 
-#+begin_src C
+\begin{minted}[]{c}
 void
 dynamic_binding_test()
 {
@@ -5209,14 +5352,15 @@ dynamic_binding_test()
             bel_mkinteger(1)));
     BEL_EVAL_DEBRIEF(exp, result, bel_g_nil);
 }
-#+end_src
+\end{minted}
 
-*** Global binding test
+\subsection{Global binding test}
+\label{sec:org54bbb43}
 
-This test attributes a certain closure to the symbol =square= globally,
+This test attributes a certain closure to the symbol \texttt{square} globally,
 then proceeds to apply this new global function to some number.
 
-#+begin_src C
+\begin{minted}[]{c}
 void
 global_binding_test()
 {
@@ -5263,15 +5407,17 @@ global_binding_test()
 
     // TODO: Unintern symbol?
 }
-#+end_src
+\end{minted}
 
-* Entry point
-** Initialization
+\chapter{Entry point}
+\label{sec:orgc964476}
+\section{Initialization}
+\label{sec:orgbbc0b8b}
 
 This is the initialization function for the Bel interpreter. Once this
 function is called, the Bel system is ready to be used.
 
-#+begin_src C
+\begin{minted}[]{c}
 Bel*
 bel_init(void)
 {
@@ -5295,9 +5441,10 @@ bel_init(void)
     // TODO: Return an environment?
     return bel_g_nil;
 }
-#+end_src
+\end{minted}
 
-** Tests
+\section{Tests}
+\label{sec:org9c021f5}
 
 This is the entry point for tests. All running tests are to be put
 here.
@@ -5305,7 +5452,7 @@ here.
 We also make sure that these tests are run as a menu, so that only the
 desired test is shown when needed.
 
-#+begin_src C
+\begin{minted}[]{c}
 void
 run_tests()
 {
@@ -5361,14 +5508,15 @@ run_tests()
         
     } while(opt != 0);
 }
-#+end_src
+\end{minted}
 
-** =main= function
+\section{\texttt{main} function}
+\label{sec:org742f63d}
 
 This is the program entry point. It is supposed to only print the
 ribbon, initialize Bel and perform some tests, for now.
 
-#+begin_src C
+\begin{minted}[]{c}
 int
 main(void)
 {
@@ -5386,18 +5534,5 @@ main(void)
     
     return 0;
 }
-#+end_src
-
-* Footnotes
-
-[fn:6] https://creativecommons.org/licenses/by-sa/4.0/
-
-[fn:3] You can see a list of compatible licenses at
-https://creativecommons.org/compatible-licenses.
-
-[fn:2] You must indicate if you modified the material and retain an
-indication of previous modifications. 
-
-[fn:1] You must provide the name of the creator and attribution
-parties, a copyright notice, a license notice, a disclaimer notice,
-and a link to the original material.
+\end{minted}
+\end{document}
