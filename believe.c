@@ -6,10 +6,11 @@
 #include <errno.h>
 #include <math.h>
 #include <stdarg.h>
+#include <ctype.h>
 
-/* Believe v0.2                                           *
+/* Believe v0.3                                           *
  * A Bel Lisp interpreter.                                *
- * Copyright (c) 2019 Lucas Vieira.                       *
+ * Copyright (c) 2020 Lucas Vieira.                       *
  * This program is distributed under the MIT License. See *
  * the LICENSE file for details.                          *
  *                                                        *
@@ -24,8 +25,8 @@
 
 #include <gc.h>
 
-#define BELIEVE_VERSION   "0.2"
-#define BELIEVE_COPYRIGHT "2019 Lucas Vieira"
+#define BELIEVE_VERSION   "0.3"
+#define BELIEVE_COPYRIGHT "2020 Lucas Vieira"
 #define BELIEVE_LICENSE   "MIT"
 
 typedef enum
@@ -318,7 +319,7 @@ typedef struct {
     uint64_t     size;
 } _Bel_sym_table;
 
-_Bel_sym_table g_sym_table;
+static _Bel_sym_table g_sym_table;
 
 void
 bel_sym_table_init(void)
@@ -2603,6 +2604,167 @@ bel_bind(Bel *vars, Bel *vals, Bel *lenv)
                     bel_mkpair(binding, lenv));
 }
 
+static const char _Bel_reserved_chars[] = {
+    '(', ')', '"', '[', ']', 0
+};
+
+int
+isreserved(char c)
+{
+    size_t i = 0;
+    while(_Bel_reserved_chars[i] != 0) {
+        if(c == _Bel_reserved_chars[i])
+            return 1;
+        i++;
+    }
+    return 0;
+}
+
+int
+isreadmacro(int c)
+{
+    // TODO!
+    return 0;
+}
+
+size_t
+token_length(const char *buffer, size_t position)
+{
+    size_t i = position,
+        size = 0;
+    while(!isreserved(buffer[i]) &&
+          !isspace(buffer[i]) &&
+          (buffer[i] != '\0')) {
+        size++;
+        i++;
+    }
+    return size;
+}
+
+Bel*
+gen_tok_string(const char *buffer, size_t pos, size_t length)
+{
+    char *ns = GC_MALLOC((length + 1) * sizeof(char));
+    size_t i;
+    for(i = 0; i < length; i++) {
+        ns[i] = buffer[pos + i];
+    }
+    ns[length] = '\0';
+    return bel_mkstring(ns);
+}
+
+Bel*
+_bel_tokenize(const char *buffer)
+{
+    Bel *tokens = bel_g_nil;
+    Bel *last   = tokens;
+    
+    size_t i;
+    for(i = 0; i < strlen(buffer); i++) {
+        Bel *token = bel_g_nil;
+        if(isreadmacro(buffer[i])) {
+            // TODO
+        } else if(isreserved(buffer[i])) {
+            token = gen_tok_string(buffer, i, 1);
+        } else if(!isspace(buffer[i])) {
+            size_t length = token_length(buffer, i);
+            token = gen_tok_string(buffer, i, length);
+            i += length - 1;
+        } else {}
+
+        if(!bel_nilp(token)) {
+            if(bel_nilp(tokens)) {
+                tokens = bel_mkpair(token, bel_g_nil);
+                last   = tokens;
+            } else {
+                last->pair->cdr = bel_mkpair(token, bel_g_nil);
+                last = bel_cdr(last);
+            }
+        }
+    }
+    return tokens;
+}
+
+Bel *bel_parse_expr(Bel*, uint64_t);
+Bel *bel_parse_token(Bel*);
+Bel *bel_parse_simple_num(const char*);
+
+int isstrnum(const char*);
+int isstrfloat(const char*);
+
+Bel*
+bel_parse_expr(Bel *tokens, uint64_t depth)
+{
+    Bel *expr = bel_g_nil;
+    Bel *last = bel_g_nil;
+    while(!bel_nilp(tokens)) {
+        Bel *car = bel_car(tokens);
+        tokens   = bel_cdr(tokens);
+        Bel *subexpr = bel_g_nil;
+
+        // TODO: Should be replaced with
+        // proper string equality
+        if(!strcmp(bel_cstring(car), ")")) {
+            if(depth == 0) {
+                return bel_mkerror(
+                    bel_mkstring("Unbalanced parentheses"),
+                    bel_g_nil);
+            } else {
+                return bel_mkpair(expr, tokens);
+            }
+        } else if(!strcmp(bel_cstring(car), "(")) {
+            Bel *pair = bel_parse_expr(tokens, depth + 1);
+            subexpr = bel_car(pair);
+            tokens  = bel_cdr(pair);
+        } else {
+            subexpr = bel_parse_token(car);
+        }
+
+        if(bel_errorp(subexpr)) {
+            return subexpr; // Errors out?
+        }
+
+        if(bel_nilp(expr)) {
+            expr = bel_mkpair(subexpr, bel_g_nil);
+            last = expr;
+        } else {
+            last->pair->cdr =
+                bel_mkpair(subexpr, bel_g_nil);
+            last = bel_cdr(last);
+        }
+    }
+    return expr;
+}
+
+Bel*
+bel_parse_token(Bel *token)
+{
+    const char *str = bel_cstring(token);
+    if(isstrnum(str)) {
+        return bel_parse_simple_num(str);
+    }
+    // TODO: Add special cases
+    return bel_mksymbol(str);
+}
+
+int
+isstrnum(const char *str)
+{
+    uint64_t i = 0;
+    while(str[i] != '\0') {
+        if(!isdigit(str[i]))
+            return 0;
+        i++;
+    }
+    return 1;
+}
+
+Bel*
+bel_parse_simple_num(const char *token)
+{
+    return bel_mkinteger(strtoll(token, NULL, 10));
+}
+
 void
 string_test()
 {
@@ -3297,6 +3459,119 @@ global_binding_test()
     // TODO: Unintern symbol?
 }
 
+#define BEL_TOKENIZE_DEBRIEF(exp, res, str)      \
+    {                                            \
+    exp = str;                                   \
+    res = _bel_tokenize(exp);                    \
+    printf("Expression:\n%s\nResult: ", exp);    \
+    bel_print(res);                              \
+    putchar(10);                                 \
+    }
+
+void
+basic_tokenizer_test()
+{
+    const char *exp;
+    Bel *result = bel_g_nil;
+
+    BEL_TOKENIZE_DEBRIEF(exp, result, "(+ 1 2)");
+
+    BEL_TOKENIZE_DEBRIEF(
+        exp, result,
+        "(progn (+ 1 2)\n"
+        "       (+ 3 4))");
+
+    BEL_TOKENIZE_DEBRIEF(
+        exp, result,
+        "(def some (f xs)\n"
+        "  (if (no xs)      t\n"
+        "      (f (car xs)) (all f (cdr xs))\n"
+        "                   nil))");
+
+}
+
+#define BEL_PARSER_DEBRIEF(exp, res, str)               \
+    {                                                   \
+        exp = _bel_tokenize(str);                       \
+        res = bel_parse_expr(exp, 0);                   \
+        printf("Expression:\n" str "\nResult: ");       \
+        bel_print(res);                                 \
+        putchar(10);                                    \
+    }
+
+void
+parser_test()
+{
+    Bel *expr;
+    Bel *result;
+    
+    BEL_PARSER_DEBRIEF(expr, result, "(+ 1 2)");
+
+    BEL_PARSER_DEBRIEF(
+        expr, result,
+        "(progn (+ 1 2)\n"
+        "       (+ 2 3))");
+
+    BEL_PARSER_DEBRIEF(
+        expr, result,
+        "(def some (f xs)\n"
+        "  (if (no xs)      t\n"
+        "      (f (car xs)) (all f (cdr xs))\n"
+        "                   nil))");
+}
+
+void
+arbitrary_input_parsing()
+{
+    Bel *result;
+    Bel *tokens;
+    char input[1024] = {0};
+    puts("When you are done, type #q to exit.");
+    puts("And don't worry about flush errors.");
+    while(1) {
+        printf("parse> ");
+        fgets(input, 1024, stdin);
+        input[strlen(input)] = '\0';
+
+        if(!strcmp(input, "#q\n"))
+            break;
+
+        tokens = _bel_tokenize(input);
+        puts("Tokens:");
+        bel_print(tokens); putchar(10);
+
+        result = bel_parse_expr(tokens, 0);
+        puts("Result:");
+        bel_print(result); putchar(10);
+    }
+}
+
+void
+test_repl()
+{
+    Bel *result;
+    Bel *tokens;
+    char input[1024] = {0};
+    puts("When you are done, type #q to exit.");
+    puts("And don't worry about flush errors.");
+    while(1) {
+        printf("test> ");
+        fgets(input, 1024, stdin);
+        input[strlen(input)] = '\0';
+
+        if(!strcmp(input, "#q"))
+            break;
+
+        tokens = _bel_tokenize(input);
+        result = bel_parse_expr(tokens, 0);
+        if(!bel_errorp(result)) {
+            result = bel_eval(bel_car(result),
+                              bel_g_nil);
+        }
+        bel_print(result); putchar(10);
+    }
+}
+
 Bel*
 bel_init(void)
 {
@@ -3345,6 +3620,10 @@ run_tests()
              "14. Primitive arity test\n"
              "15. Dynamic binding test\n"
              "16. Global binding test\n"
+             "17. Basic tokenizer test\n"
+             "18. Parser test\n"
+             "19. Arbitrary input parser (unsafe!)\n"
+             "20. Test REPL (unsafe!)\n"
              
              " 0. Exit menu");
         printf("Option >> ");
@@ -3355,7 +3634,7 @@ run_tests()
         putchar(10);
         switch(opt) {
         default: puts("Invalid option.");    break;
-        case 0:  break;
+        case  0:  break;
         case  1: string_test();              break;
         case  2: notation_test();            break;
         case  3: list_test();                break;
@@ -3372,6 +3651,10 @@ run_tests()
         case 14: arity_test();               break;
         case 15: dynamic_binding_test();     break;
         case 16: global_binding_test();      break;
+        case 17: basic_tokenizer_test();     break;
+        case 18: parser_test();              break;
+        case 19: arbitrary_input_parsing();  break;
+        case 20: test_repl();                break;
         }
         
     } while(opt != 0);
@@ -3390,6 +3673,8 @@ main(void)
 
 #ifdef BEL_DEBUG
     run_tests();
+#else
+    test_repl();
 #endif
     
     return 0;

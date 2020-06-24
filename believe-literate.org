@@ -2,7 +2,7 @@
 #+SUBTITLE: A Bel interpreter built in C
 #+AUTHOR:   Lucas S. Vieira
 #+EMAIL:    lucasvieira@protonmail.com
-# #+DATE:     2019
+# #+DATE:     2020
 #+PROPERTY: header-args:C :eval no :main no :tangle believe.c
 #+STARTUP:  content
 #+OPTIONS:  title:nil toc:nil
@@ -222,7 +222,7 @@ fully yet.*
 
 ** About literate programming
 
-#+TODO: Lacks references! Use Org-ref for that!
+# TODO: Lacks references! Use Org-ref for that!
 This interpreter is built using [[https://orgmode.org/][Org with Org-mode in Emacs]]. Its
 website specifies that Org is "a format for keeping notes, maintaining
 TODO lists, planning projects, and authoring documents with a fast and
@@ -280,7 +280,7 @@ See the CC-BY-SA 4.0[fn:6] link for more information.
 *** Code license
 
 This software's code is distributed under the MIT License, Copyright
-(c) 2019 Lucas S. Vieira.
+(c) 2020 Lucas S. Vieira.
 
 Permission is hereby granted, free of charge, to any person obtaining
 a copy of this software and associated documentation files (the
@@ -450,6 +450,7 @@ functions.
 #include <errno.h>
 #include <math.h>
 #include <stdarg.h>
+#include <ctype.h>
 #+end_src
 
 ** Definitions
@@ -465,9 +466,9 @@ By default we'll leave it on, at least for now.
 Let's also add a modest copyright notice to the program's header.
 
 #+begin_src C
-/* Believe v0.2                                           *
+/* Believe v0.3                                           *
  ,* A Bel Lisp interpreter.                                *
- ,* Copyright (c) 2019 Lucas Vieira.                       *
+ ,* Copyright (c) 2020 Lucas Vieira.                       *
  ,* This program is distributed under the MIT License. See *
  ,* the LICENSE file for details.                          *
  ,*                                                        *
@@ -495,7 +496,7 @@ application.
 Plus, [[https://www.hboehm.info/gc/04tutorial.pdf][one could check the Boehm-Demers-Weiser GC tutorial slides]] by
 Hans-J. Boehm, for a quick overview of this library.
 
-#+TODO: Use GC_REGISTER_FINALIZER for streams... if convenient.
+# TODO: Use GC_REGISTER_FINALIZER for streams... if convenient.
 
 ** Software-related definitions
 
@@ -503,8 +504,8 @@ These definitions relate to program metadata which is going to be
 displayed on its startup.
 
 #+begin_src C
-#define BELIEVE_VERSION   "0.2"
-#define BELIEVE_COPYRIGHT "2019 Lucas Vieira"
+#define BELIEVE_VERSION   "0.3"
+#define BELIEVE_COPYRIGHT "2020 Lucas Vieira"
 #define BELIEVE_LICENSE   "MIT"
 #+end_src
 
@@ -726,7 +727,7 @@ Bel *bel_g_apply;
 These other variables are responsible for holding other axioms on the
 system. More on then will be specified later.
 
-#+TODO: Add `errs` as an error stream?
+# TODO: Add `errs` as an error stream?
 
 #+begin_src C
 Bel *bel_g_chars;
@@ -755,7 +756,7 @@ forward declaration of =bel_mkerror=, since the primitives should depend
 on it; also, providing =bel_mkstring= ensures that the error format can
 be easily created, and so on.
 
-#+TODO: Is this even correct? Test whether bel_mkerror creates an infinite loop!
+# TODO: Is this even correct? Test whether bel_mkerror creates an infinite loop!
 
 #+begin_src C
 /* Forward declarations */
@@ -1103,8 +1104,10 @@ typedef struct {
     uint64_t     n_syms;
     uint64_t     size;
 } _Bel_sym_table;
+#+end_src
 
-_Bel_sym_table g_sym_table;
+#+begin_src C
+static _Bel_sym_table g_sym_table;
 #+end_src
 
 To initialize the symbol table, we give it an initial size of four,
@@ -1339,7 +1342,7 @@ bel_mkchar(Bel_char c)
 }
 #+end_src
 
-#+TODO: This needs to change if unicode support is enabled
+# TODO: This needs to change if unicode support is enabled
 Characters have the size of one byte, so if we take a single list of 8
 =\1= and =\0= characters, we should be able to generate a bitmask of the
 corresponding character in question.
@@ -1484,7 +1487,7 @@ bel_cstring(Bel *belstr)
 
 ** Streams
 
-#+TODO: Enclose stderr on Bel object
+# TODO: Enclose stderr on Bel object
 We start by creating tools to manipulate streams. First, we create a
 raw stream from a file.
 
@@ -1585,8 +1588,8 @@ We can take advantage of the same variables to read single bits from a
 file, as described before too. Keep the cache full, read single bits
 as Bel characters, fill the cache when the read bits are exhausted.
 
-#+TODO: "Being unable to read a bit" signals an error.
-#+TODO: "No bit is currently available" returns nil -- but how should I do it?
+# TODO: "Being unable to read a bit" signals an error.
+# TODO: "No bit is currently available" returns nil -- but how should I do it?
 
 #+begin_src C
 Bel*
@@ -1626,8 +1629,8 @@ bel_stream_read_bit(Bel_stream *stream)
 }
 #+end_src
 
-#+TODO: Byte input/output -- unecessary?
-#+TODO: Text input/output, specifically for ins/outs -- unecessary?
+# TODO: Byte input/output -- unecessary?
+# TODO: Text input/output, specifically for ins/outs -- unecessary?
 
 We'll also need a tool to close a certain stream. Here we're being a
 little more careful, since streams are managed more directly, by using
@@ -2944,7 +2947,7 @@ bel_mkclosure(Bel *lenv, Bel *rest)
 The following functions are used to print a certain object on standard
 output.
 
-#+TODO: Print to Bel streams?
+# TODO: Print to Bel streams?
 
 ** Forward declarations
 
@@ -3462,7 +3465,7 @@ This implementation of =dyn= is not thread-happy yet, since every thread
 is supposed to have its dynamic bindings, which are not shared. This,
 however, is something that will be solved later.
 
-#+TODO: Make dynamic bindings thread-happy.
+# TODO: Make dynamic bindings thread-happy.
 
 #+begin_src C
 Bel*
@@ -4266,7 +4269,7 @@ Multiplies all given values on the list, reducing them to a single
 number. If no argument is given, returns =1=. If called with a single
 argument, returns that single argument (identity).
 
-#+TODO: Maybe return the signal, like APL?
+# TODO: Maybe return the signal, like APL?
 
 #+begin_src C
 Bel*
@@ -4420,8 +4423,271 @@ bel_bind(Bel *vars, Bel *vals, Bel *lenv)
 }
 #+end_src
 
-* COMMENT Parser
+* Parser
+
+** Tokenizer
+
+The first  step for parsing  an expression is  tokenizination. Believe
+has some inspiration  on Lisp dialects such as  Common Lisp, therefore
+implementing the tokenizer as a flexible stucture is a very good thing
+to do.
+
+Basically,  the  main  inspiration  here  is  on  Common  Lisp's  read
+macros.  The idea  is  that  one can  reprogram  the  token reader  to
+introduce custom syntax, not strictly bound to s-expressions.
+
+The  best part  of having  read  macros is  that some  of the  reading
+routines could be bootstrapped in Bel itself.
+
+*** Reserved symbols
+
+Some characters  are very basic  to Lisp, so  we'll just go  ahead and
+hardcode them. These symbols will automatically be excluded from token
+reading.
+
+The following static vector has its end signalled by the null character.
+
+#+begin_src C
+static const char _Bel_reserved_chars[] = {
+    '(', ')', '"', '[', ']', 0
+};
+#+end_src
+
+An internal  predicate will  help us  know if  a certain  character is
+reserved.  It is  designed  to look  similar to  what  you'll find  at
+~ctypes.h~.
+
+#+begin_src C
+int
+isreserved(char c)
+{
+    size_t i = 0;
+    while(_Bel_reserved_chars[i] != 0) {
+        if(c == _Bel_reserved_chars[i])
+            return 1;
+        i++;
+    }
+    return 0;
+}
+#+end_src
+
+*** Read macros
+
+# TODO: Program this.
+
+The read  macros themselves are  exclusively programmed by  using Bel,
+and  they are  an  alist.  Each element  is  another  list with  three
+elements at most.
+
+#+begin_example
+((\')
+ (\# \nul read-special-number)
+ (\" \"))
+#+end_example
+
+#+begin_src C
+int
+isreadmacro(int c)
+{
+    // TODO!
+    return 0;
+}
+#+end_src
+
+*** Token sizes
+
+Before we begin  the process of tokenization, it is  important that we
+create a way to count the sizes  of tokens so that we can separate the
+token into its own string.
+
+The next function  does that until it meets a  reserved character or a
+space character.
+
+#+begin_src C
+size_t
+token_length(const char *buffer, size_t position)
+{
+    size_t i = position,
+        size = 0;
+    while(!isreserved(buffer[i]) &&
+          !isspace(buffer[i]) &&
+          (buffer[i] != '\0')) {
+        size++;
+        i++;
+    }
+    return size;
+}
+#+end_src
+
+# TODO: token length for special cases
+
+Finally, we  create a helper  function which  helps us copy  a certain
+token into a proper Bel string.
+
+#+begin_src C
+Bel*
+gen_tok_string(const char *buffer, size_t pos, size_t length)
+{
+    char *ns = GC_MALLOC((length + 1) * sizeof(char));
+    size_t i;
+    for(i = 0; i < length; i++) {
+        ns[i] = buffer[pos + i];
+    }
+    ns[length] = '\0';
+    return bel_mkstring(ns);
+}
+#+end_src
+
+*** Tokenization
+
+Tokenization is  actually a simple  process. We  are going to  write a
+procedure which creates a list and keeps appending Bel strings to it.
+
+#+begin_src C
+Bel*
+_bel_tokenize(const char *buffer)
+{
+    Bel *tokens = bel_g_nil;
+    Bel *last   = tokens;
+    
+    size_t i;
+    for(i = 0; i < strlen(buffer); i++) {
+        Bel *token = bel_g_nil;
+        if(isreadmacro(buffer[i])) {
+            // TODO
+        } else if(isreserved(buffer[i])) {
+            token = gen_tok_string(buffer, i, 1);
+        } else if(!isspace(buffer[i])) {
+            size_t length = token_length(buffer, i);
+            token = gen_tok_string(buffer, i, length);
+            i += length - 1;
+        } else {}
+
+        if(!bel_nilp(token)) {
+            if(bel_nilp(tokens)) {
+                tokens = bel_mkpair(token, bel_g_nil);
+                last   = tokens;
+            } else {
+                last->pair->cdr = bel_mkpair(token, bel_g_nil);
+                last = bel_cdr(last);
+            }
+        }
+    }
+    return tokens;
+}
+#+end_src
+
+** Parsing
+
+Let's  begin  by declaring  a  few  prototypes for  important  parsing
+functions. This time we'll be looking deeper into the tokens we split.
+
+#+begin_src C
+Bel *bel_parse_expr(Bel*, uint64_t);
+Bel *bel_parse_token(Bel*);
+Bel *bel_parse_simple_num(const char*);
+
+int isstrnum(const char*);
+int isstrfloat(const char*);
+#+end_src
+
+*** Token list parser
+
+Here, we  are going to  break a list of  tokens into proper  lists. At
+this  point,   everything  should   already  be  broken   into  proper
+s-expressions.
+
+#+begin_src C
+Bel*
+bel_parse_expr(Bel *tokens, uint64_t depth)
+{
+    Bel *expr = bel_g_nil;
+    Bel *last = bel_g_nil;
+    while(!bel_nilp(tokens)) {
+        Bel *car = bel_car(tokens);
+        tokens   = bel_cdr(tokens);
+        Bel *subexpr = bel_g_nil;
+
+        // TODO: Should be replaced with
+        // proper string equality
+        if(!strcmp(bel_cstring(car), ")")) {
+            if(depth == 0) {
+                return bel_mkerror(
+                    bel_mkstring("Unbalanced parentheses"),
+                    bel_g_nil);
+            } else {
+                return bel_mkpair(expr, tokens);
+            }
+        } else if(!strcmp(bel_cstring(car), "(")) {
+            Bel *pair = bel_parse_expr(tokens, depth + 1);
+            subexpr = bel_car(pair);
+            tokens  = bel_cdr(pair);
+        } else {
+            subexpr = bel_parse_token(car);
+        }
+
+        if(bel_errorp(subexpr)) {
+            return subexpr; // Errors out?
+        }
+
+        if(bel_nilp(expr)) {
+            expr = bel_mkpair(subexpr, bel_g_nil);
+            last = expr;
+        } else {
+            last->pair->cdr =
+                bel_mkpair(subexpr, bel_g_nil);
+            last = bel_cdr(last);
+        }
+    }
+    return expr;
+}
+#+end_src
+
+*** Token parser
+
+#+begin_src C
+Bel*
+bel_parse_token(Bel *token)
+{
+    const char *str = bel_cstring(token);
+    if(isstrnum(str)) {
+        return bel_parse_simple_num(str);
+    }
+    // TODO: Add special cases
+    return bel_mksymbol(str);
+}
+#+end_src
+
+**** Parsing a simple number token
+
+#+begin_src C
+int
+isstrnum(const char *str)
+{
+    uint64_t i = 0;
+    while(str[i] != '\0') {
+        if(!isdigit(str[i]))
+            return 0;
+        i++;
+    }
+    return 1;
+}
+#+end_src
+
+#+begin_src C
+Bel*
+bel_parse_simple_num(const char *token)
+{
+    return bel_mkinteger(strtoll(token, NULL, 10));
+}
+#+end_src
+
+**** Parsing a float value
+
 * COMMENT Interpreter
+
+
+
 * Debug
 
 The following definitions are related to testing what we have so
@@ -4926,7 +5192,7 @@ This macro is a helper for debriefing results of evaluation tests.
 This test performs the evaluation of a few forms so that we can check
 if the evaluator runs properly.
 
-#+TODO: Too long! Replace this!
+# TODO: Too long! Replace this!
 
 #+begin_src C
 void
@@ -5265,6 +5531,149 @@ global_binding_test()
 }
 #+end_src
 
+*** Basic tokenizer test
+
+#+begin_src C
+#define BEL_TOKENIZE_DEBRIEF(exp, res, str)      \
+    {                                            \
+    exp = str;                                   \
+    res = _bel_tokenize(exp);                    \
+    printf("Expression:\n%s\nResult: ", exp);    \
+    bel_print(res);                              \
+    putchar(10);                                 \
+    }
+#+end_src
+
+#+begin_src C
+void
+basic_tokenizer_test()
+{
+    const char *exp;
+    Bel *result = bel_g_nil;
+
+    BEL_TOKENIZE_DEBRIEF(exp, result, "(+ 1 2)");
+
+    BEL_TOKENIZE_DEBRIEF(
+        exp, result,
+        "(progn (+ 1 2)\n"
+        "       (+ 3 4))");
+
+    BEL_TOKENIZE_DEBRIEF(
+        exp, result,
+        "(def some (f xs)\n"
+        "  (if (no xs)      t\n"
+        "      (f (car xs)) (all f (cdr xs))\n"
+        "                   nil))");
+
+}
+#+end_src
+
+*** Basic parser test
+
+# TODO: Describe
+
+#+begin_src C
+#define BEL_PARSER_DEBRIEF(exp, res, str)               \
+    {                                                   \
+        exp = _bel_tokenize(str);                       \
+        res = bel_parse_expr(exp, 0);                   \
+        printf("Expression:\n" str "\nResult: ");       \
+        bel_print(res);                                 \
+        putchar(10);                                    \
+    }
+#+end_src
+
+#+begin_src C
+void
+parser_test()
+{
+    Bel *expr;
+    Bel *result;
+    
+    BEL_PARSER_DEBRIEF(expr, result, "(+ 1 2)");
+
+    BEL_PARSER_DEBRIEF(
+        expr, result,
+        "(progn (+ 1 2)\n"
+        "       (+ 2 3))");
+
+    BEL_PARSER_DEBRIEF(
+        expr, result,
+        "(def some (f xs)\n"
+        "  (if (no xs)      t\n"
+        "      (f (car xs)) (all f (cdr xs))\n"
+        "                   nil))");
+}
+#+end_src
+
+*** Arbitrary input parsing
+
+# TODO: Describe
+
+This is unsafe!
+
+#+begin_src C
+void
+arbitrary_input_parsing()
+{
+    Bel *result;
+    Bel *tokens;
+    char input[1024] = {0};
+    puts("When you are done, type #q to exit.");
+    puts("And don't worry about flush errors.");
+    while(1) {
+        printf("parse> ");
+        fgets(input, 1024, stdin);
+        input[strlen(input)] = '\0';
+
+        if(!strcmp(input, "#q\n"))
+            break;
+
+        tokens = _bel_tokenize(input);
+        puts("Tokens:");
+        bel_print(tokens); putchar(10);
+
+        result = bel_parse_expr(tokens, 0);
+        puts("Result:");
+        bel_print(result); putchar(10);
+    }
+}
+#+end_src
+
+*** Test-only REPL
+
+# TODO: Describe
+
+This is unsafe!
+
+#+begin_src C
+void
+test_repl()
+{
+    Bel *result;
+    Bel *tokens;
+    char input[1024] = {0};
+    puts("When you are done, type #q to exit.");
+    puts("And don't worry about flush errors.");
+    while(1) {
+        printf("test> ");
+        fgets(input, 1024, stdin);
+        input[strlen(input)] = '\0';
+
+        if(!strcmp(input, "#q"))
+            break;
+
+        tokens = _bel_tokenize(input);
+        result = bel_parse_expr(tokens, 0);
+        if(!bel_errorp(result)) {
+            result = bel_eval(bel_car(result),
+                              bel_g_nil);
+        }
+        bel_print(result); putchar(10);
+    }
+}
+#+end_src
+
 * Entry point
 ** Initialization
 
@@ -5330,6 +5739,10 @@ run_tests()
              "14. Primitive arity test\n"
              "15. Dynamic binding test\n"
              "16. Global binding test\n"
+             "17. Basic tokenizer test\n"
+             "18. Parser test\n"
+             "19. Arbitrary input parser (unsafe!)\n"
+             "20. Test REPL (unsafe!)\n"
              
              " 0. Exit menu");
         printf("Option >> ");
@@ -5340,7 +5753,7 @@ run_tests()
         putchar(10);
         switch(opt) {
         default: puts("Invalid option.");    break;
-        case 0:  break;
+        case  0:  break;
         case  1: string_test();              break;
         case  2: notation_test();            break;
         case  3: list_test();                break;
@@ -5357,6 +5770,10 @@ run_tests()
         case 14: arity_test();               break;
         case 15: dynamic_binding_test();     break;
         case 16: global_binding_test();      break;
+        case 17: basic_tokenizer_test();     break;
+        case 18: parser_test();              break;
+        case 19: arbitrary_input_parsing();  break;
+        case 20: test_repl();                break;
         }
         
     } while(opt != 0);
@@ -5382,6 +5799,8 @@ main(void)
 
 #ifdef BEL_DEBUG
     run_tests();
+#else
+    test_repl();
 #endif
     
     return 0;
