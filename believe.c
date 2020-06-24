@@ -10,7 +10,7 @@
 
 /* Believe v0.3                                           *
  * A Bel Lisp interpreter.                                *
- * Copyright (c) 2020 Lucas Vieira.                       *
+ * Copyright (c) 2019-2020 Lucas Vieira.                  *
  * This program is distributed under the MIT License. See *
  * the LICENSE file for details.                          *
  *                                                        *
@@ -26,7 +26,7 @@
 #include <gc.h>
 
 #define BELIEVE_VERSION   "0.3"
-#define BELIEVE_COPYRIGHT "2020 Lucas Vieira"
+#define BELIEVE_COPYRIGHT "2019-2020 Lucas Vieira"
 #define BELIEVE_LICENSE   "MIT"
 
 typedef enum
@@ -1734,11 +1734,11 @@ Bel *bel_special_set(Bel *clauses, Bel *lenv);
 Bel*
 bel_eval(Bel *exp, Bel *lenv)
 {
-#ifdef BEL_DEBUG
-    printf("eval>  ");
-    bel_print(exp);
-    putchar(10);
-#endif
+/* #ifdef BEL_DEBUG */
+/*     printf("eval>  "); */
+/*     bel_print(exp); */
+/*     putchar(10); */
+/* #endif */
 
     // numbers eval to themselves
     if(bel_numberp(exp))
@@ -1810,13 +1810,13 @@ bel_eval(Bel *exp, Bel *lenv)
 Bel*
 bel_apply(Bel *fun, Bel *args)
 {
-#ifdef BEL_DEBUG
-    printf("apply> ");
-    bel_print(fun);
-    printf(" -> ");
-    bel_print(args);
-    putchar(10);
-#endif
+/* #ifdef BEL_DEBUG */
+/*     printf("apply> "); */
+/*     bel_print(fun); */
+/*     printf(" -> "); */
+/*     bel_print(args); */
+/*     putchar(10); */
+/* #endif */
     
     // Check for errors on fun
     if(bel_errorp(fun)) {
@@ -1943,13 +1943,13 @@ bel_special_dyn(Bel *rest, Bel *lenv)
             bel_g_nil);
     }
 
-#ifdef BEL_DEBUG
-    printf("dynb>  ");
-    bel_print(sym);
-    printf(" := ");
-    bel_print(x);
-    putchar(10);
-#endif
+/* #ifdef BEL_DEBUG */
+/*     printf("dynb>  "); */
+/*     bel_print(sym); */
+/*     printf(" := "); */
+/*     bel_print(x); */
+/*     putchar(10); */
+/* #endif */
     
     bel_g_dynae =
         bel_env_push(bel_g_dynae,
@@ -1995,13 +1995,13 @@ bel_special_set(Bel *clauses, Bel *lenv)
     }
 
     while(!bel_nilp(syms)) {
-#ifdef BEL_DEBUG
-        printf("glob>  ");
-        bel_print(bel_car(syms));
-        printf(" := ");
-        bel_print(bel_car(vals));
-        putchar(10);
-#endif
+/* #ifdef BEL_DEBUG */
+/*         printf("glob>  "); */
+/*         bel_print(bel_car(syms)); */
+/*         printf(" := "); */
+/*         bel_print(bel_car(vals)); */
+/*         putchar(10); */
+/* #endif */
         bel_assign(bel_g_nil, bel_car(syms), bel_car(vals));
         syms = bel_cdr(syms);
         vals = bel_cdr(vals);
@@ -2668,7 +2668,7 @@ gen_tok_string(const char *buffer, size_t pos, size_t length)
 }
 
 Bel*
-_bel_tokenize(const char *buffer)
+bel_tokenize(const char *buffer)
 {
     Bel *tokens = bel_g_nil;
     Bel *last   = tokens;
@@ -2678,9 +2678,25 @@ _bel_tokenize(const char *buffer)
         Bel *token = bel_g_nil;
         if(isreadmacro(buffer[i])) {
             // TODO
+        } else if(buffer[i] == ';') {
+            size_t length =
+                token_verbatim_length(buffer, i, '\n');
+            if(length == 0) {
+                return bel_mkerror(
+                    bel_mkstring("Unexpected EOF: "
+                                 "Comments must end on "
+                                 "line breaks"),
+                    bel_g_nil);
+            }
+            i += length;
         } else if(buffer[i] == '"') {
             size_t length =
                 token_verbatim_length(buffer, i + 1, '"');
+            if(length == 0) {
+                return bel_mkerror(
+                    bel_mkstring("Unbalanced double quote"),
+                    bel_g_nil);
+            }
             token = gen_tok_string(buffer, i, length + 1);
             i += length;
         } else if(isreserved(buffer[i])) {
@@ -2706,13 +2722,13 @@ _bel_tokenize(const char *buffer)
 
 Bel *bel_parse_expr(Bel*, uint64_t);
 Bel *bel_parse_token(Bel*);
-Bel *bel_parse_simple_num(const char*);
+Bel *bel_parse_int(const char*);
 Bel *bel_parse_float(const char*);
 Bel *bel_parse_frac(const char*);       // implement
 Bel *bel_parse_char(const char*);       // implement
 Bel *bel_parse_string(const char*);
 
-int isstrnum(const char*);
+int isstrint(const char*);
 int isstrfloat(const char*);
 int isstrfrac(const char*);    // implement
 int isstrcomplex(const char*); // implement
@@ -2725,13 +2741,12 @@ bel_parse_expr(Bel *tokens, uint64_t depth)
     Bel *expr = bel_g_nil;
     Bel *last = bel_g_nil;
     while(!bel_nilp(tokens)) {
-        Bel *car = bel_car(tokens);
-        tokens   = bel_cdr(tokens);
-        Bel *subexpr = bel_g_nil;
+        Bel *car           = bel_car(tokens);
+        tokens             = bel_cdr(tokens);
+        Bel *subexpr       = bel_g_nil;
+        const char *carstr = bel_cstring(car);
 
-        // TODO: Should be replaced with
-        // proper string equality
-        if(!strcmp(bel_cstring(car), ")")) {
+        if(!strcmp(carstr, ")")) {
             if(depth == 0) {
                 return bel_mkerror(
                     bel_mkstring("Unbalanced parentheses"),
@@ -2739,16 +2754,16 @@ bel_parse_expr(Bel *tokens, uint64_t depth)
             } else {
                 return bel_mkpair(expr, tokens);
             }
-        } else if(!strcmp(bel_cstring(car), "(")) {
+        } else if(!strcmp(carstr, "(")) {
             Bel *pair = bel_parse_expr(tokens, depth + 1);
-            subexpr = bel_car(pair);
-            tokens  = bel_cdr(pair);
+            subexpr   = bel_car(pair);
+            tokens    = bel_cdr(pair);
         } else {
             subexpr = bel_parse_token(car);
         }
 
         if(bel_errorp(subexpr)) {
-            return subexpr; // Errors out?
+            return subexpr; // Errors out
         }
 
         if(bel_nilp(expr)) {
@@ -2767,8 +2782,8 @@ Bel*
 bel_parse_token(Bel *token)
 {
     const char *str = bel_cstring(token);
-    if(isstrnum(str)) {
-        return bel_parse_simple_num(str);
+    if(isstrint(str)) {
+        return bel_parse_int(str);
     } else if(isstrfloat(str)) {
         return bel_parse_float(str);
     } else if(isstrstr(str)) {
@@ -2779,7 +2794,7 @@ bel_parse_token(Bel *token)
 }
 
 int
-isstrnum(const char *str)
+isstrint(const char *str)
 {
     uint64_t i = 0;
 
@@ -2796,7 +2811,7 @@ isstrnum(const char *str)
 }
 
 Bel*
-bel_parse_simple_num(const char *token)
+bel_parse_int(const char *token)
 {
     return bel_mkinteger(strtoll(token, NULL, 10));
 }
@@ -2825,7 +2840,7 @@ isstrfloat(const char *str)
         }
         i++;
     }
-    return 1;
+    return found_dot;
 }
 
 Bel*
@@ -3549,13 +3564,13 @@ global_binding_test()
     // TODO: Unintern symbol?
 }
 
-#define BEL_TOKENIZE_DEBRIEF(exp, res, str)      \
-    {                                            \
-    exp = str;                                   \
-    res = _bel_tokenize(exp);                    \
-    printf("Expression:\n%s\nResult: ", exp);    \
-    bel_print(res);                              \
-    putchar(10);                                 \
+#define BEL_TOKENIZE_DEBRIEF(exp, res, str)             \
+    {                                                   \
+        exp = str;                                      \
+        res = bel_tokenize(exp);                        \
+        printf("Expression:\n%s\nResult: ", exp);       \
+        bel_print(res);                                 \
+        putchar(10);                                    \
     }
 
 void
@@ -3582,7 +3597,7 @@ basic_tokenizer_test()
 
 #define BEL_PARSER_DEBRIEF(exp, res, str)               \
     {                                                   \
-        exp = _bel_tokenize(str);                       \
+        exp = bel_tokenize(str);                        \
         res = bel_parse_expr(exp, 0);                   \
         printf("Expression:\n" str "\nResult: ");       \
         bel_print(res);                                 \
@@ -3623,10 +3638,12 @@ arbitrary_input_parsing()
         fgets(input, 1024, stdin);
         input[strlen(input)] = '\0';
 
-        if(!strcmp(input, "#q\n"))
+        // Sorry about that :V
+        if(input[0] == '#' &&
+           input[1] == 'q')
             break;
 
-        tokens = _bel_tokenize(input);
+        tokens = bel_tokenize(input);
         puts("Tokens:");
         bel_print(tokens); putchar(10);
 
@@ -3649,10 +3666,12 @@ test_repl()
         fgets(input, 1024, stdin);
         input[strlen(input)] = '\0';
 
-        if(!strcmp(input, "#q"))
+        // Sorry about that :V
+        if(input[0] == '#' &&
+           input[1] == 'q')
             break;
 
-        tokens = _bel_tokenize(input);
+        tokens = bel_tokenize(input);
         result = bel_parse_expr(tokens, 0);
         if(!bel_errorp(result)) {
             result = bel_eval(bel_car(result),

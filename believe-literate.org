@@ -2,7 +2,6 @@
 #+SUBTITLE: A Bel interpreter built in C
 #+AUTHOR:   Lucas S. Vieira
 #+EMAIL:    lucasvieira@protonmail.com
-# #+DATE:     2020
 #+PROPERTY: header-args:C :eval no :main no :tangle believe.c
 #+STARTUP:  content
 #+OPTIONS:  title:nil toc:nil
@@ -121,14 +120,17 @@ nil ;; prevent output
 # #+LATEX_HEADER: \setminted{bgcolor=monokaibg}
 
 # Perldoc style
-#+LATEX_HEADER: \usemintedstyle{perldoc}
-#+LATEX_HEADER: \definecolor{perldocbg}{HTML}{ffffcc}
-#+LATEX_HEADER: \setminted{bgcolor=perldocbg}
+# #+LATEX_HEADER: \usemintedstyle{perldoc}
+# #+LATEX_HEADER: \definecolor{perldocbg}{HTML}{ffffcc}
+# #+LATEX_HEADER: \setminted{bgcolor=perldocbg}
 
 # Manni style
 # #+LATEX_HEADER: \usemintedstyle{manni}
 # #+LATEX_HEADER: \definecolor{lightgrey}{HTML}{efefef}
 # #+LATEX_HEADER: \setminted{bgcolor=lightgrey}
+
+# Bw style
+#+LATEX_HEADER: \usemintedstyle{bw}
 
 # Line numbers
 #+LATEX_HEADER: \setminted{linenos=true}
@@ -158,7 +160,7 @@ nil ;; prevent output
 #+LATEX: {\raggedleft
 # #+LATEX: \includegraphics[scale=0.9]{logo.pdf}\\[1cm]
 #+LATEX: \textbf{\HUGE\textcolor{blue}{\@title}}\\
-#+LATEX: {\large Version 0.2}\\[1cm]
+#+LATEX: {\large Version 0.3 (Alpha)}\\[1cm]
 #+LATEX: }
 #+LATEX: \centering 
 #+LATEX:
@@ -280,7 +282,7 @@ See the CC-BY-SA 4.0[fn:6] link for more information.
 *** Code license
 
 This software's code is distributed under the MIT License, Copyright
-(c) 2020 Lucas S. Vieira.
+(c) 2019-2020 Lucas S. Vieira.
 
 Permission is hereby granted, free of charge, to any person obtaining
 a copy of this software and associated documentation files (the
@@ -469,7 +471,7 @@ Let's also add a modest copyright notice to the program's header.
 #+begin_src C
 /* Believe v0.3                                           *
  ,* A Bel Lisp interpreter.                                *
- ,* Copyright (c) 2020 Lucas Vieira.                       *
+ ,* Copyright (c) 2019-2020 Lucas Vieira.                  *
  ,* This program is distributed under the MIT License. See *
  ,* the LICENSE file for details.                          *
  ,*                                                        *
@@ -506,7 +508,7 @@ displayed on its startup.
 
 #+begin_src C
 #define BELIEVE_VERSION   "0.3"
-#define BELIEVE_COPYRIGHT "2020 Lucas Vieira"
+#define BELIEVE_COPYRIGHT "2019-2020 Lucas Vieira"
 #define BELIEVE_LICENSE   "MIT"
 #+end_src
 
@@ -3211,11 +3213,11 @@ environment where it is evaluated.
 Bel*
 bel_eval(Bel *exp, Bel *lenv)
 {
-#ifdef BEL_DEBUG
-    printf("eval>  ");
-    bel_print(exp);
-    putchar(10);
-#endif
+/* #ifdef BEL_DEBUG */
+/*     printf("eval>  "); */
+/*     bel_print(exp); */
+/*     putchar(10); */
+/* #endif */
 
     // numbers eval to themselves
     if(bel_numberp(exp))
@@ -3299,13 +3301,13 @@ to evaluate the closure's body under that new lexical environment.
 Bel*
 bel_apply(Bel *fun, Bel *args)
 {
-#ifdef BEL_DEBUG
-    printf("apply> ");
-    bel_print(fun);
-    printf(" -> ");
-    bel_print(args);
-    putchar(10);
-#endif
+/* #ifdef BEL_DEBUG */
+/*     printf("apply> "); */
+/*     bel_print(fun); */
+/*     printf(" -> "); */
+/*     bel_print(args); */
+/*     putchar(10); */
+/* #endif */
     
     // Check for errors on fun
     if(bel_errorp(fun)) {
@@ -3498,13 +3500,13 @@ bel_special_dyn(Bel *rest, Bel *lenv)
             bel_g_nil);
     }
 
-#ifdef BEL_DEBUG
-    printf("dynb>  ");
-    bel_print(sym);
-    printf(" := ");
-    bel_print(x);
-    putchar(10);
-#endif
+/* #ifdef BEL_DEBUG */
+/*     printf("dynb>  "); */
+/*     bel_print(sym); */
+/*     printf(" := "); */
+/*     bel_print(x); */
+/*     putchar(10); */
+/* #endif */
     
     bel_g_dynae =
         bel_env_push(bel_g_dynae,
@@ -3565,13 +3567,13 @@ bel_special_set(Bel *clauses, Bel *lenv)
     }
 
     while(!bel_nilp(syms)) {
-#ifdef BEL_DEBUG
-        printf("glob>  ");
-        bel_print(bel_car(syms));
-        printf(" := ");
-        bel_print(bel_car(vals));
-        putchar(10);
-#endif
+/* #ifdef BEL_DEBUG */
+/*         printf("glob>  "); */
+/*         bel_print(bel_car(syms)); */
+/*         printf(" := "); */
+/*         bel_print(bel_car(vals)); */
+/*         putchar(10); */
+/* #endif */
         bel_assign(bel_g_nil, bel_car(syms), bel_car(vals));
         syms = bel_cdr(syms);
         vals = bel_cdr(vals);
@@ -4658,11 +4660,49 @@ Tokenization is  actually a simple  process. We  are going to  write a
 procedure which creates a list and keeps appending Bel strings to it.
 
 # TODO: Explain everything.
-# TODO: Remove comments
+
+There seems to be quite a lot going on here, so here's an explanation,
+step by step.
+
+Basically,  this  is a  recursive  function  which  builds a  list  of
+tokens. To make  the operation faster, we also keep  track of the last
+pair added (whose ~car~  is the last added token, and  its ~cdr~ is always
+~nil~). Therefore, to add  a new token, one must only  create a new pair
+in these molds with the relevant  information, then replace the ~cdr~ of
+~last~ by the  address of this new  pair.
+
+This  is a  similar behavior  to ~xdr~,  but we'll  go ahead  and do  it
+manually.
+
+As for  the rest,  it is  just a case  study. Characters  are analyzed
+until we reach end of buffer. We perform tests in these orders:
+
+1. Test  if the character signals  a read macro. Nothing  is performed
+   for now, since nothing falls into this case for now also.
+2. Test if  the  character is  ~;~,  signalling a  comment.  If so,  it
+   attempts to find the next line break. If the file ends with no line
+   break,  it is  considered  an  error. The  buffer  pointer is  then
+   repositioned after the line break.
+3. Test if  the character is a double quote,  signalling the beginning
+   of a  string literal. If  so, it attempts  to find the  next double
+   quote, and encloses both double quotes  and the text inbetween to a
+   new token. The buffer pointer is then repositioned after the second
+   double quote.
+4. Test if the character is  reserved. If so, generates a token string
+   with  that  same  single  character. The  buffer  pointer  is  then
+   repositioned on the next character.
+5. Test  if the current character  is not white space,  indicating the
+   beginning of  a new arbitrary  token. If so,  it tries to  find the
+   next white space, then gobbles all  characters before it into a new
+   token.  The  buffer pointer  is  then  repositioned at  said  white
+   space.
+
+# TODO: Break this function into smaller functions.
+# TODO: Better error dispatching; use parser as parameter
 
 #+begin_src C
 Bel*
-_bel_tokenize(const char *buffer)
+bel_tokenize(const char *buffer)
 {
     Bel *tokens = bel_g_nil;
     Bel *last   = tokens;
@@ -4672,9 +4712,25 @@ _bel_tokenize(const char *buffer)
         Bel *token = bel_g_nil;
         if(isreadmacro(buffer[i])) {
             // TODO
+        } else if(buffer[i] == ';') {
+            size_t length =
+                token_verbatim_length(buffer, i, '\n');
+            if(length == 0) {
+                return bel_mkerror(
+                    bel_mkstring("Unexpected EOF: "
+                                 "Comments must end on "
+                                 "line breaks"),
+                    bel_g_nil);
+            }
+            i += length;
         } else if(buffer[i] == '"') {
             size_t length =
                 token_verbatim_length(buffer, i + 1, '"');
+            if(length == 0) {
+                return bel_mkerror(
+                    bel_mkstring("Unbalanced double quote"),
+                    bel_g_nil);
+            }
             token = gen_tok_string(buffer, i, length + 1);
             i += length;
         } else if(isreserved(buffer[i])) {
@@ -4701,13 +4757,42 @@ _bel_tokenize(const char *buffer)
 
 ** Parsing
 
+Now we  are going  to work in  the parser itself.  Since the  input is
+already tokenized, all  we need to do is traverse  the list of tokens,
+and build the list structure of our program.
+
+For an expression such as
+
+#+begin_example
+(set x (* 5 5))
+#+end_example
+
+we expect to have a proper Bel list of strings, which would be printed
+on console this way:
+
+#+begin_example
+("(" "set" "x" "(" "*" "5" "5" ")" ")")
+#+end_example
+
+Every time we find an open parenthesis token ~"("~, it indicates that we
+need to create  a new list, which increases the  depth of our parser's
+recursion,  since  it   will  be  mainly  comprised   of  a  recursive
+function. The  close parenthesis ~")"~  indicates that we need  to close
+the previous list, unless we are at recursion depth ~0~.
+
+So this is  basically a matter of recognizing the  types of tokens and
+controlling the  depth of recursion.  We may  also find some  kinds of
+syntax errors here.
+
+*** Forward declarations
+
 Let's  begin  by declaring  a  few  prototypes for  important  parsing
 functions. This time we'll be looking deeper into the tokens we split.
 
 #+begin_src C
 Bel *bel_parse_expr(Bel*, uint64_t);
 Bel *bel_parse_token(Bel*);
-Bel *bel_parse_simple_num(const char*);
+Bel *bel_parse_int(const char*);
 Bel *bel_parse_float(const char*);
 Bel *bel_parse_frac(const char*);       // implement
 Bel *bel_parse_char(const char*);       // implement
@@ -4719,7 +4804,7 @@ the C  part of the  program. These will help  us turn the  tokens into
 proper symbols of their types.
 
 #+begin_src C
-int isstrnum(const char*);
+int isstrint(const char*);
 int isstrfloat(const char*);
 int isstrfrac(const char*);    // implement
 int isstrcomplex(const char*); // implement
@@ -4733,6 +4818,27 @@ Here, we  are going to  break a list of  tokens into proper  lists. At
 this  point,   everything  should   already  be  broken   into  proper
 s-expressions.
 
+Parsing a token list is also a  case analysis, much like we did on the
+tokenization phase.  But this one is  rather simple: we will  take our
+string  objects,  convert   them  to  C  strings,   then  compare  for
+parenthesis to perform recursion depth control.
+
+When we  find an  open parenthesis,  we recurse  on the  function. The
+expected  result for  ~depth >  0~  is a  pair comprised  of the  parsed
+sublist of Bel  symbols, and the yet-to-be-parsed rest of  the list of
+tokens.
+
+When we  find a  close parenthesis,  either we build  a pair  with the
+current expression and the rest of  tokens, or we generate an error if
+we're working on depth ~0~.
+
+As for  all the other tokens,  the token parsing job  is dispatched to
+~bel_parse_token~, and the subexpression is  appended to the results. If
+the subexpression is an error, though, we return it immediately.
+
+# TODO: How  are we identifying  errors here?  What happens if  we are
+# building an error literal by hand?
+
 #+begin_src C
 Bel*
 bel_parse_expr(Bel *tokens, uint64_t depth)
@@ -4740,13 +4846,12 @@ bel_parse_expr(Bel *tokens, uint64_t depth)
     Bel *expr = bel_g_nil;
     Bel *last = bel_g_nil;
     while(!bel_nilp(tokens)) {
-        Bel *car = bel_car(tokens);
-        tokens   = bel_cdr(tokens);
-        Bel *subexpr = bel_g_nil;
+        Bel *car           = bel_car(tokens);
+        tokens             = bel_cdr(tokens);
+        Bel *subexpr       = bel_g_nil;
+        const char *carstr = bel_cstring(car);
 
-        // TODO: Should be replaced with
-        // proper string equality
-        if(!strcmp(bel_cstring(car), ")")) {
+        if(!strcmp(carstr, ")")) {
             if(depth == 0) {
                 return bel_mkerror(
                     bel_mkstring("Unbalanced parentheses"),
@@ -4754,16 +4859,16 @@ bel_parse_expr(Bel *tokens, uint64_t depth)
             } else {
                 return bel_mkpair(expr, tokens);
             }
-        } else if(!strcmp(bel_cstring(car), "(")) {
+        } else if(!strcmp(carstr, "(")) {
             Bel *pair = bel_parse_expr(tokens, depth + 1);
-            subexpr = bel_car(pair);
-            tokens  = bel_cdr(pair);
+            subexpr   = bel_car(pair);
+            tokens    = bel_cdr(pair);
         } else {
             subexpr = bel_parse_token(car);
         }
 
         if(bel_errorp(subexpr)) {
-            return subexpr; // Errors out?
+            return subexpr; // Errors out
         }
 
         if(bel_nilp(expr)) {
@@ -4781,13 +4886,22 @@ bel_parse_expr(Bel *tokens, uint64_t depth)
 
 *** Token parser
 
+Parsing tokens themselves  is a simple case analysis  too. Here, we're
+taking the tokens as C  strings and performing direct text comparisons
+on them.
+
+Predicates such as  ~isstrnum~, ~isstrfloat~ and ~isstrstr~  help detect the
+type of  information represented  by the token.  We then  dispatch the
+text to functions  of format ~bel_parse_*~, which will  then convert the
+token to a proper Bel object of the given kind.
+
 #+begin_src C
 Bel*
 bel_parse_token(Bel *token)
 {
     const char *str = bel_cstring(token);
-    if(isstrnum(str)) {
-        return bel_parse_simple_num(str);
+    if(isstrint(str)) {
+        return bel_parse_int(str);
     } else if(isstrfloat(str)) {
         return bel_parse_float(str);
     } else if(isstrstr(str)) {
@@ -4798,11 +4912,14 @@ bel_parse_token(Bel *token)
 }
 #+end_src
 
-**** Parsing a simple number token
+**** Parsing an integer
+
+We  know that  a token  represents an  integer if  it is  comprised of
+digits only. It may be preceeded by a minus sign too.
 
 #+begin_src C
 int
-isstrnum(const char *str)
+isstrint(const char *str)
 {
     uint64_t i = 0;
 
@@ -4819,15 +4936,21 @@ isstrnum(const char *str)
 }
 #+end_src
 
+If the  token represents a  proper integer, then  we convert it  to an
+~int64_t~ by using ~strtoll~, then we create the proper Bel number.
+
 #+begin_src C
 Bel*
-bel_parse_simple_num(const char *token)
+bel_parse_int(const char *token)
 {
     return bel_mkinteger(strtoll(token, NULL, 10));
 }
 #+end_src
 
 **** Parsing a float value
+
+A floating point  may be syntactically preceeded by a  minus, and /must/
+have a single dot anywhere.
 
 #+begin_src C
 int
@@ -4854,9 +4977,12 @@ isstrfloat(const char *str)
         }
         i++;
     }
-    return 1;
+    return found_dot;
 }
 #+end_src
+
+If the token  is a proper Bel float,  we use ~strtod~ to turn  it into a
+~double~ value of C language, then create the Bel object.
 
 #+begin_src C
 Bel*
@@ -4866,7 +4992,7 @@ bel_parse_float(const char *token)
 }
 #+end_src
 
-**** Parsing a special number
+**** COMMENT Parsing a special number
 
 # TODO: Implement
 
@@ -4874,13 +5000,13 @@ bel_parse_float(const char *token)
 
 ***** Parsing complex numbers
 
-**** Parsing a character
+**** COMMENT Parsing a character
 
 # TODO: Implement
 
 **** Parsing strings
 
-Anything enclosed in pairs  of ~"~ is supposed to be  a string, at least
+Anything between  a pair  of ~"~ is  supposed to be  a string,  at least
 initially. So what we need to do is check for that.
 
 #+begin_src C
@@ -5762,16 +5888,26 @@ global_binding_test()
 
 *** Basic tokenizer test
 
+This tests the tokenize. Basically, it will take any string expression
+and attempt  to generate a  list of Bel  strings, each string  being a
+token.
+
+We begin by declaring a helper macro to reduce code repetition.
+
 #+begin_src C
-#define BEL_TOKENIZE_DEBRIEF(exp, res, str)      \
-    {                                            \
-    exp = str;                                   \
-    res = _bel_tokenize(exp);                    \
-    printf("Expression:\n%s\nResult: ", exp);    \
-    bel_print(res);                              \
-    putchar(10);                                 \
+#define BEL_TOKENIZE_DEBRIEF(exp, res, str)             \
+    {                                                   \
+        exp = str;                                      \
+        res = bel_tokenize(exp);                        \
+        printf("Expression:\n%s\nResult: ", exp);       \
+        bel_print(res);                                 \
+        putchar(10);                                    \
     }
 #+end_src
+
+Now  we write  the  test.  This takes  the  exp  variable, the  result
+variable,  and  a  potentially  multiline   string.  Each  case  is  a
+tokenization test.
 
 #+begin_src C
 void
@@ -5799,18 +5935,28 @@ basic_tokenizer_test()
 
 *** Basic parser test
 
-# TODO: Describe
+This is a  test for the parser. This takes  the tokenizer's output and
+attempts to  parse each token  into a  proper Bel object  described by
+it.
+
+We begin with a  macro much like the one for  the tokenizer, but here,
+we perform tokenization and then parsing.
 
 #+begin_src C
 #define BEL_PARSER_DEBRIEF(exp, res, str)               \
     {                                                   \
-        exp = _bel_tokenize(str);                       \
+        exp = bel_tokenize(str);                        \
         res = bel_parse_expr(exp, 0);                   \
         printf("Expression:\n" str "\nResult: ");       \
         bel_print(res);                                 \
         putchar(10);                                    \
     }
 #+end_src
+
+The  test itself  just invokes  the macro,  and takes  the exact  same
+variables needed by the tokenizer  tests. Here, instead of returning a
+flat list of  strings, we return a list of  all parsed expressions, be
+them lists or not.
 
 #+begin_src C
 void
@@ -5837,9 +5983,15 @@ parser_test()
 
 *** Arbitrary input parsing
 
-# TODO: Describe
+This test  takes an arbitrary input  from the user and  parses it into
+proper Bel objects.
 
-This is unsafe!
+As the behavior suggests, this is extremely unsafe! But it can be used
+in debug  occasions. Plus, this uses  ~fgets~ for user input,  which has
+its  constraints on  buffer  overflow,  but does  not  offer the  same
+guarantees as ~libeditline~ or ~libreadline~.
+
+When you are done, type ~#q~ to finish the parsing session.
 
 #+begin_src C
 void
@@ -5855,10 +6007,12 @@ arbitrary_input_parsing()
         fgets(input, 1024, stdin);
         input[strlen(input)] = '\0';
 
-        if(!strcmp(input, "#q\n"))
+        // Sorry about that :V
+        if(input[0] == '#' &&
+           input[1] == 'q')
             break;
 
-        tokens = _bel_tokenize(input);
+        tokens = bel_tokenize(input);
         puts("Tokens:");
         bel_print(tokens); putchar(10);
 
@@ -5871,9 +6025,17 @@ arbitrary_input_parsing()
 
 *** Test-only REPL
 
-# TODO: Describe
+This implements  a test REPL  which takes an  input from the  user and
+attempts to evaluate everything that is written.
 
-This is unsafe!
+This is supposed to test the  parser and the evaluator together, those
+not being the interpreter itself.
+
+This  is also  very unsafe.  There  are a  lot  of checks  we are  not
+performing here, and those are on purpose, since this is for debug and
+testing purposes only.
+
+When you are done, type ~#q~ to finish the evaluation session.
 
 #+begin_src C
 void
@@ -5889,10 +6051,12 @@ test_repl()
         fgets(input, 1024, stdin);
         input[strlen(input)] = '\0';
 
-        if(!strcmp(input, "#q"))
+        // Sorry about that :V
+        if(input[0] == '#' &&
+           input[1] == 'q')
             break;
 
-        tokens = _bel_tokenize(input);
+        tokens = bel_tokenize(input);
         result = bel_parse_expr(tokens, 0);
         if(!bel_errorp(result)) {
             result = bel_eval(bel_car(result),
