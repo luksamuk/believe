@@ -2913,7 +2913,8 @@ bel_gen_primitives(Bel *env)
 
     // Other primitives
     BEL_REGISTER_PRIM(env, "err");
-    
+    BEL_REGISTER_PRIM(env, "gc");
+
     return env;
 }
 #+end_src
@@ -2958,7 +2959,9 @@ We forward declare the =bel_print= function since printing pairs calls
 it for the pairs' parts.
 
 #+begin_src C
-void bel_print(Bel*); // Forward declaration
+void bel_print(Bel*);
+void bel_print_closure(Bel*);
+void bel_print_primitive(Bel*);
 #+end_src
 
 ** Printing pairs
@@ -2967,14 +2970,31 @@ The first function is a specialization for printing pairs in
 general. This function should also handle the printing of lists
 gracefully.
 
+A closure is also  a pair (a literal, to be more  precise), but it has
+its own printing function, which we invoke if needed.
+
+Similarly,  a  primitive  is  a  primitive  function  whose  body  and
+environment are not explicit to the Bel language, so we also add a way
+to print them.
+
 #+begin_src C
 void
 bel_print_pair(Bel *obj)
 {
     if(bel_nilp(obj)) return;
-    
+
     Bel *itr = obj;
     
+    // Handle printing closures
+    // and primitives
+    if(bel_closurep(obj)) {
+        bel_print_closure(obj);
+        return;
+    } else if(bel_primitivep(obj)) {
+        bel_print_primitive(obj);
+        return;
+    }
+
     putchar('(');
     while(!bel_nilp(itr)) {
         Bel *car = bel_car(itr);
@@ -2995,6 +3015,40 @@ bel_print_pair(Bel *obj)
         itr = cdr;
     }
     putchar(')');
+}
+#+end_src
+
+*** Printing functions
+
+We also add  a general way for printing closures.  This also turns the
+closure  printing  safer,  since  we   do  not  print  the  associated
+environment.
+
+#+begin_src C
+void
+bel_print_closure(Bel *obj)
+{
+    Bel *lambda_list =
+        bel_car(bel_cdr(bel_cdr(bel_cdr(obj))));
+    printf("#<function (fn ");
+    if(bel_nilp(lambda_list)) {
+        printf("()");
+    } else bel_print_pair(lambda_list);
+    printf(") {%p}>", (void*)obj);
+}
+#+end_src
+
+Another useful  function to have is  a way to print  primitives, which
+are Bel functions that work like axioms, defined through C code.
+
+#+begin_src C
+void
+bel_print_primitive(Bel *obj)
+{
+    Bel *name = bel_car(bel_cdr(bel_cdr(obj)));
+    printf("#<function (prim ");
+    bel_print(name);
+    putchar('>');
 }
 #+end_src
 
@@ -3659,6 +3713,7 @@ Bel *bel_prim_div(Bel *args);
 
 /* Forward declarations of other primitives */
 Bel *bel_prim_err(Bel *args);
+Bel *bel_prim_gc(Bel *args);
 #+end_src
 
 **** Applying primitive operations
@@ -3757,6 +3812,8 @@ bel_apply_primop(Bel *sym, Bel *args)
     // Other primitives
     else if(bel_is_prim(sym, "err"))
         return bel_prim_err(args);
+    else if(bel_is_prim(sym, "gc"))
+        return bel_prim_gc(args);
 
     // Otherwise, unknown application operation
     else {
@@ -4387,6 +4444,21 @@ bel_prim_err(Bel *args)
 
     // TODO: Maybe quote?
     return bel_mkerror(string, bel_cdr(args));
+}
+#+end_src
+
+***** =(gc)=
+
+=gc=    forces    the    garbage   collector    to    perform    garbage
+collection. Always returns =nil=.
+
+#+begin_src C
+Bel*
+bel_prim_gc(Bel *args)
+{
+    BEL_CHECK_MAX_ARITY(args, 0);
+    GC_gcollect();
+    return bel_g_nil;
 }
 #+end_src
 

@@ -1566,7 +1566,8 @@ bel_gen_primitives(Bel *env)
 
     // Other primitives
     BEL_REGISTER_PRIM(env, "err");
-    
+    BEL_REGISTER_PRIM(env, "gc");
+
     return env;
 }
 
@@ -1584,15 +1585,27 @@ bel_mkclosure(Bel *lenv, Bel *rest)
                    bel_mkpair(lenv, rest)));
 }
 
-void bel_print(Bel*); // Forward declaration
+void bel_print(Bel*);
+void bel_print_closure(Bel*);
+void bel_print_primitive(Bel*);
 
 void
 bel_print_pair(Bel *obj)
 {
     if(bel_nilp(obj)) return;
-    
+
     Bel *itr = obj;
     
+    // Handle printing closures
+    // and primitives
+    if(bel_closurep(obj)) {
+        bel_print_closure(obj);
+        return;
+    } else if(bel_primitivep(obj)) {
+        bel_print_primitive(obj);
+        return;
+    }
+
     putchar('(');
     while(!bel_nilp(itr)) {
         Bel *car = bel_car(itr);
@@ -1613,6 +1626,27 @@ bel_print_pair(Bel *obj)
         itr = cdr;
     }
     putchar(')');
+}
+
+void
+bel_print_closure(Bel *obj)
+{
+    Bel *lambda_list =
+        bel_car(bel_cdr(bel_cdr(bel_cdr(obj))));
+    printf("#<function (fn ");
+    if(bel_nilp(lambda_list)) {
+        printf("()");
+    } else bel_print_pair(lambda_list);
+    printf(") {%p}>", (void*)obj);
+}
+
+void
+bel_print_primitive(Bel *obj)
+{
+    Bel *name = bel_car(bel_cdr(bel_cdr(obj)));
+    printf("#<function (prim ");
+    bel_print(name);
+    putchar('>');
 }
 
 void
@@ -2065,6 +2099,7 @@ Bel *bel_prim_div(Bel *args);
 
 /* Forward declarations of other primitives */
 Bel *bel_prim_err(Bel *args);
+Bel *bel_prim_gc(Bel *args);
 
 #define bel_is_prim(sym, lit)                     \
     (bel_idp(sym, bel_mksymbol(lit)))
@@ -2134,6 +2169,8 @@ bel_apply_primop(Bel *sym, Bel *args)
     // Other primitives
     else if(bel_is_prim(sym, "err"))
         return bel_prim_err(args);
+    else if(bel_is_prim(sym, "gc"))
+        return bel_prim_gc(args);
 
     // Otherwise, unknown application operation
     else {
@@ -2574,6 +2611,14 @@ bel_prim_err(Bel *args)
 
     // TODO: Maybe quote?
     return bel_mkerror(string, bel_cdr(args));
+}
+
+Bel*
+bel_prim_gc(Bel *args)
+{
+    BEL_CHECK_MAX_ARITY(args, 0);
+    GC_gcollect();
+    return bel_g_nil;
 }
 
 Bel*
