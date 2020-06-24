@@ -2664,6 +2664,8 @@ _bel_tokenize(const char *buffer)
         Bel *token = bel_g_nil;
         if(isreadmacro(buffer[i])) {
             // TODO
+        /* } else if(buffer[i] == '"') { */
+        /*     // TODO */
         } else if(isreserved(buffer[i])) {
             token = gen_tok_string(buffer, i, 1);
         } else if(!isspace(buffer[i])) {
@@ -2688,9 +2690,16 @@ _bel_tokenize(const char *buffer)
 Bel *bel_parse_expr(Bel*, uint64_t);
 Bel *bel_parse_token(Bel*);
 Bel *bel_parse_simple_num(const char*);
+Bel *bel_parse_float(const char*);
+Bel *bel_parse_frac(const char*);       // implement
+Bel *bel_parse_char(const char*);       // implement
 
 int isstrnum(const char*);
 int isstrfloat(const char*);
+int isstrfrac(const char*);    // implement
+int isstrcomplex(const char*); // implement
+int isstrchar(const char*);    // implement
+int isstrstr(const char*);     // implement
 
 Bel*
 bel_parse_expr(Bel *tokens, uint64_t depth)
@@ -2742,8 +2751,10 @@ bel_parse_token(Bel *token)
     const char *str = bel_cstring(token);
     if(isstrnum(str)) {
         return bel_parse_simple_num(str);
+    } else if(isstrfloat(str)) {
+        return bel_parse_float(str);
     }
-    // TODO: Add special cases
+    // TODO: Add more special cases
     return bel_mksymbol(str);
 }
 
@@ -2751,6 +2762,11 @@ int
 isstrnum(const char *str)
 {
     uint64_t i = 0;
+
+    if(str[0] == '-') {
+        i++;
+    }
+
     while(str[i] != '\0') {
         if(!isdigit(str[i]))
             return 0;
@@ -2763,6 +2779,39 @@ Bel*
 bel_parse_simple_num(const char *token)
 {
     return bel_mkinteger(strtoll(token, NULL, 10));
+}
+
+int
+isstrfloat(const char *str)
+{
+    uint64_t i = 0;
+    int found_dot = 0;
+    if(str[0] == '-') {
+        i++;
+    } else if(str[0] == '.') {
+        found_dot = 1;
+        i++;
+    }
+
+    while(str[i] != '\0') {
+        if(str[i] == '.') {
+            if(!found_dot) {
+                found_dot = 1;
+            } else {
+                return 0;
+            }
+        } else if(!isdigit(str[i])) {
+            return 0;
+        }
+        i++;
+    }
+    return 1;
+}
+
+Bel*
+bel_parse_float(const char *token)
+{
+    return bel_mkfloat(strtod(token, NULL));
 }
 
 void
