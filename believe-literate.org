@@ -4270,7 +4270,7 @@ Multiplies all given values on the list, reducing them to a single
 number. If no argument is given, returns =1=. If called with a single
 argument, returns that single argument (identity).
 
-# TODO: Maybe return the signal, like APL?
+# TODO: Maybe return signum, like APL?
 
 #+begin_src C
 Bel*
@@ -4426,21 +4426,103 @@ bel_bind(Bel *vars, Bel *vals, Bel *lenv)
 
 * Parser
 
+Our next job is  to set up the parser. This section  of our program is
+responsible for taking  a specific amount of text and  turning it into
+an actual program structure.
+
+For example, an expression such as...
+
+#+begin_example
+(set x (* 5 5))
+#+end_example
+
+...should have the same effect as the following block of C code:
+
+#+begin_src C :tangle no
+bel_mklist(3,
+           bel_mksymbol("set"),
+           bel_mksymbol("x"),
+           bel_mklist(3,
+                      bel_mkinteger(5),
+                      bel_mkinteger(5)));
+#+end_src
+
+As it  is true to every  Lisp based on s-expressions,  the parentheses
+determine a linked list of objects. It is a linked list, because it is
+a linking of pairs. In a more concrete way, we may express a list such
+as this:
+
+#+begin_example
+(set . (x . ((* . (5 . (5 . nil))) . nil)))
+#+end_example
+
+Since the  list is a concatenation  of pairs, this also  means that we
+can construct  the whole  thing by recursion  and/or iteration  on the
+usage of =bel_mkpair=, and leave  =bel_mklist= as an internal function for
+when we want to write Bel lists from the C side of things. So the list
+could also, in principle, be constructed by this block of code too:
+
+#+begin_src C :tangle no
+bel_mkpair(
+    bel_mksymbol("set"),
+    bel_mkpair(
+        bel_mksymbol("x"),
+        bel_mkpair(
+            bel_mkpair(
+                bel_mksymbol("*"),
+                bel_mkpair(
+                    bel_mkinteger(5),
+                    bel_mkpair(
+                        bel_mkinteger("5"),
+                        bel_g_nil))),
+            bel_g_nil)));
+#+end_src
+
+This is obviously very impractical, but it  gives us a hint at how our
+parser should work. Every nested parentheses =()= indicates a pair whose
+~car~ is also a pair; and for other elements, they should be interpreted
+as other data objects.
+
 ** Tokenizer
 
-The first  step for parsing  an expression is  tokenizination. Believe
-has some inspiration  on Lisp dialects such as  Common Lisp, therefore
-implementing the tokenizer as a flexible stucture is a very good thing
-to do.
+The  first step  for parsing  an expression  is tokenization.  This is
+where we will split our  string into proper tokens (substrings), which
+will be stored as a proper Bel list of Bel strings.
+
+This  step also  determines  how to  use /read  macros/,  which are  not
+explicitly  supported  by  Bel   specification,  but  are  useful  for
+introducing new, different syntax. For example, a quoted list such as
+
+#+begin_example
+'(1 2 3)
+#+end_example
+
+is, in fact, directly translated to
+
+#+begin_example
+(quote (1 2 3))
+#+end_example
+
+In Believe, this  makes it easier for us to  parse these tokens later,
+because all  we'll have  to care about  is recursively  or iteratively
+build  our lists  of  expressions, so  any  embellishment before  that
+should be the a responsibility of the tokenization phase.
+
+Believe has  some inspiration  on Lisp dialects  such as  Common Lisp,
+therefore implementing the tokenizer as  a flexible stucture is a very
+good thing to do.
 
 Basically,  the  main  inspiration  here  is  on  Common  Lisp's  read
 macros.  The idea  is  that  one can  reprogram  the  token reader  to
 introduce custom syntax, not strictly bound to s-expressions.
 
 The  best part  of having  read  macros is  that some  of the  reading
-routines could be bootstrapped in Bel itself.
+routines could be bootstrapped in Bel itself, so it opens the door for
+introducing languages built on top of Bel.
 
 *** Reserved symbols
+
+# TODO: This functionality should be mixed with read macros.
 
 Some characters  are very basic  to Lisp, so  we'll just go  ahead and
 hardcode them. These symbols will automatically be excluded from token
@@ -4474,8 +4556,6 @@ isreserved(char c)
 
 *** Read macros
 
-# TODO: Program this.
-
 The read  macros themselves are  exclusively programmed by  using Bel,
 and  they are  an  alist.  Each element  is  another  list with  three
 elements at most.
@@ -4485,6 +4565,13 @@ elements at most.
  (\# \nul read-special-number)
  (\" \"))
 #+end_example
+
+As of  now, read macros are  still not implemented in  Believe. In the
+future, this  will be mixed with  the reserved symbols and  occupy the
+same space, managed by a single read  table, which will be used by the
+rest of the tokenizer.
+
+# TODO: Program this.
 
 #+begin_src C
 int
@@ -4521,6 +4608,32 @@ token_length(const char *buffer, size_t position)
 #+end_src
 
 # TODO: token length for special cases
+Let's  also  introduce a  function  for  calculating token  length  of
+verbatim  text. This  is  useful  for text  which  should  be read  in
+verbatim, such as strings, for example. There, we won't be looking for
+spaces or reserved  symbols. We'll gobble up all  characters, until we
+find a character which represents the  end of text (and that character
+will be counted also).
+
+However, if  a null character is  found, this means that  the text was
+not properly finished. This  is an error, so we'll return  a size of ~0~
+as a warning to the tokenizer.
+
+#+begin_src C
+size_t
+token_verbatim_length(const char *buffer, size_t position, char end)
+{
+    size_t i = position,
+        size = 0;
+    while(buffer[i] != end) {
+        if(buffer[i] == '\0')
+            return 0;
+        size++;
+        i++;
+    }
+    return size + 1;
+}
+#+end_src
 
 Finally, we  create a helper  function which  helps us copy  a certain
 token into a proper Bel string.
@@ -4544,6 +4657,9 @@ gen_tok_string(const char *buffer, size_t pos, size_t length)
 Tokenization is  actually a simple  process. We  are going to  write a
 procedure which creates a list and keeps appending Bel strings to it.
 
+# TODO: Explain everything.
+# TODO: Remove comments
+
 #+begin_src C
 Bel*
 _bel_tokenize(const char *buffer)
@@ -4556,8 +4672,11 @@ _bel_tokenize(const char *buffer)
         Bel *token = bel_g_nil;
         if(isreadmacro(buffer[i])) {
             // TODO
-        /* } else if(buffer[i] == '"') { */
-        /*     // TODO */
+        } else if(buffer[i] == '"') {
+            size_t length =
+                token_verbatim_length(buffer, i + 1, '"');
+            token = gen_tok_string(buffer, i, length + 1);
+            i += length;
         } else if(isreserved(buffer[i])) {
             token = gen_tok_string(buffer, i, 1);
         } else if(!isspace(buffer[i])) {
@@ -4592,11 +4711,12 @@ Bel *bel_parse_simple_num(const char*);
 Bel *bel_parse_float(const char*);
 Bel *bel_parse_frac(const char*);       // implement
 Bel *bel_parse_char(const char*);       // implement
+Bel *bel_parse_string(const char*);
 #+end_src
 
 We also need to declare prototypes for a few predicates, which are for
 the C  part of the  program. These will help  us turn the  tokens into
-proper symbols of their types.// implement
+proper symbols of their types.
 
 #+begin_src C
 int isstrnum(const char*);
@@ -4604,7 +4724,7 @@ int isstrfloat(const char*);
 int isstrfrac(const char*);    // implement
 int isstrcomplex(const char*); // implement
 int isstrchar(const char*);    // implement
-int isstrstr(const char*);     // implement
+int isstrstr(const char*);
 #+end_src
 
 *** Token list parser
@@ -4670,6 +4790,8 @@ bel_parse_token(Bel *token)
         return bel_parse_simple_num(str);
     } else if(isstrfloat(str)) {
         return bel_parse_float(str);
+    } else if(isstrstr(str)) {
+        return bel_parse_string(str);
     }
     // TODO: Add more special cases
     return bel_mksymbol(str);
@@ -4757,6 +4879,39 @@ bel_parse_float(const char *token)
 # TODO: Implement
 
 **** Parsing strings
+
+Anything enclosed in pairs  of ~"~ is supposed to be  a string, at least
+initially. So what we need to do is check for that.
+
+#+begin_src C
+int
+isstrstr(const char *token)
+{
+    return (token[0] == '"') &&
+        (token[strlen(token) - 1] == '"');
+}
+#+end_src
+
+Having done so, all  we need to do is create a  new C string, properly
+trimming the  token of its  surrounding double quotes, then  perform a
+proper conversion  into a Bel string.  Notice that the string  size is
+calculated taking a null terminator into account.
+
+#+begin_src C
+Bel*
+bel_parse_string(const char *token)
+{
+    size_t strsz = strlen(token);
+    char *str = GC_MALLOC((strsz - 1) * sizeof(char));
+    size_t i;
+    strsz--;
+    for(i = 0; i < strsz; i++) {
+        str[i] = token[i + 1];
+    }
+    str[strsz - 1] = '\0';
+    return bel_mkstring(str);
+}
+#+end_src
 
 * COMMENT Interpreter
 

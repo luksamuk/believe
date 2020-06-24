@@ -2641,6 +2641,20 @@ token_length(const char *buffer, size_t position)
     return size;
 }
 
+size_t
+token_verbatim_length(const char *buffer, size_t position, char end)
+{
+    size_t i = position,
+        size = 0;
+    while(buffer[i] != end) {
+        if(buffer[i] == '\0')
+            return 0;
+        size++;
+        i++;
+    }
+    return size + 1;
+}
+
 Bel*
 gen_tok_string(const char *buffer, size_t pos, size_t length)
 {
@@ -2664,8 +2678,11 @@ _bel_tokenize(const char *buffer)
         Bel *token = bel_g_nil;
         if(isreadmacro(buffer[i])) {
             // TODO
-        /* } else if(buffer[i] == '"') { */
-        /*     // TODO */
+        } else if(buffer[i] == '"') {
+            size_t length =
+                token_verbatim_length(buffer, i + 1, '"');
+            token = gen_tok_string(buffer, i, length + 1);
+            i += length;
         } else if(isreserved(buffer[i])) {
             token = gen_tok_string(buffer, i, 1);
         } else if(!isspace(buffer[i])) {
@@ -2693,13 +2710,14 @@ Bel *bel_parse_simple_num(const char*);
 Bel *bel_parse_float(const char*);
 Bel *bel_parse_frac(const char*);       // implement
 Bel *bel_parse_char(const char*);       // implement
+Bel *bel_parse_string(const char*);
 
 int isstrnum(const char*);
 int isstrfloat(const char*);
 int isstrfrac(const char*);    // implement
 int isstrcomplex(const char*); // implement
 int isstrchar(const char*);    // implement
-int isstrstr(const char*);     // implement
+int isstrstr(const char*);
 
 Bel*
 bel_parse_expr(Bel *tokens, uint64_t depth)
@@ -2753,6 +2771,8 @@ bel_parse_token(Bel *token)
         return bel_parse_simple_num(str);
     } else if(isstrfloat(str)) {
         return bel_parse_float(str);
+    } else if(isstrstr(str)) {
+        return bel_parse_string(str);
     }
     // TODO: Add more special cases
     return bel_mksymbol(str);
@@ -2812,6 +2832,27 @@ Bel*
 bel_parse_float(const char *token)
 {
     return bel_mkfloat(strtod(token, NULL));
+}
+
+int
+isstrstr(const char *token)
+{
+    return (token[0] == '"') &&
+        (token[strlen(token) - 1] == '"');
+}
+
+Bel*
+bel_parse_string(const char *token)
+{
+    size_t strsz = strlen(token);
+    char *str = GC_MALLOC((strsz - 1) * sizeof(char));
+    size_t i;
+    strsz--;
+    for(i = 0; i < strsz; i++) {
+        str[i] = token[i + 1];
+    }
+    str[strsz - 1] = '\0';
+    return bel_mkstring(str);
 }
 
 void
