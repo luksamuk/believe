@@ -1,13 +1,3 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <time.h>
-#include <stdint.h>
-#include <string.h>
-#include <errno.h>
-#include <math.h>
-#include <stdarg.h>
-#include <ctype.h>
-
 /* Believe v0.3                                           *
  * A Bel Lisp interpreter.                                *
  * Copyright (c) 2019-2020 Lucas Vieira.                  *
@@ -19,15 +9,26 @@
  * written in literate programming form. For more         *
  * information, see https://github.com/luksamuk/believe.  */
 
+#define BELIEVE_VERSION   "0.3"
+#define BELIEVE_COPYRIGHT "2019-2020 Lucas Vieira"
+#define BELIEVE_LICENSE   "MIT"
+#define BELIEVE_BUILD_TIME __DATE__ " " __TIME__
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+#include <stdint.h>
+#include <string.h>
+#include <errno.h>
+#include <math.h>
+#include <stdarg.h>
+#include <ctype.h>
+
 #ifdef BEL_DEBUG
 #define GC_DEBUG
 #endif
 
 #include <gc.h>
-
-#define BELIEVE_VERSION   "0.3"
-#define BELIEVE_COPYRIGHT "2019-2020 Lucas Vieira"
-#define BELIEVE_LICENSE   "MIT"
 
 typedef enum
 {
@@ -577,7 +578,7 @@ bel_cstring(Bel *belstr)
     uint64_t len = bel_length(belstr);
     if(len == 0) return NULL;
     
-    char *str    = GC_MALLOC((len + 1) * sizeof (*str));
+    char *str    = GC_MALLOC_ATOMIC((len + 1) * sizeof (*str));
 
     Bel *itr     = belstr;
     size_t i     = 0;
@@ -1286,7 +1287,7 @@ bel_init_ax_vars(void)
 char*
 bel_conv_bits(uint8_t num)
 {
-    char *str = GC_MALLOC(9 * sizeof(*str));
+    char *str = GC_MALLOC_ATOMIC(9 * sizeof(*str));
     
     uint8_t i;
     for(i = 0; i < 8; i++) {
@@ -1646,6 +1647,7 @@ bel_print_primitive(Bel *obj)
     Bel *name = bel_car(bel_cdr(bel_cdr(obj)));
     printf("#<function (prim ");
     bel_print(name);
+    putchar(')');
     putchar('>');
 }
 
@@ -2703,7 +2705,7 @@ token_verbatim_length(const char *buffer, size_t position, char end)
 Bel*
 gen_tok_string(const char *buffer, size_t pos, size_t length)
 {
-    char *ns = GC_MALLOC((length + 1) * sizeof(char));
+    char *ns = GC_MALLOC_ATOMIC((length + 1) * sizeof(char));
     size_t i;
     for(i = 0; i < length; i++) {
         ns[i] = buffer[pos + i];
@@ -2905,7 +2907,7 @@ Bel*
 bel_parse_string(const char *token)
 {
     size_t strsz = strlen(token);
-    char *str = GC_MALLOC((strsz - 1) * sizeof(char));
+    char *str = GC_MALLOC_ATOMIC((strsz - 1) * sizeof(char));
     size_t i;
     strsz--;
     for(i = 0; i < strsz; i++) {
@@ -3817,7 +3819,9 @@ run_tests()
 int
 main(void)
 {
-    printf("Believe %s\n", BELIEVE_VERSION);
+    printf("Believe %s (built %s)\n",
+           BELIEVE_VERSION,
+           BELIEVE_BUILD_TIME);
     printf("A Bel Lisp interpreter\n");
     printf("Copyright (c) %s\n", BELIEVE_COPYRIGHT);
     printf("This software is distributed under the %s license.\n",

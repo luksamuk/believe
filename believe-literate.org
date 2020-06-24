@@ -433,6 +433,43 @@ export GC_PRINT_STATS=1
 
 * Libraries and headers
 
+** File header
+
+Let's add a modest copyright notice to the program's header.
+
+#+begin_src C
+/* Believe v0.3                                           *
+ ,* A Bel Lisp interpreter.                                *
+ ,* Copyright (c) 2019-2020 Lucas Vieira.                  *
+ ,* This program is distributed under the MIT License. See *
+ ,* the LICENSE file for details.                          *
+ ,*                                                        *
+ ,* Development information can also be consulted on the   *
+ ,* book which accompanies this software, which was        * 
+ ,* written in literate programming form. For more         *
+ ,* information, see https://github.com/luksamuk/believe.  */
+#+end_src
+
+** Software-related definitions
+
+These definitions relate to program metadata which is going to be
+displayed on its startup.
+
+#+begin_src C
+#define BELIEVE_VERSION   "0.3"
+#define BELIEVE_COPYRIGHT "2019-2020 Lucas Vieira"
+#define BELIEVE_LICENSE   "MIT"
+#define BELIEVE_BUILD_TIME __DATE__ " " __TIME__
+#+end_src
+
+We'll use a flag for debug which influences the building
+process. Let's call this flag =BEL_DEBUG=.
+
+When building, if you pass this flag to Clang (see the Makefile), some
+debug outputs will be available.
+
+By default we'll leave it on, at least for now.
+
 ** Default headers
 
 We'll be using =stdio.h= for default console I/O, plus =stdint.h= for some
@@ -456,31 +493,6 @@ expressions.
 #include <ctype.h>
 #+end_src
 
-** Definitions
-
-We'll use a flag for debug which influences the building
-process. Let's call this flag =BEL_DEBUG=.
-
-When building, if you pass this flag to Clang (see the Makefile), some
-debug outputs will be available.
-
-By default we'll leave it on, at least for now.
-
-Let's also add a modest copyright notice to the program's header.
-
-#+begin_src C
-/* Believe v0.3                                           *
- ,* A Bel Lisp interpreter.                                *
- ,* Copyright (c) 2019-2020 Lucas Vieira.                  *
- ,* This program is distributed under the MIT License. See *
- ,* the LICENSE file for details.                          *
- ,*                                                        *
- ,* Development information can also be consulted on the   *
- ,* book which accompanies this software, which was        * 
- ,* written in literate programming form. For more         *
- ,* information, see https://github.com/luksamuk/believe.  */
-#+end_src
-
 ** Boehm-Demers-Weiser Garbage Collector
 
 We also use Boehm-Demers-Weiser GC for garbage collection, instead of
@@ -500,17 +512,6 @@ Plus, [[https://www.hboehm.info/gc/04tutorial.pdf][one could check the Boehm-Dem
 Hans-J. Boehm, for a quick overview of this library.
 
 # TODO: Use GC_REGISTER_FINALIZER for streams... if convenient.
-
-** Software-related definitions
-
-These definitions relate to program metadata which is going to be
-displayed on its startup.
-
-#+begin_src C
-#define BELIEVE_VERSION   "0.3"
-#define BELIEVE_COPYRIGHT "2019-2020 Lucas Vieira"
-#define BELIEVE_LICENSE   "MIT"
-#+end_src
 
 * Fundamental data types
 
@@ -1473,7 +1474,7 @@ bel_cstring(Bel *belstr)
     uint64_t len = bel_length(belstr);
     if(len == 0) return NULL;
     
-    char *str    = GC_MALLOC((len + 1) * sizeof (*str));
+    char *str    = GC_MALLOC_ATOMIC((len + 1) * sizeof (*str));
 
     Bel *itr     = belstr;
     size_t i     = 0;
@@ -2407,7 +2408,7 @@ into a string, where each character represents a bit.
 char*
 bel_conv_bits(uint8_t num)
 {
-    char *str = GC_MALLOC(9 * sizeof(*str));
+    char *str = GC_MALLOC_ATOMIC(9 * sizeof(*str));
     
     uint8_t i;
     for(i = 0; i < 8; i++) {
@@ -3048,6 +3049,7 @@ bel_print_primitive(Bel *obj)
     Bel *name = bel_car(bel_cdr(bel_cdr(obj)));
     printf("#<function (prim ");
     bel_print(name);
+    putchar(')');
     putchar('>');
 }
 #+end_src
@@ -4716,7 +4718,7 @@ token into a proper Bel string.
 Bel*
 gen_tok_string(const char *buffer, size_t pos, size_t length)
 {
-    char *ns = GC_MALLOC((length + 1) * sizeof(char));
+    char *ns = GC_MALLOC_ATOMIC((length + 1) * sizeof(char));
     size_t i;
     for(i = 0; i < length; i++) {
         ns[i] = buffer[pos + i];
@@ -5100,7 +5102,7 @@ Bel*
 bel_parse_string(const char *token)
 {
     size_t strsz = strlen(token);
-    char *str = GC_MALLOC((strsz - 1) * sizeof(char));
+    char *str = GC_MALLOC_ATOMIC((strsz - 1) * sizeof(char));
     size_t i;
     strsz--;
     for(i = 0; i < strsz; i++) {
@@ -6254,7 +6256,9 @@ ribbon, initialize Bel and perform some tests, for now.
 int
 main(void)
 {
-    printf("Believe %s\n", BELIEVE_VERSION);
+    printf("Believe %s (built %s)\n",
+           BELIEVE_VERSION,
+           BELIEVE_BUILD_TIME);
     printf("A Bel Lisp interpreter\n");
     printf("Copyright (c) %s\n", BELIEVE_COPYRIGHT);
     printf("This software is distributed under the %s license.\n",
