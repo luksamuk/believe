@@ -317,7 +317,7 @@ ways to do that, and I'm going to keep it here so that anyone can pick
 it up where I stopped, if one wishes to.
 
 *** Roadmap
-- [x] Data types
+**** DONE Data types
   - [x] Symbols
   - [x] Pairs
     - [x] Lists
@@ -328,16 +328,16 @@ it up where I stopped, if one wishes to.
     - [x] Float
     - [x] Fractions
     - [x] Complex
-- [x] Literals
+**** DONE Literals
   - [x] Primitives (representation)
-- [x] Environments
+**** TODO Environments
   - [x] Environment hierarchy (dyn > lex > glo) [implemented on
     lookup]
   - [x] Dynamic binding (visible everywhere for short time)
   - [x] Hierarchical lookup (=bel_lookup=)
-- [x] Functions
+**** TODO Functions
   - [x] Lexical bindings
-- [ ] Evaluation [wip]
+**** TODO Evaluation [wip]
   - [x] Eval [wip]
     - [ ] Special forms [wip]
       - [x] =quote=
@@ -352,7 +352,7 @@ it up where I stopped, if one wishes to.
       - [ ] =ccc=    => Later?
       - [ ] =thread= => Later?
       - [x] =set=    => global binding
-  - [x] Apply
+****  Apply
   
 *** On-the-fly checklist
 - [x] Environment functions
