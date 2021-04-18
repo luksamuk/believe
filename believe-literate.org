@@ -219,8 +219,8 @@ Here are some useful links with language resources:
 - [[https://sep.yimg.com/ty/cdn/paulgraham/bel.bel?t=1570993483&][Language Source Code, written in Bel itself]]
 - [[https://sep.yimg.com/ty/cdn/paulgraham/belexamples.txt?t=1570993483&][Bel examples]]
 
-Note that *this software is still a work-in-progress. Do not expect it to work
-fully yet.*
+Note that  *this software was  a work-in-progress before  archiving. Do
+not expect it to work fully.*
 
 ** About literate programming
 
@@ -309,8 +309,14 @@ SOFTWARE.
 # We delegate this to an external file.
 #+INCLUDE: CONTRIBUTING.org :only-contents t
 
-* COMMENT Backlog
-** Roadmap
+** Backlog
+
+This is some sort of backlog I once maintained to keep track of what I
+needed to  do and what was  already done. There are  infinitely better
+ways to do that, and I'm going to keep it here so that anyone can pick
+it up where I stopped, if one wishes to.
+
+*** Roadmap
 - [x] Data types
   - [x] Symbols
   - [x] Pairs
@@ -348,7 +354,7 @@ SOFTWARE.
       - [x] =set=    => global binding
   - [x] Apply
   
-** On-the-fly checklist
+*** On-the-fly checklist
 - [x] Environment functions
 - [x] Global environment object =globe=
 - [x] Various necessary predicates

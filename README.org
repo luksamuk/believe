@@ -1,1 +1,53 @@
-believe-literate.org
+#+title:    Believe
+#+subtitle: A Bel interpreter built in C
+
+Originally builty by Lucas S. Vieira <lucasvieira@protonmail.com>.
+
+* Introduction
+
+*Please note that this project is currently archived.*
+
+The goal of this project is to provide a fully-functioning
+implementation of the Bel language, proposed by Paul Graham. The main
+goal is not to provide performance; instead, it is supposed to be a
+didatic approach to implementing a Lisp interpreter.
+
+The code here contained is also a study on how to build a Lisp
+interpreter from scratch in C. Given that Bel is so simple and is
+supposed to be a formalism before a commercial language, it seems like
+the perfect didatic resource to do so.
+
+Here are some useful links with language resources:
+
+- [[http://paulgraham.com/bel.html][Paul Graham's Bel release website]]
+- [[https://sep.yimg.com/ty/cdn/paulgraham/bellanguage.txt?t=1570993483&][Language Guide]]
+- [[https://sep.yimg.com/ty/cdn/paulgraham/bel.bel?t=1570993483&][Language Source Code, written in Bel itself]]
+- [[https://sep.yimg.com/ty/cdn/paulgraham/belexamples.txt?t=1570993483&][Bel examples]]
+
+This project was also implemented as  a proper /book/, so it is supposed
+not only to be compiled, but also  to be read. All the development was
+made in the ~believe-literate.org~ file, though the book was exported to
+LaTeX and the code was exported to a C source file.
+
+* Reading
+
+This  project   was  implemented   as  an  experiment   with  literate
+programming,  so  it  can  be  read   in  PDF  form.  Just  check  the
+~believe-literate.pdf~ file, or check  out ~believe-literate.tex~ to see a
+LaTeX export of the book.
+
+Alternatively,  most  Git  services  are  able  to  render  Org  files
+properly, so you can check ~believe-literate.org~ on your browser.
+
+* Compiling
+
+All the compilation  steps are done through a ~Makefile~.  You can refer
+to further  information within  the chapter /Tools  and scripts/  on the
+book.
+
+* Licensing
+
+This code is  distributed under the MIT License. See  the book and the
+~LICENSE~ file for details.
+
+
