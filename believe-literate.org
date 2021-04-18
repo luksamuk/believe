@@ -282,7 +282,7 @@ See the CC-BY-SA 4.0[fn:6] link for more information.
 *** Code license
 
 This software's code is distributed under the MIT License, Copyright
-(c) 2019-2020 Lucas S. Vieira.
+(c) 2019-2021 Lucas S. Vieira.
 
 Permission is hereby granted, free of charge, to any person obtaining
 a copy of this software and associated documentation files (the
@@ -440,7 +440,7 @@ Let's add a modest copyright notice to the program's header.
 #+begin_src C
 /* Believe v0.3                                           *
  ,* A Bel Lisp interpreter.                                *
- ,* Copyright (c) 2019-2020 Lucas Vieira.                  *
+ ,* Copyright (c) 2019-2021 Lucas Vieira.                  *
  ,* This program is distributed under the MIT License. See *
  ,* the LICENSE file for details.                          *
  ,*                                                        *
@@ -457,7 +457,7 @@ displayed on its startup.
 
 #+begin_src C
 #define BELIEVE_VERSION   "0.3"
-#define BELIEVE_COPYRIGHT "2019-2020 Lucas Vieira"
+#define BELIEVE_COPYRIGHT "2019-2021 Lucas Vieira"
 #define BELIEVE_LICENSE   "MIT"
 #define BELIEVE_BUILD_TIME __DATE__ " " __TIME__
 #+end_src
@@ -4500,9 +4500,9 @@ bel_bind(Bel *vars, Bel *vals, Bel *lenv)
 }
 #+end_src
 
-* Parser
+* Reader
 
-Our next job is  to set up the parser. This section  of our program is
+Our next job is  to set up the reader. This section  of our program is
 responsible for taking  a specific amount of text and  turning it into
 an actual program structure.
 
@@ -4638,8 +4638,7 @@ elements at most.
 
 #+begin_example
 ((\')
- (\# \nul read-special-number)
- (\" \"))
+ (\# \nul read-special-number))
 #+end_example
 
 As of  now, read macros are  still not implemented in  Believe. In the
@@ -4650,10 +4649,36 @@ rest of the tokenizer.
 # TODO: Program this.
 
 #+begin_src C
+Bel *_Bel_rmacros;
+#+end_src
+
+#+begin_src C
+Bel*
+bel_init_read_macros()
+{
+    _Bel_rmacros =
+        bel_mklist(1,
+                   bel_mklist(3,
+                              bel_mkchar('\''),
+                              bel_g_nil,
+                              bel_mksymbol("read-special-quote")));
+    return bel_g_t;
+}
+#+end_src
+
+#+begin_src C
 int
-isreadmacro(int c)
+isreadmacro(char c)
 {
     // TODO!
+    Bel *itr = _Bel_rmacros;
+    while(!bel_nilp(itr)) {
+        Bel *entry  = bel_car(itr);
+        Bel *charac = bel_car(entry);
+        if(charac->chr == c)
+            return 1;
+        itr = bel_cdr(itr);
+    }
     return 0;
 }
 #+end_src
@@ -4785,7 +4810,7 @@ bel_tokenize(const char *buffer)
     for(i = 0; i < strlen(buffer); i++) {
         Bel *token = bel_g_nil;
         if(isreadmacro(buffer[i])) {
-            // TODO
+            token = gen_tok_string(buffer, i, 1);
         } else if(buffer[i] == ';') {
             size_t length =
                 token_verbatim_length(buffer, i, '\n');
@@ -4919,13 +4944,18 @@ bel_parse_expr(Bel *tokens, uint64_t depth)
 {
     Bel *expr = bel_g_nil;
     Bel *last = bel_g_nil;
+    /* Move next code to its own function!!! */
+    /* We can deal with read macros by parsing */
+    /* the next expression with it. */
     while(!bel_nilp(tokens)) {
         Bel *car           = bel_car(tokens);
         tokens             = bel_cdr(tokens);
         Bel *subexpr       = bel_g_nil;
         const char *carstr = bel_cstring(car);
 
-        if(!strcmp(carstr, ")")) {
+        /* if((strlen(carstr) == 1) && isreadmacro(carstr[0])) { */
+        /*     // 1. Read the next expression */
+        /* } else  */if(!strcmp(carstr, ")")) {
             if(depth == 0) {
                 return bel_mkerror(
                     bel_mkstring("Unbalanced parentheses"),
@@ -5113,9 +5143,42 @@ bel_parse_string(const char *token)
 }
 #+end_src
 
-* COMMENT Interpreter
+* REPL
 
+We  will  now  deal  with  the  bits  of  our  interpreter  which  are
+responsible for  the user  experience, namely the  act of  inputting a
+string which shall be evaluated by the program.
 
+This  is what  we call  the ~REPL~.  This is  an acronym  for the  words
+"Read",  "Evaluate", "Print",  "Loop",  which  as indicated,  describe
+precisely  what  it  does:  it  is mostly  comprised  of  a  function,
+responsible for four high-level abstraction operations.
+
+First, the  function reads  an input  from console.  This input  is an
+arbitrary  thing  written  by  the  user, and  is  just  a  string  of
+characters.  Then, this  string  is parsed  into  our proper  internal
+structure of a list,  where each element can be thought  of as a valid
+form.
+
+This generated list  is then passed to the  evaluator, which evaluates
+that  string on  an  empty lexical  environment.  Upon evaluation,  it
+generates a Bel object as response for  each of the input forms on the
+given list,  since it may contain  multiple forms typed in  a row, for
+example.
+
+This new list of  results is then printed to the  console. Each of the
+results on the list is then printed on a different line.
+
+Finally,  we  go back  to  the  beginning,  reading the  input  once
+again. This is what the /loop/ word refers to.
+
+** Reading
+
+** Evaluation
+
+** Printing
+
+** Loop
 
 * Debug
 
@@ -6100,7 +6163,9 @@ arbitrary_input_parsing()
 *** Test-only REPL
 
 This implements  a test REPL  which takes an  input from the  user and
-attempts to evaluate everything that is written.
+attempts to evaluate everything that is  written, and also works as an
+entry point  where the tests  can be accessed  as well, by  typing the
+command ~#t~.
 
 This is supposed to test the  parser and the evaluator together, those
 not being the interpreter itself.
@@ -6112,23 +6177,30 @@ testing purposes only.
 When you are done, type ~#q~ to finish the evaluation session.
 
 #+begin_src C
+void run_tests();
+
 void
 test_repl()
 {
     Bel *result;
     Bel *tokens;
     char input[1024] = {0};
+    puts("Enter an expression to be evaluated, or type #t for the test menu.");
     puts("When you are done, type #q to exit.");
-    puts("And don't worry about flush errors.");
     while(1) {
-        printf("test> ");
+        printf("> ");
         fgets(input, 1024, stdin);
         input[strlen(input)] = '\0';
 
-        // Sorry about that :V
-        if(input[0] == '#' &&
-           input[1] == 'q')
-            break;
+        // Sorry about that
+        if(input[0] == '#') {
+            if (input[1] == 'q')
+                break;
+            else if (input[1] == 't') {
+                run_tests();
+                break;
+            }
+        }
 
         tokens = bel_tokenize(input);
         result = bel_parse_expr(tokens, 0);
@@ -6167,6 +6239,9 @@ bel_init(void)
     bel_init_streams();
     bel_init_ax_env();
     bel_init_ax_primitives();
+
+    // Read macros
+    bel_init_read_macros();
 
     // TODO: Return an environment?
     return bel_g_nil;
@@ -6209,7 +6284,7 @@ run_tests()
              "17. Basic tokenizer test\n"
              "18. Parser test\n"
              "19. Arbitrary input parser (unsafe!)\n"
-             "20. Test REPL (unsafe!)\n"
+             "20. Go back to REPL\n"
              
              " 0. Exit menu");
         printf("Option >> ");
@@ -6240,9 +6315,11 @@ run_tests()
         case 17: basic_tokenizer_test();     break;
         case 18: parser_test();              break;
         case 19: arbitrary_input_parsing();  break;
-        case 20: test_repl();                break;
+        case 20:
+            test_repl();
+            opt = 0;
+            break;
         }
-        
     } while(opt != 0);
 }
 #+end_src
@@ -6265,12 +6342,7 @@ main(void)
           BELIEVE_LICENSE);
 
     bel_init();
-
-#ifdef BEL_DEBUG
-    run_tests();
-#else
     test_repl();
-#endif
     
     return 0;
 }

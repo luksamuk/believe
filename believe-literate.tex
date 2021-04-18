@@ -1,4 +1,4 @@
-% Created 2020-06-24 qua 18:53
+% Created 2021-04-18 dom 20:31
 % Intended LaTeX compiler: pdflatex
 \documentclass[openright,a4paper,twoside,12pt]{memoir}
 \usepackage[mathletters]{ucs}
@@ -104,7 +104,7 @@ bookmarksdepth=4
 \mainmatter
 
 \chapter*{Acknowledgements}
-\label{sec:org6546b2f}
+\label{sec:org89cee91}
 \addcontentsline{toc}{chapter}{Acknowledgements}
 
 This is an open-source project which anyone can contribute to. I'd
@@ -119,7 +119,7 @@ technical documents. An extra pair of eyes on that regard is always
 welcome.
 
 \chapter{Introduction}
-\label{sec:org1661bd1}
+\label{sec:orgc091e60}
 
 The goal of this project is to provide a fully-functioning
 implementation of the Bel language, proposed by Paul Graham. The main
@@ -144,7 +144,7 @@ Note that \textbf{this software is still a work-in-progress. Do not expect it to
 fully yet.}
 
 \section{About literate programming}
-\label{sec:orga749f48}
+\label{sec:org9ccafc1}
 
 This interpreter is built using \href{https://orgmode.org/}{Org with Org-mode in Emacs}. Its
 website specifies that Org is "a format for keeping notes, maintaining
@@ -162,7 +162,7 @@ so that the reader is able to take and analyse parts of said code
 based on the prose that accompanies it.
 
 \section{Licensing}
-\label{sec:org0328281}
+\label{sec:orga2e72b1}
 
 The Believe project is composed of two relevant documents: one being
 the \emph{textbook}, which contains all the prose parts plus the code blocks
@@ -177,7 +177,7 @@ the \emph{tangled} code file included in the project's repository, for \emph{any
 purpose, should take the \emph{code} license into consideration as well.
 
 \subsection{Textbook license}
-\label{sec:orgd5c1c93}
+\label{sec:orgf0b2d77}
 
 This work is licensed under a Creative Commons Attribution-ShareAlike
 4.0 International License. This means that you are free to:
@@ -212,10 +212,10 @@ See the CC-BY-SA 4.0\footnote{\url{https://creativecommons.org/licenses/by-sa/4.
 \end{center}
 
 \subsection{Code license}
-\label{sec:orga6c7bd1}
+\label{sec:org492d9ec}
 
 This software's code is distributed under the MIT License, Copyright
-(c) 2019-2020 Lucas S. Vieira.
+(c) 2019-2021 Lucas S. Vieira.
 
 Permission is hereby granted, free of charge, to any person obtaining
 a copy of this software and associated documentation files (the
@@ -238,13 +238,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 \section{Contribution guidelines}
-\label{sec:org89d7056}
+\label{sec:org0f1de42}
 
 Below are described a few guidelines to contribute to this project. It
 is important to follow them to avoid confusion when contributing.
 
 \subsection{Code contribution guidelines}
-\label{sec:org5cba736}
+\label{sec:org751f534}
 
 \begin{enumerate}
 \item \emph{This is a literate program.}\\
@@ -290,7 +290,7 @@ the software development, as any necessity to clear up confusion
 appears.
 
 \subsection{Project communication guidelines}
-\label{sec:orgf44316a}
+\label{sec:org9f6d1c2}
 
 This project does not have a code of conduct. Instead, we rely on the
 spirit of joyful creation of the participants and on the understanding
@@ -401,9 +401,9 @@ during the software development, as any necessity to clear up
 confusion appears.
 
 \chapter{Tools and scripts}
-\label{sec:org06af1d7}
+\label{sec:org37e5483}
 \section{Makefile}
-\label{sec:orgccf490a}
+\label{sec:org3bb8732}
 
 This software was primarily developed on Void Linux x86\textsubscript{64}, using the
 Clang compiler. The following Makefile is the one used for building
@@ -429,7 +429,7 @@ clean:
 \end{minted}
 
 \section{Memory leak testing}
-\label{sec:orgee40abf}
+\label{sec:org43d94ff}
 
 This script generates a log file with memory leak information using
 Valgrind. Valgrind's output is stored in \texttt{believe.log}.
@@ -439,7 +439,7 @@ valgrind --check_leaks=full --log-file="believe.log" -v ./believe
 \end{minted}
 
 \section{Tangling}
-\label{sec:orgfc234a1}
+\label{sec:orgc9b75db}
 
 The following snippet can be run from Emacs to enable tangling on save
 for this file only.
@@ -451,7 +451,7 @@ some blocks (like this one) is not written anywhere, and is meant to
 be evaluated from inside Emacs.
 
 \section{Running the program}
-\label{sec:orgd0bd6e6}
+\label{sec:org068d469}
 
 This script attempts to build and run the Bel interpreter. It will
 also enable verbose output for the garbage collector.
@@ -463,17 +463,17 @@ export GC_PRINT_STATS=1
 \end{minted}
 
 \chapter{Libraries and headers}
-\label{sec:org8ea342f}
+\label{sec:org8c4b439}
 
 \section{File header}
-\label{sec:org93e9d93}
+\label{sec:org0150293}
 
 Let's add a modest copyright notice to the program's header.
 
 \begin{minted}[]{c}
 /* Believe v0.3                                           *
  * A Bel Lisp interpreter.                                *
- * Copyright (c) 2019-2020 Lucas Vieira.                  *
+ * Copyright (c) 2019-2021 Lucas Vieira.                  *
  * This program is distributed under the MIT License. See *
  * the LICENSE file for details.                          *
  *                                                        *
@@ -484,14 +484,14 @@ Let's add a modest copyright notice to the program's header.
 \end{minted}
 
 \section{Software-related definitions}
-\label{sec:org360bf50}
+\label{sec:org7bcf4cc}
 
 These definitions relate to program metadata which is going to be
 displayed on its startup.
 
 \begin{minted}[]{c}
 #define BELIEVE_VERSION   "0.3"
-#define BELIEVE_COPYRIGHT "2019-2020 Lucas Vieira"
+#define BELIEVE_COPYRIGHT "2019-2021 Lucas Vieira"
 #define BELIEVE_LICENSE   "MIT"
 #define BELIEVE_BUILD_TIME __DATE__ " " __TIME__
 \end{minted}
@@ -505,7 +505,7 @@ debug outputs will be available.
 By default we'll leave it on, at least for now.
 
 \section{Default headers}
-\label{sec:org730eb2d}
+\label{sec:org6b35838}
 
 We'll be using \texttt{stdio.h} for default console I/O, plus \texttt{stdint.h} for some
 standard integer types. \texttt{string.h} provides definitions to handle string
@@ -529,7 +529,7 @@ expressions.
 \end{minted}
 
 \section{Boehm-Demers-Weiser Garbage Collector}
-\label{sec:orga9e3290}
+\label{sec:orgdf50217}
 
 We also use Boehm-Demers-Weiser GC for garbage collection, instead of
 programming our own. The \texttt{GC\_DEBUG} flag helps on debugging. See that we
@@ -548,14 +548,14 @@ Plus, \href{https://www.hboehm.info/gc/04tutorial.pdf}{one could check the Boehm
 Hans-J. Boehm, for a quick overview of this library.
 
 \chapter{Fundamental data types}
-\label{sec:org430f550}
+\label{sec:org794e31d}
 
 The first thing to do is specify how the data is going to be handled
 by the interpreter. Here, we define each of these kinds of data. Any
 procedure for data manipulation will be defined afterwards.
 
 \section{Enumerating Bel types}
-\label{sec:org5ce9afc}
+\label{sec:org1958574}
 
 We begin by specifying all data types, which Bel has four: symbols,
 pairs, characters and streams. We also add a number type, which is
@@ -574,7 +574,7 @@ typedef enum
 \end{minted}
 
 \section{Pair}
-\label{sec:orge22a34b}
+\label{sec:org79e4e23}
 
 A pair can have two things, which can in return be one of the four
 data types themselves. Since this is sort of a recursive definition,
@@ -592,7 +592,7 @@ typedef struct
 \end{minted}
 
 \section{Character}
-\label{sec:org1d5756d}
+\label{sec:org6fe3fff}
 
 A character is nothing but an integer in standard C. For now we'll
 support only ASCII, so there is no actual need to instantiate the
@@ -606,7 +606,7 @@ typedef int8_t Bel_char;
 \end{minted}
 
 \section{Symbol}
-\label{sec:org90801ad}
+\label{sec:org5f95714}
 
 A symbol is nothing but a specific index on the symbol table, so
 that's how we'll define it.
@@ -616,7 +616,7 @@ typedef uint64_t Bel_sym;
 \end{minted}
 
 \section{Stream}
-\label{sec:org72de1a9}
+\label{sec:org805b894}
 
 The stream type is somewhat implementation-dependent. In C, a standard
 way to refer to streams is to use a \texttt{FILE} pointer, since \texttt{stdout} and
@@ -660,7 +660,7 @@ typedef struct
 \end{minted}
 
 \section{Number}
-\label{sec:org53380eb}
+\label{sec:org8e0a66e}
 
 Bel does not specify any numeric types in its standard. In fact,
 numbers could be reproduced in Bel by using Church numerals, for
@@ -725,7 +725,7 @@ struct BEL_NUMBER {
 \end{minted}
 
 \section{The \texttt{Bel} structure}
-\label{sec:org83a291e}
+\label{sec:orgd9a47c1}
 
 The remaining thing to do is join all the types into the \texttt{Bel} type,
 which will serve as our generic way of dealing with things.
@@ -746,9 +746,9 @@ struct BEL
 \end{minted}
 
 \chapter{Essential structures and manipulation of data}
-\label{sec:orgb6ec23b}
+\label{sec:org95caa07}
 \section{Basic definitions}
-\label{sec:org76f9845}
+\label{sec:org9dfbaab}
 
 These definitions relate to essential symbols of the Bel global
 environment. They also encode the symbols' position on the global
@@ -795,7 +795,7 @@ Bel *bel_g_dynae;
 \end{minted}
 
 \subsection{Forward declarations}
-\label{sec:orgb77a98f}
+\label{sec:org4115c52}
 
 We need to forward declare a few functions which will be useful for
 certain operations. For example, it is important that we make a
@@ -814,7 +814,7 @@ Bel *bel_mklist(int, ...);
 \end{minted}
 
 \section{Predicates}
-\label{sec:orge66585a}
+\label{sec:orgd37f592}
 
 It is important to have a few predicates which will help us check for
 errors. These predicates do not check for argument nullability
@@ -822,7 +822,7 @@ errors. These predicates do not check for argument nullability
 data!
 
 \subsection{\texttt{symbolp}}
-\label{sec:org3ef7a22}
+\label{sec:orgc5f38f4}
 
 \texttt{bel\_symbolp} tests whether the element is a symbol.
 
@@ -831,7 +831,7 @@ data!
 \end{minted}
 
 \subsection{\texttt{nilp}}
-\label{sec:org1045753}
+\label{sec:orga54798f}
 
 \texttt{bel\_nilp} tests whether the element is the \emph{symbol} \texttt{nil}.
 
@@ -841,7 +841,7 @@ data!
 \end{minted}
 
 \subsection{\texttt{pairp}}
-\label{sec:org2bd2cbb}
+\label{sec:org114a409}
 
 \texttt{bel\_pairp} tests whether the element is a \emph{pair}.
 
@@ -850,7 +850,7 @@ data!
 \end{minted}
 
 \subsection{\texttt{atomp}}
-\label{sec:orgfad22ca}
+\label{sec:orgff1a74d}
 
 \texttt{bel\_atomp} tests whether an element is not a \emph{pair} -- that is, if it is
 not "divisible".
@@ -860,7 +860,7 @@ not "divisible".
 \end{minted}
 
 \subsection{\texttt{charp}}
-\label{sec:orgc201d9a}
+\label{sec:org82f7c5d}
 
 \texttt{bel\_charp} tests whether the object is a character.
 
@@ -870,7 +870,7 @@ not "divisible".
 \end{minted}
 
 \subsection{\texttt{streamp}}
-\label{sec:orgdefa1c6}
+\label{sec:org49b1acd}
 
 \texttt{bel\_streamp} tests whether the object is a stream.
 
@@ -880,7 +880,7 @@ not "divisible".
 \end{minted}
 
 \subsection{\texttt{numberp}}
-\label{sec:orge464828}
+\label{sec:orgb5cb77c}
 
 \texttt{bel\_numberp} determines whether \texttt{x} is a number or not. Notice that
 numbers are non-standard to Bel's definition.
@@ -891,7 +891,7 @@ numbers are non-standard to Bel's definition.
 \end{minted}
 
 \subsection{\texttt{idp}}
-\label{sec:org0c45f04}
+\label{sec:org8f53d3d}
 
 \texttt{bel\_idp} tests whether an object is identical to another.
 According to the Bel specification, identity is stricter than
@@ -967,7 +967,7 @@ bel_idp_nums(Bel *x, Bel *y)
 \end{minted}
 
 \subsection{\texttt{errorp}}
-\label{sec:orgcee9563}
+\label{sec:org0d13478}
 
 \texttt{bel\_errorp} tests whether a specific object is a list in the format
 \texttt{(lit err . rest)}.
@@ -987,7 +987,7 @@ bel_errorp(Bel *x)
 \end{minted}
 
 \subsection{\texttt{proper-list-p}}
-\label{sec:org7fbf70c}
+\label{sec:org1abc631}
 
 A proper list is any list which ends in an appropriate \texttt{nil} symbol. So
 for example, \texttt{(1 2 3)} is a proper list, but \texttt{(1 2 3 . 4)} is not. Compare
@@ -1024,7 +1024,7 @@ bel_proper_list_p(Bel *x)
 \end{minted}
 
 \subsection{\texttt{stringp}}
-\label{sec:org492778d}
+\label{sec:orgb04af6e}
 
 An object is a string if and only if:
 
@@ -1062,7 +1062,7 @@ bel_stringp(Bel *x)
 \end{minted}
 
 \subsection{\texttt{literalp}}
-\label{sec:org191f9f7}
+\label{sec:org1118e75}
 
 \texttt{bel\_literalp} takes a proper list and tells whether the list is a
 literal, that is, if the first element of the list is the symbol \texttt{lit}.
@@ -1080,7 +1080,7 @@ bel_literalp(Bel *x)
 \end{minted}
 
 \subsection{\texttt{primitivep}}
-\label{sec:orgda0fbfc}
+\label{sec:orgbcc0b56}
 
 \texttt{bel\_primitivep} takes a literal and tests whether it is a primitive,
 that is, if the second element of the list is the symbol \texttt{prim}.
@@ -1096,7 +1096,7 @@ bel_primitivep(Bel *x)
 \end{minted}
 
 \subsection{\texttt{closurep}}
-\label{sec:org9a0ff60}
+\label{sec:org6cb411e}
 
 \texttt{bel\_closurep} takes a literal and tests whether it is a closure, that
 is, if the second element of the list is the symbol \texttt{clo}.
@@ -1112,7 +1112,7 @@ bel_closurep(Bel *x)
 \end{minted}
 
 \subsection{\texttt{quotep}}
-\label{sec:org67bc07e}
+\label{sec:org830bc90}
 
 \texttt{bel\_quotep} takes a proper list and determines whether it is a quoted
 form.
@@ -1130,7 +1130,7 @@ bel_quotep(Bel *x)
 \end{minted}
 
 \subsection{\texttt{number-list-p}}
-\label{sec:org3269c08}
+\label{sec:org1b09c69}
 
 \texttt{bel\_number\_list\_p} determines whether \texttt{x} is a proper list of numbers.
 
@@ -1157,7 +1157,7 @@ bel_number_list_p(Bel *x)
 \end{minted}
 
 \section{Symbol Table and Symbols}
-\label{sec:org3271e8a}
+\label{sec:orgc2d2914}
 
 The symbol table is an array that grows as necessary, doubling in
 size, but never shrinks on the program's lifetime. Each element of the
@@ -1267,7 +1267,7 @@ bel_mksymbol(const char *str)
 \end{minted}
 
 \section{Pairs}
-\label{sec:org636d3b1}
+\label{sec:org03b7ff2}
 
 Pairs are the kernel of every Lisp, so we need tools to manipulate
 them.
@@ -1395,7 +1395,7 @@ bel_mklist(int n_elem, ...)
 \end{minted}
 
 \section{Characters and Strings}
-\label{sec:org47255a4}
+\label{sec:org3d394d2}
 
 Let's begin by adding a small function to wrap a character in a Bel
 object.
@@ -1554,7 +1554,7 @@ bel_cstring(Bel *belstr)
 \end{minted}
 
 \section{Streams}
-\label{sec:org64d327a}
+\label{sec:org13b5c51}
 
 We start by creating tools to manipulate streams. First, we create a
 raw stream from a file.
@@ -1751,7 +1751,7 @@ bel_init_streams(void)
 \end{minted}
 
 \subsection{Stream manipulation safety}
-\label{sec:orgc610d1d}
+\label{sec:orgb00eef2}
 
 Since streams are defined taking advantage of the C API for
 manipulating files, unfortunately these demand careful usage on Bel
@@ -1762,7 +1762,7 @@ automatically closes the stream when the stream object is garbage
 collected.
 
 \section{Numbers}
-\label{sec:orge8072d9}
+\label{sec:org853170c}
 
 As stated before, numbers are not described in Bel specification,
 however we're implementing it for minimal ease and performance for
@@ -1772,7 +1772,7 @@ We've built a resilient and recursive model for constituting numbers,
 so we begin by arranging tools to create them.
 
 \subsection{Number generation}
-\label{sec:org12e5df9}
+\label{sec:orga24afa3}
 
 \emph{Integers} are pretty straightforward: we just allocate a proper space
 and store them.
@@ -1867,7 +1867,7 @@ bel_mkcomplex(Bel *real, Bel *imag)
 \end{minted}
 
 \subsection{Number arithmetic}
-\label{sec:orgb972730}
+\label{sec:org755cd72}
 
 The following operations always happen between two numbers. We make
 sure they are of compatible types to perform these operations, and
@@ -1875,7 +1875,7 @@ then we return numbers of a proper subtype afterwards.
 
 \begin{enumerate}
 \item Forward declarations
-\label{sec:org1238b80}
+\label{sec:orgd26d9ec}
 
 \begin{minted}[]{c}
 /* Forward declarations */
@@ -1886,7 +1886,7 @@ Bel *bel_num_div(Bel *x, Bel *y);
 \end{minted}
 
 \item Coercion
-\label{sec:orgbd6ff1e}
+\label{sec:org42e893d}
 
 Let's start with subtype coercion. Given a number and a number type
 flag, we coerce that number to a new number of that subtype. Returns a
@@ -2018,7 +2018,7 @@ bel_num_coerce(Bel *number, BEL_NUMBER_TYPE type)
 \end{minted}
 
 \item Force same type
-\label{sec:org3e06fb3}
+\label{sec:org771f3ee}
 
 The following function takes two numbers, and makes sure they both
 have a subtype where both retain full information. Returns a pair
@@ -2130,7 +2130,7 @@ bel_num_mksametype(Bel *x, Bel *y)
 
 \begin{enumerate}
 \item Helper macro for functions
-\label{sec:orgbb0aade}
+\label{sec:org39b4d80}
 
 The following macro does an inline conversion of \texttt{Bel} pointers to same
 number subtype. Only the locals \texttt{x} and \texttt{y} will be affected; the original
@@ -2147,7 +2147,7 @@ pointed objects won't be modified.
 \end{enumerate}
 
 \item Checking for zero
-\label{sec:org9b1d905}
+\label{sec:org09b07e7}
 
 This function checks whether the argument is zero.
 
@@ -2181,7 +2181,7 @@ bel_num_zerop(Bel *x)
 \end{minted}
 
 \item Addition
-\label{sec:org2c1041f}
+\label{sec:org04d5227}
 
 The following function adds two arbitrary numbers.
 
@@ -2230,7 +2230,7 @@ bel_num_add(Bel *x, Bel *y)
 \end{minted}
 
 \item Subtraction
-\label{sec:org3fce9d7}
+\label{sec:org6188c3f}
 
 This function is identical to \texttt{bel\_num\_add}, however it subtracts two
 numbers.
@@ -2281,7 +2281,7 @@ bel_num_sub(Bel *x, Bel *y)
 \end{minted}
 
 \item Multiplication
-\label{sec:org93ffa87}
+\label{sec:org3550e59}
 
 This function multiplies two arbitrary numbers.
 
@@ -2333,7 +2333,7 @@ bel_num_mul(Bel *x, Bel *y)
 \end{minted}
 
 \item Division
-\label{sec:org7ca53fd}
+\label{sec:orgc6947f2}
 
 This function divides two arbitrary numbers.
 Notice that we check whether the second argument is zero.
@@ -2402,7 +2402,7 @@ bel_num_div(Bel *x, Bel *y)
 \end{enumerate}
 
 \section{Errors}
-\label{sec:orgf8d23f9}
+\label{sec:org3b0b24c}
 
 Bel does not have a formal specification on errors in primitives,
 other than saying that there might be an \texttt{err} function which throws an
@@ -2449,12 +2449,12 @@ bel_mkerror(Bel *format, Bel *arglist)
 \end{minted}
 
 \chapter{Axioms}
-\label{sec:orgd75130e}
+\label{sec:orgd3decc3}
 
 To save memory, some of the following things will be globally defined.
 
 \section{Variables and constants}
-\label{sec:org601145d}
+\label{sec:org907f6b5}
 
 Define global symbols which can be used across the program. These
 symbols should be used repeatedly, and that's why they were already
@@ -2478,7 +2478,7 @@ bel_init_ax_vars(void)
 here since we'll need this symbol for generating primitives later.
 
 \section{List of all characters}
-\label{sec:orgd03474c}
+\label{sec:org034a7d5}
 
 First, we build an auxiliary function which converts an 8-bit number
 into a string, where each character represents a bit.
@@ -2547,7 +2547,7 @@ bel_init_ax_chars(void)
 \end{minted}
 
 \section{Environment}
-\label{sec:org7696758}
+\label{sec:orgec1b4ed}
 
 Any environment is nothing but a list of pairs, where each pair \texttt{(var
 . val)} represents the binding of a specific symbol \texttt{var} to the value
@@ -2811,7 +2811,7 @@ bel_unbind(Bel **lenv, Bel *sym)
 \end{minted}
 
 \subsection{Types and hierarchy of environments}
-\label{sec:org8f18841}
+\label{sec:org3c45bc8}
 
 There are three kinds of environments in Bel: Global, Lexical and
 Dynamic. The global environment (\texttt{bel\_g\_globe}, \texttt{globe}) contains symbols
@@ -2833,7 +2833,7 @@ In Bel, any symbol lookup is performed by traversing the environments
 in the following order: \emph{Dynamic}, \emph{Lexical}, \emph{Global}.
 
 \subsection{Environment extension and capturing}
-\label{sec:org5527000}
+\label{sec:org50f754d}
 
 Being a sequential list of pairs, where the values are pushed to their
 top, environments (such as the lexical) can share symbols. For
@@ -2886,7 +2886,7 @@ top level), such assignment to \texttt{y} would create a new binding on the
 global environment, effectively creating a new global variable.
 
 \section{Literals}
-\label{sec:org28a4417}
+\label{sec:org5b5c125}
 
 Although literals have already been seen on error implementation, but
 here we reuse the concept to generate literals that should exist on
@@ -2924,7 +2924,7 @@ bel_mkliteral(Bel *rest)
 \end{minted}
 
 \subsection{Primitives}
-\label{sec:orgfb3aeeb}
+\label{sec:org4652a13}
 
 As stated above, primitives are represented as literals, since they
 evaluate to themselves. We start by defining a tool to create a
@@ -3016,7 +3016,7 @@ bel_init_ax_primitives()
 \end{minted}
 
 \subsection{Closures}
-\label{sec:orge42b739}
+\label{sec:org3231c11}
 
 Creating a closure is very straightforward. We take an environment and
 a list. Such list must have two elements, where the first is a lambda
@@ -3033,13 +3033,13 @@ bel_mkclosure(Bel *lenv, Bel *rest)
 \end{minted}
 
 \chapter{Printing}
-\label{sec:org0b2bccb}
+\label{sec:org70df71e}
 
 The following functions are used to print a certain object on standard
 output.
 
 \section{Forward declarations}
-\label{sec:orgebd2579}
+\label{sec:orgdbf1fcf}
 
 We forward declare the \texttt{bel\_print} function since printing pairs calls
 it for the pairs' parts.
@@ -3051,7 +3051,7 @@ void bel_print_primitive(Bel*);
 \end{minted}
 
 \section{Printing pairs}
-\label{sec:orgc4a643d}
+\label{sec:org4dfba07}
 
 The first function is a specialization for printing pairs in
 general. This function should also handle the printing of lists
@@ -3106,7 +3106,7 @@ bel_print_pair(Bel *obj)
 \end{minted}
 
 \subsection{Printing functions}
-\label{sec:org531d899}
+\label{sec:org82c25e8}
 
 We also add  a general way for printing closures.  This also turns the
 closure  printing  safer,  since  we   do  not  print  the  associated
@@ -3142,7 +3142,7 @@ bel_print_primitive(Bel *obj)
 \end{minted}
 
 \section{Printing strings}
-\label{sec:org8fcd3f9}
+\label{sec:org146716c}
 
 A string is a very specific type of list: it is a proper list
 comprised only of characters. However, this function is not supposed
@@ -3170,7 +3170,7 @@ bel_print_string(Bel *obj)
 \end{minted}
 
 \section{Printing streams}
-\label{sec:org43d53b6}
+\label{sec:orgeb39526}
 
 Printing a stream involves printing something that cannot be read back
 in, so it can be considered merely aestethic. I made an option of
@@ -3196,7 +3196,7 @@ bel_print_stream(Bel *obj)
 \end{minted}
 
 \section{Printing numbers}
-\label{sec:orgf5437bb}
+\label{sec:orge4b5fd8}
 
 We develop a function to print an arbitrary number. The function takes
 the number itself and a parameter which tells whether the sign should
@@ -3266,7 +3266,7 @@ bel_print_number(Bel *num, int force_sign)
 \end{minted}
 
 \section{Generic printing}
-\label{sec:orgaec8100}
+\label{sec:orgbe6f29e}
 
 The next function handles the printing of any data type. Notice that
 it does not automatically print a newline character.
@@ -3305,7 +3305,7 @@ bel_print(Bel *obj)
 \end{minted}
 
 \chapter{Evaluator}
-\label{sec:orgcfa8dce}
+\label{sec:orgf8a5c4e}
 
 The evaluator is the most crucial part of the Bel system. We follow
 the pattern of the \emph{metacircular evaluator}: by having two functions,
@@ -3314,7 +3314,7 @@ them with auxiliary functions and special forms to produce a working
 interpreter for a Lisp language.
 
 \section{Forward declarations}
-\label{sec:org67828f9}
+\label{sec:org2143294}
 
 These declarations specify the most crucial functions of the
 interpreter. Forward declarations are important for the mutual calling
@@ -3342,7 +3342,7 @@ Bel *bel_special_set(Bel *clauses, Bel *lenv);
 \end{minted}
 
 \section{The \emph{eval} function}
-\label{sec:orgc498408}
+\label{sec:org4e430f3}
 
 \texttt{bel\_eval} is the \emph{evaluation} function. The objective is to take a
 particular expression, identify what it is (whether it is a special
@@ -3438,7 +3438,7 @@ bel_eval(Bel *exp, Bel *lenv)
 \end{minted}
 
 \section{The \emph{apply} function}
-\label{sec:org80d32da}
+\label{sec:org69abcb1}
 
 \texttt{bel\_apply} is the \emph{application} function. It takes a certain \emph{function} and
 applies to the \emph{list of evaluated arguments}. A function can be a
@@ -3509,21 +3509,21 @@ bel_apply(Bel *fun, Bel *args)
 \end{minted}
 
 \section{Auxiliary functions}
-\label{sec:org6639c22}
+\label{sec:orgf799c95}
 
 The following functions are also essential to the evaluator, but have
 a more secondary role, such as handling special forms, applying
 primitive operators, and other kinds of things.
 
 \subsection{Evaluating special forms}
-\label{sec:org7ebc748}
+\label{sec:org84fad50}
 
 Some special forms require greater attention, and so it is a little
 better to give them their own function.
 
 \begin{enumerate}
 \item \texttt{(quote x)}
-\label{sec:orgf6c61e1}
+\label{sec:org29b9bac}
 
 In Lisp languages, quoting an atom, like the expression \texttt{'a}, translates
 to an expression such as \texttt{(quote a)}, which will then be evaluated by
@@ -3546,7 +3546,7 @@ bel_special_quote(Bel *exp, Bel *lenv)
 \end{minted}
 
 \item \texttt{(if . clauses)}
-\label{sec:org0fd9b0a}
+\label{sec:org33fbac4}
 
 The conditional \texttt{if} takes any number of clauses (at least two), and
 does their evaluation in pairs of clauses (not to be confused with the
@@ -3615,7 +3615,7 @@ bel_special_if(Bel *exp, Bel *lenv)
 \end{minted}
 
 \item \texttt{(dyn v x y)}
-\label{sec:orgbf3d106}
+\label{sec:org2cabb5d}
 
 The special form \texttt{dyn} evaluates \texttt{x} and \emph{dynamically} binds it to symbol
 \texttt{v}. After this dynamic binding, it then evaluates \texttt{y}, and finally
@@ -3676,7 +3676,7 @@ bel_special_dyn(Bel *rest, Bel *lenv)
 \end{minted}
 
 \item \texttt{(set . rest)}
-\label{sec:orgdb0154a}
+\label{sec:org42efddf}
 
 This form works with pairs in an expression like \texttt{(set s1 v1 s2
 v2...)} in such a way that \texttt{vn} is evaluated and globally bound to \texttt{sn}.
@@ -3741,7 +3741,7 @@ bel_special_set(Bel *clauses, Bel *lenv)
 \end{enumerate}
 
 \subsection{Evaluate a list of values}
-\label{sec:orgd85cc89}
+\label{sec:org9316852}
 
 \texttt{bel\_evlist} evaluates a list of expressions under the given lexical
 environment. This function should only be called for a proper list.
@@ -3773,7 +3773,7 @@ bel_evlist(Bel *elist, Bel *lenv)
 \end{minted}
 
 \subsection{Apply a primitive operator to a list}
-\label{sec:org1924664}
+\label{sec:orgb031528}
 
 Applying a primitive to a list involves checking for the symbol which
 specifies it and dispatching the arguments to a specific function
@@ -3781,7 +3781,7 @@ which checks arity and performs the job.
 
 \begin{enumerate}
 \item Forward declarations
-\label{sec:org7f43444}
+\label{sec:org6dd25ee}
 
 These forward declarations are related to the actual implementation of
 primitive functions in the Bel environment. We forward-declare them so
@@ -3824,7 +3824,7 @@ Bel *bel_prim_gc(Bel *args);
 \end{minted}
 
 \item Applying primitive operations
-\label{sec:orge47d1b6}
+\label{sec:orgb79aef2}
 
 The \texttt{bel\_apply\_primop} function is the function which applies a
 primitive operation, identified as a symbol, to a list of evaluated
@@ -3933,7 +3933,7 @@ bel_apply_primop(Bel *sym, Bel *args)
 \end{minted}
 
 \item Maximum arity check
-\label{sec:org997a509}
+\label{sec:org9934bfb}
 
 The following macro is a helper for checking the arity of a specific
 function. Passing the arguments list and the number of desired
@@ -3962,13 +3962,13 @@ guaranteed to be \texttt{nil} when retrieval is attempted.
 \end{minted}
 
 \item Primitive functions
-\label{sec:org5e10b2c}
+\label{sec:orgec0517d}
 
 The next functions implement primitive functions for the environment.
 
 \begin{enumerate}
 \item \texttt{(id x y)}
-\label{sec:org980bf65}
+\label{sec:org7800f7a}
 
 \texttt{id} checks whether \texttt{x} and \texttt{y} are identical. This is stricter than
 equality, since identity can only be tested for things that are always
@@ -3986,7 +3986,7 @@ bel_prim_id(Bel *args)
 \end{minted}
 
 \item \texttt{(join x y)}
-\label{sec:orgb53f659}
+\label{sec:org982227b}
 
 \texttt{join} creates a pair with \texttt{x} as its \emph{car} and \texttt{y} as its \emph{cdr}.
 
@@ -4001,7 +4001,7 @@ bel_prim_join(Bel *args)
 \end{minted}
 
 \item \texttt{(car x)} and \texttt{(cdr x)}
-\label{sec:orgf0db397}
+\label{sec:org7247275}
 
 \texttt{car} returns the first element of a pair \texttt{x}.
 
@@ -4026,7 +4026,7 @@ bel_prim_cdr(Bel *args)
 \end{minted}
 
 \item \texttt{(type x)}
-\label{sec:org0f99a2a}
+\label{sec:org378cde8}
 
 \texttt{type} returns a symbol which specifies the type of \texttt{x}. The returning
 values can be \texttt{symbol}, \texttt{pair}, \texttt{char}, \texttt{stream} or \texttt{number}.
@@ -4060,7 +4060,7 @@ bel_prim_type(Bel *args)
 \end{minted}
 
 \item \texttt{(xar x y)} and \texttt{(xdr x y)}
-\label{sec:org0a4b488}
+\label{sec:org4f28135}
 
 \texttt{xar} replaces the \emph{car} of a pair \texttt{x} with the given value \texttt{y}.
 
@@ -4103,7 +4103,7 @@ bel_prim_xdr(Bel *args)
 \end{minted}
 
 \item \texttt{(sym x)} and \texttt{(nom x)}
-\label{sec:org87495e9}
+\label{sec:org0396639}
 
 \texttt{sym} takes a Bel string and converts it into a symbol.
 
@@ -4150,7 +4150,7 @@ bel_prim_nom(Bel *args)
 \end{minted}
 
 \item \texttt{(wrb x y)} and \texttt{(rdb x)}
-\label{sec:org6ffc55e}
+\label{sec:org7b042f4}
 
 \texttt{wrb} and \texttt{rdb} are functions responsible for input and output on a
 stream.
@@ -4213,7 +4213,7 @@ bel_prim_rdb(Bel *args)
 \end{minted}
 
 \item \texttt{(ops x y)}, \texttt{(cls x)} and \texttt{(stat x)}
-\label{sec:orgf758a15}
+\label{sec:org3398e23}
 
 \texttt{ops}, \texttt{cls} and \texttt{stat} are functions related to the status of a stream.
 
@@ -4310,7 +4310,7 @@ bel_prim_stat(Bel *args)
 \end{minted}
 
 \item \texttt{(coin)}
-\label{sec:org75d8a64}
+\label{sec:org019d527}
 
 \texttt{coin} returns symbols \texttt{t} and \texttt{nil} at random.
 
@@ -4324,7 +4324,7 @@ bel_prim_coin(Bel *args)
 \end{minted}
 
 \item \texttt{(sys x)}
-\label{sec:org666f35d}
+\label{sec:org0655007}
 
 \texttt{sys} takes a string \texttt{x} and sends it to the operational system, as a
 console command, and returns the command's value as a proper Bel
@@ -4363,14 +4363,14 @@ bel_prim_sys(Bel *args)
 \end{enumerate}
 
 \item Primitive operators
-\label{sec:org91b0e6e}
+\label{sec:orgc5e5816}
 
 These primitive operations take an arbitrary number of arguments and
 does the desired operation across the given values.
 
 \begin{enumerate}
 \item Addition
-\label{sec:org001c588}
+\label{sec:orgec4f105}
 
 Adds all given values on the list, reducing them to a single
 number. If not argument is given, returns \texttt{0}. If called with a single
@@ -4409,7 +4409,7 @@ bel_prim_add(Bel *args)
 \end{minted}
 
 \item Subtraction
-\label{sec:org28aa4e2}
+\label{sec:org86eef5b}
 
 Subtracts all given values on the list, reducing them to a single
 number. If no argument is given, returns zero. If called with a
@@ -4450,7 +4450,7 @@ bel_prim_sub(Bel *args)
 \end{minted}
 
 \item Multiplication
-\label{sec:org12e9603}
+\label{sec:org4686fda}
 
 Multiplies all given values on the list, reducing them to a single
 number. If no argument is given, returns \texttt{1}. If called with a single
@@ -4490,7 +4490,7 @@ bel_prim_mul(Bel *args)
 \end{minted}
 
 \item Division
-\label{sec:orgd649a89}
+\label{sec:org3ac1973}
 
 Divides all given arguments on the given list, reducing them to a
 single number. If no argument is given, returns \texttt{1}. If called
@@ -4541,13 +4541,13 @@ bel_prim_div(Bel *args)
 \end{enumerate}
 
 \item Other primitives
-\label{sec:orgf26418f}
+\label{sec:org4560922}
 
 These primitives are not specified in the Bel language, but are useful.
 
 \begin{enumerate}
 \item \texttt{(err x . rest)}
-\label{sec:org9cd81ab}
+\label{sec:orgdc2a7fe}
 
 \texttt{err} creates an error using \texttt{x} as a format string, and appends the \texttt{rest}
 to the error as format arguments.
@@ -4574,7 +4574,7 @@ bel_prim_err(Bel *args)
 \end{minted}
 
 \item \texttt{(gc)}
-\label{sec:orged958f2}
+\label{sec:orgecaa835}
 
 \texttt{gc}    forces    the    garbage   collector    to    perform    garbage
 collection. Always returns \texttt{nil}.
@@ -4592,7 +4592,7 @@ bel_prim_gc(Bel *args)
 \end{enumerate}
 
 \subsection{Bind a list of variables to values}
-\label{sec:org6638863}
+\label{sec:orgc1c2e14}
 
 \texttt{bel\_bind} binds each variable to an associated value. If the binding
 fails at any point, an error is returned; if not, a new environment
@@ -4628,10 +4628,10 @@ bel_bind(Bel *vars, Bel *vals, Bel *lenv)
 }
 \end{minted}
 
-\chapter{Parser}
-\label{sec:org1fd9f61}
+\chapter{Reader}
+\label{sec:org02cc93e}
 
-Our next job is  to set up the parser. This section  of our program is
+Our next job is  to set up the reader. This section  of our program is
 responsible for taking  a specific amount of text and  turning it into
 an actual program structure.
 
@@ -4689,7 +4689,7 @@ parser should work. Every nested parentheses \texttt{()} indicates a pair whose
 as other data objects.
 
 \section{Tokenizer}
-\label{sec:org8af8334}
+\label{sec:org9645f29}
 
 The  first step  for parsing  an expression  is tokenization.  This is
 where we will split our  string into proper tokens (substrings), which
@@ -4727,7 +4727,7 @@ routines could be bootstrapped in Bel itself, so it opens the door for
 introducing languages built on top of Bel.
 
 \subsection{Reserved symbols}
-\label{sec:orgb65ef0f}
+\label{sec:org4b0dc60}
 
 Some characters  are very basic  to Lisp, so  we'll just go  ahead and
 hardcode them. These symbols will automatically be excluded from token
@@ -4760,7 +4760,7 @@ isreserved(char c)
 \end{minted}
 
 \subsection{Read macros}
-\label{sec:orgd5bd3cb}
+\label{sec:org5fc7e6c}
 
 The read  macros themselves are  exclusively programmed by  using Bel,
 and  they are  an  alist.  Each element  is  another  list with  three
@@ -4768,8 +4768,7 @@ elements at most.
 
 \begin{verbatim}
 ((\')
- (\# \nul read-special-number)
- (\" \"))
+ (\# \nul read-special-number))
 \end{verbatim}
 
 As of  now, read macros are  still not implemented in  Believe. In the
@@ -4778,16 +4777,42 @@ same space, managed by a single read  table, which will be used by the
 rest of the tokenizer.
 
 \begin{minted}[]{c}
+Bel *_Bel_rmacros;
+\end{minted}
+
+\begin{minted}[]{c}
+Bel*
+bel_init_read_macros()
+{
+    _Bel_rmacros =
+        bel_mklist(1,
+                   bel_mklist(3,
+                              bel_mkchar('\''),
+                              bel_g_nil,
+                              bel_mksymbol("read-special-quote")));
+    return bel_g_t;
+}
+\end{minted}
+
+\begin{minted}[]{c}
 int
-isreadmacro(int c)
+isreadmacro(char c)
 {
     // TODO!
+    Bel *itr = _Bel_rmacros;
+    while(!bel_nilp(itr)) {
+        Bel *entry  = bel_car(itr);
+        Bel *charac = bel_car(entry);
+        if(charac->chr == c)
+            return 1;
+        itr = bel_cdr(itr);
+    }
     return 0;
 }
 \end{minted}
 
 \subsection{Token sizes}
-\label{sec:org3f1ae4f}
+\label{sec:org8e6efde}
 
 Before we begin  the process of tokenization, it is  important that we
 create a way to count the sizes  of tokens so that we can separate the
@@ -4857,7 +4882,7 @@ gen_tok_string(const char *buffer, size_t pos, size_t length)
 \end{minted}
 
 \subsection{Tokenization}
-\label{sec:org543cd92}
+\label{sec:org4aa80bf}
 
 Tokenization is  actually a simple  process. We  are going to  write a
 procedure which creates a list and keeps appending Bel strings to it.
@@ -4911,7 +4936,7 @@ bel_tokenize(const char *buffer)
     for(i = 0; i < strlen(buffer); i++) {
         Bel *token = bel_g_nil;
         if(isreadmacro(buffer[i])) {
-            // TODO
+            token = gen_tok_string(buffer, i, 1);
         } else if(buffer[i] == ';') {
             size_t length =
                 token_verbatim_length(buffer, i, '\n');
@@ -4956,7 +4981,7 @@ bel_tokenize(const char *buffer)
 \end{minted}
 
 \section{Parsing}
-\label{sec:org36658eb}
+\label{sec:org9420fe2}
 
 Now we  are going  to work in  the parser itself.  Since the  input is
 already tokenized, all  we need to do is traverse  the list of tokens,
@@ -4986,7 +5011,7 @@ controlling the  depth of recursion.  We may  also find some  kinds of
 syntax errors here.
 
 \subsection{Forward declarations}
-\label{sec:orgc06ed93}
+\label{sec:orgbacd3da}
 
 Let's  begin  by declaring  a  few  prototypes for  important  parsing
 functions. This time we'll be looking deeper into the tokens we split.
@@ -5015,7 +5040,7 @@ int isstrstr(const char*);
 \end{minted}
 
 \subsection{Token list parser}
-\label{sec:orga9ccc5d}
+\label{sec:org535a8f9}
 
 Here, we  are going to  break a list of  tokens into proper  lists. At
 this  point,   everything  should   already  be  broken   into  proper
@@ -5045,13 +5070,18 @@ bel_parse_expr(Bel *tokens, uint64_t depth)
 {
     Bel *expr = bel_g_nil;
     Bel *last = bel_g_nil;
+    /* Move next code to its own function!!! */
+    /* We can deal with read macros by parsing */
+    /* the next expression with it. */
     while(!bel_nilp(tokens)) {
         Bel *car           = bel_car(tokens);
         tokens             = bel_cdr(tokens);
         Bel *subexpr       = bel_g_nil;
         const char *carstr = bel_cstring(car);
 
-        if(!strcmp(carstr, ")")) {
+        /* if((strlen(carstr) == 1) && isreadmacro(carstr[0])) { */
+        /*     // 1. Read the next expression */
+        /* } else  */if(!strcmp(carstr, ")")) {
             if(depth == 0) {
                 return bel_mkerror(
                     bel_mkstring("Unbalanced parentheses"),
@@ -5085,7 +5115,7 @@ bel_parse_expr(Bel *tokens, uint64_t depth)
 \end{minted}
 
 \subsection{Token parser}
-\label{sec:orgdaab6be}
+\label{sec:org39560e1}
 
 Parsing tokens themselves  is a simple case analysis  too. Here, we're
 taking the tokens as C  strings and performing direct text comparisons
@@ -5115,7 +5145,7 @@ bel_parse_token(Bel *token)
 
 \begin{enumerate}
 \item Parsing an integer
-\label{sec:org40a067e}
+\label{sec:orgf2bcb96}
 
 We  know that  a token  represents an  integer if  it is  comprised of
 digits only. It may be preceeded by a minus sign too.
@@ -5151,7 +5181,7 @@ bel_parse_int(const char *token)
 \end{minted}
 
 \item Parsing a float value
-\label{sec:org54a73e3}
+\label{sec:org334b83c}
 
 A floating point  may be syntactically preceeded by a  minus, and \emph{must}
 have a single dot anywhere.
@@ -5197,7 +5227,7 @@ bel_parse_float(const char *token)
 \end{minted}
 
 \item Parsing strings
-\label{sec:org24686df}
+\label{sec:orgc73ea57}
 
 Anything between  a pair  of \texttt{"} is  supposed to be  a string,  at least
 initially. So what we need to do is check for that.
@@ -5233,16 +5263,58 @@ bel_parse_string(const char *token)
 \end{minted}
 \end{enumerate}
 
+\chapter{REPL}
+\label{sec:orgf3fba67}
+
+We  will  now  deal  with  the  bits  of  our  interpreter  which  are
+responsible for  the user  experience, namely the  act of  inputting a
+string which shall be evaluated by the program.
+
+This  is what  we call  the \texttt{REPL}.  This is  an acronym  for the  words
+"Read",  "Evaluate", "Print",  "Loop",  which  as indicated,  describe
+precisely  what  it  does:  it  is mostly  comprised  of  a  function,
+responsible for four high-level abstraction operations.
+
+First, the  function reads  an input  from console.  This input  is an
+arbitrary  thing  written  by  the  user, and  is  just  a  string  of
+characters.  Then, this  string  is parsed  into  our proper  internal
+structure of a list,  where each element can be thought  of as a valid
+form.
+
+This generated list  is then passed to the  evaluator, which evaluates
+that  string on  an  empty lexical  environment.  Upon evaluation,  it
+generates a Bel object as response for  each of the input forms on the
+given list,  since it may contain  multiple forms typed in  a row, for
+example.
+
+This new list of  results is then printed to the  console. Each of the
+results on the list is then printed on a different line.
+
+Finally,  we  go back  to  the  beginning,  reading the  input  once
+again. This is what the \emph{loop} word refers to.
+
+\section{Reading}
+\label{sec:orgc91e568}
+
+\section{Evaluation}
+\label{sec:orgc3a06ae}
+
+\section{Printing}
+\label{sec:org6d9a427}
+
+\section{Loop}
+\label{sec:orgfd359bd}
+
 \chapter{Debug}
-\label{sec:org77cc0e8}
+\label{sec:org08e31fe}
 
 The following definitions are related to testing what we have so
 far.
 
 \section{Tests}
-\label{sec:orgeb06414}
+\label{sec:org7e6ca80}
 \subsection{String manipulation and printing}
-\label{sec:org39add92}
+\label{sec:orga0118d7}
 
 A string test which shows the conversion between C strings and Bel
 strings, and vice-versa.
@@ -5262,7 +5334,7 @@ string_test()
 \end{minted}
 
 \subsection{List/pair/dotted list notation}
-\label{sec:org7af9d7b}
+\label{sec:orgd55a564}
 
 The following notation tests the printing capabilities of the list
 printing algorithm. Should be able to handle printing lists and
@@ -5286,7 +5358,7 @@ notation_test()
 \end{minted}
 
 \subsection{Proper list notation}
-\label{sec:org758c1af}
+\label{sec:org59b876c}
 
 This next test outputs the list \texttt{(The quick brown fox jumps over the
 lazy dog)}, which is a proper list of symbols.
@@ -5313,7 +5385,7 @@ list_test()
 \end{minted}
 
 \subsection{Closure representation}
-\label{sec:org8ecec61}
+\label{sec:org1230d50}
 
 This test is also a list of symbols, but with nested lists also. Plus,
 this is a proper list, representing the internal representation of a
@@ -5356,7 +5428,7 @@ closure_repr_test()
 \end{minted}
 
 \subsection{Character list printing and environment lookup}
-\label{sec:org6403e78}
+\label{sec:org9a364ab}
 
 This next test prints the first ten characters in the global \texttt{chars},
 which is a list of pairs, each pair \texttt{(c . d)} containing a character \texttt{c},
@@ -5400,7 +5472,7 @@ character_list_test()
 \end{minted}
 
 \subsection{Read file bit by bit}
-\label{sec:org78e3d14}
+\label{sec:orgd411aff}
 
 This test opens up the Believe C source code file as a read stream,
 using Bel's stream structure, then proceeds to read ten bytes from it
@@ -5462,7 +5534,7 @@ read_file_test()
 \end{minted}
 
 \subsection{Display errors}
-\label{sec:org38155e1}
+\label{sec:org8b47125}
 
 We generate a few errors and grab them, then we print these errors on
 screen to show their literal structure.
@@ -5498,7 +5570,7 @@ show_errors_test()
 \end{minted}
 
 \subsection{Lookup primitives}
-\label{sec:org1577496}
+\label{sec:orga86040e}
 
 We look up a few registered primitives in the global environment, and
 print them in their literal form.
@@ -5533,7 +5605,7 @@ lookup_primitives_test()
 \end{minted}
 
 \subsection{Environment tests}
-\label{sec:org4fff953}
+\label{sec:org73b4179}
 
 The first test involves creating a temporary lexical environment,
 pushing a few literals, assigning values, unbinding values too.
@@ -5643,7 +5715,7 @@ global_assignment_test()
 \end{minted}
 
 \subsection{Number test}
-\label{sec:org320c81e}
+\label{sec:orge46a1bc}
 
 This test performs raw arithmetic on the four subtypes of numbers:
 integers, floats, complexes and fractions.
@@ -5729,7 +5801,7 @@ number_test()
 \end{minted}
 
 \subsection{Debriefing macro}
-\label{sec:org5259a1e}
+\label{sec:orgc02e85f}
 
 This macro is a helper for debriefing results of evaluation tests.
 
@@ -5746,7 +5818,7 @@ This macro is a helper for debriefing results of evaluation tests.
 \end{minted}
 
 \subsection{Evaluator test}
-\label{sec:orge5b65fe}
+\label{sec:org81ac112}
 
 This test performs the evaluation of a few forms so that we can check
 if the evaluator runs properly.
@@ -5895,7 +5967,7 @@ eval_test()
 \end{minted}
 
 \subsection{Arithmetic evaluation test}
-\label{sec:orgf152229}
+\label{sec:org1a83722}
 
 This next test tests the evaluation of arithmetic on some numbers,
 from calls to the evaluator itself.
@@ -5976,7 +6048,7 @@ arithmetic_eval_test()
 \end{minted}
 
 \subsection{Arity tests}
-\label{sec:org8f3b32c}
+\label{sec:org0bea859}
 
 The following tests check for the arity of primitive functions. By
 default, a small number of arguments is not a bug, and the missing
@@ -6004,7 +6076,7 @@ arity_test()
 \end{minted}
 
 \subsection{Dynamic binding test}
-\label{sec:orge0c1ff6}
+\label{sec:org068216a}
 
 This test attempts to bind the result of the division between \texttt{1} and \texttt{2}
 to a dynamic variable \texttt{x}, then proceeds to perform an operation with
@@ -6038,7 +6110,7 @@ dynamic_binding_test()
 \end{minted}
 
 \subsection{Global binding test}
-\label{sec:orgdf61b0b}
+\label{sec:org4f7ca66}
 
 This test attributes a certain closure to the symbol \texttt{square} globally,
 then proceeds to apply this new global function to some number.
@@ -6093,7 +6165,7 @@ global_binding_test()
 \end{minted}
 
 \subsection{Basic tokenizer test}
-\label{sec:orge8aaac2}
+\label{sec:org2e8ac0e}
 
 This tests the tokenize. Basically, it will take any string expression
 and attempt  to generate a  list of Bel  strings, each string  being a
@@ -6141,7 +6213,7 @@ basic_tokenizer_test()
 \end{minted}
 
 \subsection{Basic parser test}
-\label{sec:orgafe2e92}
+\label{sec:org48a1c74}
 
 This is a  test for the parser. This takes  the tokenizer's output and
 attempts to  parse each token  into a  proper Bel object  described by
@@ -6190,7 +6262,7 @@ parser_test()
 \end{minted}
 
 \subsection{Arbitrary input parsing}
-\label{sec:orgeeef05a}
+\label{sec:org3cc5315}
 
 This test  takes an arbitrary input  from the user and  parses it into
 proper Bel objects.
@@ -6233,10 +6305,12 @@ arbitrary_input_parsing()
 \end{minted}
 
 \subsection{Test-only REPL}
-\label{sec:org2434bb0}
+\label{sec:orga7009ee}
 
 This implements  a test REPL  which takes an  input from the  user and
-attempts to evaluate everything that is written.
+attempts to evaluate everything that is  written, and also works as an
+entry point  where the tests  can be accessed  as well, by  typing the
+command \texttt{\#t}.
 
 This is supposed to test the  parser and the evaluator together, those
 not being the interpreter itself.
@@ -6248,23 +6322,30 @@ testing purposes only.
 When you are done, type \texttt{\#q} to finish the evaluation session.
 
 \begin{minted}[]{c}
+void run_tests();
+
 void
 test_repl()
 {
     Bel *result;
     Bel *tokens;
     char input[1024] = {0};
+    puts("Enter an expression to be evaluated, or type #t for the test menu.");
     puts("When you are done, type #q to exit.");
-    puts("And don't worry about flush errors.");
     while(1) {
-        printf("test> ");
+        printf("> ");
         fgets(input, 1024, stdin);
         input[strlen(input)] = '\0';
 
-        // Sorry about that :V
-        if(input[0] == '#' &&
-           input[1] == 'q')
-            break;
+        // Sorry about that
+        if(input[0] == '#') {
+            if (input[1] == 'q')
+                break;
+            else if (input[1] == 't') {
+                run_tests();
+                break;
+            }
+        }
 
         tokens = bel_tokenize(input);
         result = bel_parse_expr(tokens, 0);
@@ -6278,9 +6359,9 @@ test_repl()
 \end{minted}
 
 \chapter{Entry point}
-\label{sec:org48b466a}
+\label{sec:orge78fa05}
 \section{Initialization}
-\label{sec:orgabff26d}
+\label{sec:org8830167}
 
 This is the initialization function for the Bel interpreter. Once this
 function is called, the Bel system is ready to be used.
@@ -6306,13 +6387,16 @@ bel_init(void)
     bel_init_ax_env();
     bel_init_ax_primitives();
 
+    // Read macros
+    bel_init_read_macros();
+
     // TODO: Return an environment?
     return bel_g_nil;
 }
 \end{minted}
 
 \section{Tests}
-\label{sec:org9b420e2}
+\label{sec:org183b9b9}
 
 This is the entry point for tests. All running tests are to be put
 here.
@@ -6348,7 +6432,7 @@ run_tests()
              "17. Basic tokenizer test\n"
              "18. Parser test\n"
              "19. Arbitrary input parser (unsafe!)\n"
-             "20. Test REPL (unsafe!)\n"
+             "20. Go back to REPL\n"
              
              " 0. Exit menu");
         printf("Option >> ");
@@ -6379,15 +6463,17 @@ run_tests()
         case 17: basic_tokenizer_test();     break;
         case 18: parser_test();              break;
         case 19: arbitrary_input_parsing();  break;
-        case 20: test_repl();                break;
+        case 20:
+            test_repl();
+            opt = 0;
+            break;
         }
-        
     } while(opt != 0);
 }
 \end{minted}
 
 \section{\texttt{main} function}
-\label{sec:orge12bda2}
+\label{sec:orga5c2dbe}
 
 This is the program entry point. It is supposed to only print the
 ribbon, initialize Bel and perform some tests, for now.
@@ -6405,12 +6491,7 @@ main(void)
           BELIEVE_LICENSE);
 
     bel_init();
-
-#ifdef BEL_DEBUG
-    run_tests();
-#else
     test_repl();
-#endif
     
     return 0;
 }

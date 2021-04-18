@@ -1,6 +1,6 @@
 /* Believe v0.3                                           *
  * A Bel Lisp interpreter.                                *
- * Copyright (c) 2019-2020 Lucas Vieira.                  *
+ * Copyright (c) 2019-2021 Lucas Vieira.                  *
  * This program is distributed under the MIT License. See *
  * the LICENSE file for details.                          *
  *                                                        *
@@ -10,7 +10,7 @@
  * information, see https://github.com/luksamuk/believe.  */
 
 #define BELIEVE_VERSION   "0.3"
-#define BELIEVE_COPYRIGHT "2019-2020 Lucas Vieira"
+#define BELIEVE_COPYRIGHT "2019-2021 Lucas Vieira"
 #define BELIEVE_LICENSE   "MIT"
 #define BELIEVE_BUILD_TIME __DATE__ " " __TIME__
 
@@ -2667,10 +2667,32 @@ isreserved(char c)
     return 0;
 }
 
+Bel *_Bel_rmacros;
+
+Bel*
+bel_init_read_macros()
+{
+    _Bel_rmacros =
+        bel_mklist(1,
+                   bel_mklist(3,
+                              bel_mkchar('\''),
+                              bel_g_nil,
+                              bel_mksymbol("read-special-quote")));
+    return bel_g_t;
+}
+
 int
-isreadmacro(int c)
+isreadmacro(char c)
 {
     // TODO!
+    Bel *itr = _Bel_rmacros;
+    while(!bel_nilp(itr)) {
+        Bel *entry  = bel_car(itr);
+        Bel *charac = bel_car(entry);
+        if(charac->chr == c)
+            return 1;
+        itr = bel_cdr(itr);
+    }
     return 0;
 }
 
@@ -2724,7 +2746,7 @@ bel_tokenize(const char *buffer)
     for(i = 0; i < strlen(buffer); i++) {
         Bel *token = bel_g_nil;
         if(isreadmacro(buffer[i])) {
-            // TODO
+            token = gen_tok_string(buffer, i, 1);
         } else if(buffer[i] == ';') {
             size_t length =
                 token_verbatim_length(buffer, i, '\n');
@@ -2787,13 +2809,18 @@ bel_parse_expr(Bel *tokens, uint64_t depth)
 {
     Bel *expr = bel_g_nil;
     Bel *last = bel_g_nil;
+    /* Move next code to its own function!!! */
+    /* We can deal with read macros by parsing */
+    /* the next expression with it. */
     while(!bel_nilp(tokens)) {
         Bel *car           = bel_car(tokens);
         tokens             = bel_cdr(tokens);
         Bel *subexpr       = bel_g_nil;
         const char *carstr = bel_cstring(car);
 
-        if(!strcmp(carstr, ")")) {
+        /* if((strlen(carstr) == 1) && isreadmacro(carstr[0])) { */
+        /*     // 1. Read the next expression */
+        /* } else  */if(!strcmp(carstr, ")")) {
             if(depth == 0) {
                 return bel_mkerror(
                     bel_mkstring("Unbalanced parentheses"),
@@ -3700,23 +3727,30 @@ arbitrary_input_parsing()
     }
 }
 
+void run_tests();
+
 void
 test_repl()
 {
     Bel *result;
     Bel *tokens;
     char input[1024] = {0};
+    puts("Enter an expression to be evaluated, or type #t for the test menu.");
     puts("When you are done, type #q to exit.");
-    puts("And don't worry about flush errors.");
     while(1) {
-        printf("test> ");
+        printf("> ");
         fgets(input, 1024, stdin);
         input[strlen(input)] = '\0';
 
-        // Sorry about that :V
-        if(input[0] == '#' &&
-           input[1] == 'q')
-            break;
+        // Sorry about that
+        if(input[0] == '#') {
+            if (input[1] == 'q')
+                break;
+            else if (input[1] == 't') {
+                run_tests();
+                break;
+            }
+        }
 
         tokens = bel_tokenize(input);
         result = bel_parse_expr(tokens, 0);
@@ -3747,6 +3781,9 @@ bel_init(void)
     bel_init_streams();
     bel_init_ax_env();
     bel_init_ax_primitives();
+
+    // Read macros
+    bel_init_read_macros();
 
     // TODO: Return an environment?
     return bel_g_nil;
@@ -3779,7 +3816,7 @@ run_tests()
              "17. Basic tokenizer test\n"
              "18. Parser test\n"
              "19. Arbitrary input parser (unsafe!)\n"
-             "20. Test REPL (unsafe!)\n"
+             "20. Go back to REPL\n"
              
              " 0. Exit menu");
         printf("Option >> ");
@@ -3810,9 +3847,11 @@ run_tests()
         case 17: basic_tokenizer_test();     break;
         case 18: parser_test();              break;
         case 19: arbitrary_input_parsing();  break;
-        case 20: test_repl();                break;
+        case 20:
+            test_repl();
+            opt = 0;
+            break;
         }
-        
     } while(opt != 0);
 }
 
@@ -3828,12 +3867,7 @@ main(void)
           BELIEVE_LICENSE);
 
     bel_init();
-
-#ifdef BEL_DEBUG
-    run_tests();
-#else
     test_repl();
-#endif
     
     return 0;
 }
